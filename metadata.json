@@ -1,0 +1,5 @@
+{
+  "name": "DocOclock",
+  "description": "A premium, glassmorphism-styled doctor appointment and practice management platform optimized for the Bangladeshi healthcare ecosystem. Features separate portals for patients (booking, live serials) and doctors (analytics, digital prescriptions).",
+  "requestFramePermissions": []
+}
