@@ -119,14 +119,25 @@ export interface Appointment {
   patientPhone: string;
   doctorId: string;
   doctorName: string;
-  chamberId: string;
+  hospitalId: string; // Renamed from chamberId
+  hospitalName?: string;
+  chamberName?: string;
+  chamberLocation?: string;
+  fee?: number;
   date: string;
   time: string;
   status: AppointmentStatus;
-  tokenNumber: number; // This is the Serial Number
+  serialNumber: number; // Renamed from tokenNumber
   isReserved?: boolean;
   isVisibleToPatient?: boolean;
+  category?: "normal" | "report";
+  hasPrescription?: boolean;
+  prescriptionId?: string;
+  cancelledAt: number | null;
+  completedAt: number | null;
+  cancelledBy?: "patient" | "doctor";
 }
+
 
 /**
  * Master data for available medicines.
@@ -146,7 +157,7 @@ export interface Medicine {
  */
 export interface Serial {
   id: string;
-  tokenNumber: number;
+  serialNumber: number;
   patientId: string;
   patientName: string;
   gender: Gender;
@@ -177,11 +188,29 @@ export interface PrescriptionMedicine {
 export interface Prescription {
   id: string;
   appointmentId: string;
-  patientId: string;
   doctorId: string;
+  patientId: string;
+  hospitalId: string;
   date: string;
-  diagnosis: string[];
-  medicines: PrescriptionMedicine[];
-  advice: string;
-  followUpDate?: string;
+  diagnosis: string;
+  notes: string;
+  medicines: {
+    name: string;
+    dosage: string;
+    durationDays: number;
+    beforeAfterMeal: "before" | "after";
+    startDate: string;
+  }[];
+  createdAt: number;
+}
+
+export interface MedicineAlert {
+  id: string;
+  patientId: string;
+  appointmentId: string;
+  medicineName: string;
+  dosage: string;
+  startDate: string;
+  durationDays: number;
+  completed: boolean;
 }

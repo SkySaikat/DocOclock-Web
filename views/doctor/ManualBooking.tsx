@@ -2,17 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { ClipboardList, Save, Printer, UserPlus, CheckCircle, Pencil, Check, X, Plus, Minus } from 'lucide-react';
-import { getDoctorPolicy, saveDoctorPolicy, DoctorStorage, getAppointments, bookAppointment } from '../../storage';
+import { getDoctorPolicy, saveDoctorPolicy, DoctorStorage, bookAppointment, getDoctorPracticeSettings, getDoctorAppointments } from '../../storage';
+import { getLocalISODate } from '../../utils/date';
 
 export const ManualBooking: React.FC = () => {
    const session = DoctorStorage.get();
    const doctorId = session?.id || 'd-default';
    const today = new Date().toISOString().split('T')[0];
 
+   const practice = getDoctorPracticeSettings(doctorId);
+   const todayNumeric = new Date(today + "T00:00:00").getDay();
+   const activeChamber = practice.chambers.find(c =>
+      c.scheduleDays?.includes(todayNumeric) || c.schedule.some(s => s.day === todayNumeric)
+   );
+
    // Real serial calculation based on existing appointments and doctor policy
    const getNextSerial = () => {
-      const appointments = getAppointments();
-      const doctorTodayApps = appointments.filter(a => a.doctorId === doctorId && a.date === today);
+      const doctorTodayApps = getDoctorAppointments(doctorId).filter(a =>
+         a.date === today &&
+         a.status !== 'cancelled'
+      );
       const policy = getDoctorPolicy(doctorId);
       const baseOffset = policy.reservedSlotsEnabled ? policy.reservedSlotCount : 0;
       return baseOffset + doctorTodayApps.length + 1;
@@ -78,13 +87,21 @@ export const ManualBooking: React.FC = () => {
 
       if (!session) return;
 
+      if (!activeChamber) {
+         alert("No active chamber found for today's schedule.");
+         return;
+      }
+
       // Real booking with source of truth
       bookAppointment(
          session.id,
          session.name,
-         session.chambers[0].id, // Defaulting to first chamber for now as per demo logic
+         activeChamber.id,
+         activeChamber.hospitalName,
+         activeChamber.address,
+         activeChamber.feeNormal,
          today,
-         'Standard', // Default time slot for manual booking
+         activeChamber.schedule.find(s => s.day === todayNumeric)?.startTime || 'N/A',
          `p-manual-${Date.now()}`,
          formData.name,
          formData.phone || '01XXXXXXXXX'

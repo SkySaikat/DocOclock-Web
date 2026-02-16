@@ -1,22 +1,29 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { Users, CreditCard, Activity, Clock, TrendingUp, MapPin, BadgeCheck, AlertCircle } from 'lucide-react';
-import { DoctorStorage, getAppointments } from '../../storage';
-import { Appointment } from '../../types';
+import { ArrowUpRight, Users, CreditCard, Activity, Clock, MapPin, BadgeCheck, AlertCircle, X, UserCheck, TrendingUp } from 'lucide-react';
+import { StatCard } from '../../components/ui/StatCard';
+import { DoctorCard } from '../../components/ui/DoctorCard';
+import { DoctorStorage, getDoctorAppointments, getDoctorAppointmentsByHospital } from '../../storage';
+import { Appointment, AppointmentStatus } from '../../types';
+
+import { getLocalISODate } from '../../utils/date';
+import { compareTimeStrings } from '../../utils/timeComparison';
 
 interface DoctorDashboardProps {
   onNavigate?: (path: string) => void;
 }
 
 export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) => {
-  // 1. Retrieve the actual logged-in doctor session
   const doctor = DoctorStorage.get();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const today = new Date().toISOString().split('T')[0];
+  const doctorId = doctor?.id;
+  const [hospitals, setHospitals] = useState<any[]>([]);
+  const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
+  const [isResolving, setIsResolving] = useState(true);
+  const [registryFilter, setRegistryFilter] = useState<'all' | AppointmentStatus>('all');
+  const today = getLocalISODate();
 
-  // 2. HARD GUARD: Redirect to login if no session found
   useEffect(() => {
     if (!doctor) {
       if (onNavigate) {
@@ -27,144 +34,297 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
       return;
     }
 
-    // Load real appointments for stats
-    const all = getAppointments();
-    setAppointments(all.filter(a => a.doctorId === doctor.id && a.date === today));
-  }, [doctor, onNavigate, today]);
+    const practiceKey = `doctor_practice_settings_${doctorId}`;
+    const practiceSettingsRaw = localStorage.getItem(practiceKey);
+    const practiceSettings = practiceSettingsRaw ? JSON.parse(practiceSettingsRaw) : null;
+
+    if (!practiceSettings || !practiceSettings.chambers || practiceSettings.chambers.length === 0) {
+      setHospitals([]);
+      setSelectedHospitalId(null);
+      setIsResolving(false);
+      return;
+    }
+
+    const chambers = practiceSettings.chambers;
+    setHospitals(chambers);
+
+    // Dynamic selection logic
+    const todayWeekday = new Date().getDay(); // 0-6
+    const scheduledToday = chambers.filter((c: any) =>
+      c.schedule && c.schedule.some((s: any) => s.day === todayWeekday)
+    );
+
+    if (scheduledToday.length === 0) {
+      setSelectedHospitalId(null);
+    } else if (scheduledToday.length === 1) {
+      setSelectedHospitalId(scheduledToday[0].id);
+    } else {
+      // Multiple matches: Pick by earliest appointment or highest waiting count
+      const allAppointments: Appointment[] = JSON.parse(localStorage.getItem("demo_appointments") || "[]");
+      const doctorTodayApps = allAppointments.filter(
+        app => String(app.doctorId) === String(doctorId) && app.date === today
+      );
+
+      let bestMatchId = scheduledToday[0].id;
+      let minTime = "11:59 PM";
+      let maxWaiting = -1;
+
+      scheduledToday.forEach((chamber: any) => {
+        const chamberApps = doctorTodayApps.filter(a => String(a.hospitalId) === String(chamber.id));
+        const waiting = chamberApps.filter(a => a.status === 'waiting').length;
+
+        // Sort apps by time to find the earliest
+        const sortedApps = [...chamberApps].sort((a, b) => compareTimeStrings(a.time, b.time));
+        const earliestTime = sortedApps.length > 0 ? sortedApps[0].time : "11:59 PM";
+
+        if (compareTimeStrings(earliestTime, minTime) < 0) {
+          minTime = earliestTime;
+          bestMatchId = chamber.id;
+          maxWaiting = waiting;
+        } else if (compareTimeStrings(earliestTime, minTime) === 0) {
+          if (waiting > maxWaiting) {
+            maxWaiting = waiting;
+            bestMatchId = chamber.id;
+          }
+        }
+      });
+      setSelectedHospitalId(bestMatchId);
+    }
+    setIsResolving(false);
+  }, [doctor, doctorId, onNavigate, today]);
 
   if (!doctor) return null;
 
-  const currentChamber = doctor.chambers?.[0] || { name: 'No primary chamber set' };
-  const completedCount = appointments.filter(a => a.status === 'completed').length;
-  const waitingCount = appointments.filter(a => a.status === 'waiting').length;
+  // READ DATA DIRECTLY
+  const allAppointments: Appointment[] = JSON.parse(localStorage.getItem("demo_appointments") || "[]");
+
+  // 1. All Today's Appointments for this Doctor (Global Scope)
+  const doctorTodayAppointments = allAppointments.filter(
+    app => String(app.doctorId) === String(doctor.id) && app.date === today
+  );
+
+  // 2. Filtered Appointments (Strict Hospital Scope)
+  const filteredAppointments = selectedHospitalId
+    ? doctorTodayAppointments.filter(app => String(app.hospitalId) === String(selectedHospitalId))
+    : [];
+
+  // STATISTICS (Strictly Scoped to filteredAppointments)
+  const activeFiltered = filteredAppointments.filter(a => a.status !== 'cancelled');
+  const totalPatients = activeFiltered.length;
+  const waitingCount = filteredAppointments.filter(a => a.status === 'waiting').length;
+  const finishedCount = filteredAppointments.filter(a => a.status === 'completed').length;
+  const cancelledCount = filteredAppointments.filter(a => a.status === 'cancelled').length;
+  const revenueTotal = filteredAppointments.filter(a => a.status === 'completed').reduce((sum, a) => sum + (a.fee || 0), 0);
+
+  // REGISTRY SPECIFIC FILTERING
+  const registryAppointments = useMemo(() => {
+    let list = [...filteredAppointments];
+    if (registryFilter !== 'all') {
+      list = list.filter(a => a.status === registryFilter);
+    }
+    return list.sort((a, b) => (a.serialNumber || 0) - (b.serialNumber || 0));
+  }, [filteredAppointments, registryFilter]);
+
+  const selectedHospitalName = hospitals.find((h: any) => String(h.id) === String(selectedHospitalId))?.hospitalName;
 
   return (
     <div className="space-y-8 pb-10 animate-fade-in">
 
       {/* SECTION 1: DOCTOR PROFILE HEADER */}
-      <GlassCard className="p-6 border-l-4 border-blue-600 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-50 to-transparent rounded-full -mr-16 -mt-16 z-0 pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
-          <div className="relative">
-            <img
-              src={doctor.imageUrl || 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png'}
-              className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-lg bg-slate-50"
-              alt="Doctor Avatar"
-            />
-            <div className="absolute -bottom-2 -right-2 bg-green-500 text-white p-1.5 rounded-full border-2 border-white shadow-sm">
-              <BadgeCheck size={16} />
-            </div>
-          </div>
-          <div className="flex-1 text-center md:text-left space-y-1">
-            <div className="flex items-center justify-center md:justify-start gap-3">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">{doctor.name}</h1>
-              <span className="hidden md:inline-flex px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-md border border-blue-100">Verified Professional</span>
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-sm text-slate-600 font-bold">
-              <span className="text-teal-600 uppercase tracking-wide">{doctor.specialty}</span>
-              <span className="hidden md:inline w-1 h-1 bg-slate-300 rounded-full"></span>
-              <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-black">BMDC: {doctor.bmdcNumber}</span>
-              <span className="hidden md:inline w-1 h-1 bg-slate-300 rounded-full"></span>
-              <span className="flex items-center gap-1.5"><MapPin size={14} className="text-red-500" /> {currentChamber.name}</span>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="h-12 px-6 rounded-xl font-black border-slate-200">Practice Settings</Button>
-          </div>
-        </div>
-      </GlassCard>
-
-      {/* SECTION 2: TODAY'S OVERVIEW */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center px-1">
-          <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-            <Activity size={20} className="text-blue-500" /> Today's Statistics
-          </h2>
-          <div className="text-xs font-black text-slate-400 bg-white border border-slate-100 px-4 py-2 rounded-xl shadow-sm uppercase tracking-widest">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-          </div>
-        </div>
+      <div className="space-y-6">
+        {/* Doctor Header Section */}
+        <DoctorCard
+          doctor={{
+            name: doctor.name,
+            specialty: doctor.specialty,
+            bmdcNumber: doctor.bmdcNumber,
+            image: doctor.image,
+            hospitalName: selectedHospitalId ? selectedHospitalName : 'Waiting for context...',
+            experience: 12, // Mock data for now
+            rating: 4.9,
+            reviews: 120
+          }}
+          ctaLabel="Manage Settings"
+          onCtaClick={() => onNavigate?.('/doctor/practice-settings')}
+        />
 
         {/* Operational Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { title: 'Total Patients', value: appointments.length, sub: 'Today\'s bookings', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { title: 'Revenue (Today)', value: `৳ ${completedCount * (doctor.chambers?.[0]?.fee || 0)}`, sub: 'Collected fee', icon: CreditCard, color: 'text-teal-600', bg: 'bg-teal-50' },
-            { title: 'Remaining', value: waitingCount, sub: 'Patients waiting', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-            { title: 'Experience', value: `${doctor.experienceYears || '1'}y`, sub: 'Practice history', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
-          ].map((stat, idx) => (
-            <GlassCard key={idx} className="p-6 flex items-center gap-5 hover:scale-[1.02] transition-all border-0 ring-1 ring-slate-100 shadow-sm">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${stat.bg} ${stat.color} shadow-inner`}>
-                <stat.icon size={28} />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">{stat.title}</p>
-                <p className="text-3xl font-black text-slate-800 leading-none mb-1">{stat.value}</p>
-                <p className="text-[10px] text-slate-500 font-bold">{stat.sub}</p>
-              </div>
-            </GlassCard>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+          <StatCard
+            label="Appointments"
+            value={totalPatients}
+            subValue="Today"
+            icon={Users}
+            color="blue"
+            loading={isResolving}
+          />
+          <StatCard
+            label="Cancelled"
+            value={cancelledCount}
+            subValue="This scope"
+            icon={X}
+            color="red"
+            loading={isResolving}
+          />
+          <StatCard
+            label="Revenue"
+            value={`৳${revenueTotal}`}
+            subValue="Earned"
+            icon={CreditCard}
+            color="teal"
+            loading={isResolving}
+          />
+          <StatCard
+            label="Remaining"
+            value={waitingCount}
+            subValue="Waiting"
+            icon={Clock}
+            color="orange"
+            loading={isResolving}
+          />
+          <StatCard
+            label="Completed"
+            value={finishedCount}
+            subValue="Consulted"
+            icon={UserCheck}
+            color="green"
+            loading={isResolving}
+          />
         </div>
 
-        {/* Recent Appointments Table */}
-        <GlassCard className="p-8 border-0 ring-1 ring-slate-100 shadow-sm bg-white">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">Today's Registry</h3>
-            <button onClick={() => onNavigate?.('/doctor/serial-manager')} className="text-xs text-blue-600 font-black uppercase tracking-widest hover:underline flex items-center gap-2">
-              Manage Queue <TrendingUp size={14} />
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-[0.15em] bg-slate-50/50">
-                  <th className="py-4 pl-4 rounded-l-2xl">Serial</th>
-                  <th className="py-4">Patient Name</th>
-                  <th className="py-4">Time Slot</th>
-                  <th className="py-4">Status</th>
-                  <th className="py-4 pr-4 rounded-r-2xl text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-slate-700 text-sm">
-                {appointments.length > 0 ? appointments.sort((a, b) => a.tokenNumber - b.tokenNumber).slice(0, 5).map((row, i) => (
-                  <tr key={i} className="border-b border-slate-50 last:border-0 group">
-                    <td className="py-5 pl-4 font-black text-blue-600">#{row.tokenNumber.toString().padStart(2, '0')}</td>
-                    <td className="py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-black text-[10px]">P</div>
-                        <span className="font-bold text-slate-800">{row.patientName}</span>
-                      </div>
-                    </td>
-                    <td className="py-5 font-bold text-slate-500">{row.time}</td>
-                    <td className="py-5">
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${row.status === 'waiting' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                          row.status === 'consulting' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                            'bg-green-50 text-green-600 border-green-100'
-                        }`}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="py-5 pr-4 text-right">
-                      <button onClick={() => onNavigate?.('/doctor/serial-manager')} className="text-slate-400 hover:text-blue-600 transition-colors font-black text-[10px] uppercase tracking-widest border border-slate-200 px-4 py-2 rounded-xl hover:border-blue-200 hover:bg-blue-50/50">Manage</button>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-400 font-bold">No bookings for today yet.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        {/* Recent Appointments Registry Section */}
+        <div className="bg-white rounded-[24px] shadow-soft border border-slate-100 p-6 space-y-6">
+          <div className="flex flex-col gap-4">
+            {/* Title Row */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">Today's Registry</h2>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {selectedHospitalId ? selectedHospitalName : "Patient List Overflow"}
+                </p>
+              </div>
+              <button
+                onClick={() => onNavigate?.('/doctor/serial-manager')}
+                className="px-4 py-2 bg-slate-50 text-blue-600 rounded-xl border border-slate-100 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-50 transition-colors"
+              >
+                Manage Queue <ArrowUpRight size={14} />
+              </button>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              {/* Scope Selector */}
+              <div className="relative flex-1">
+                <select
+                  value={selectedHospitalId || ''}
+                  onChange={(e) => setSelectedHospitalId(e.target.value || null)}
+                  className="w-full text-sm font-bold bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 appearance-none focus:outline-none focus:ring-4 focus:ring-medical-500/5 text-slate-700 transition-all"
+                >
+                  <option value="" disabled>Select Chamber Scope...</option>
+                  {hospitals.map((hospital: any) => (
+                    <option key={hospital.id} value={hospital.id}>{hospital.hospitalName}</option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <MapPin size={16} />
+                </div>
+              </div>
+
+              {/* Filter Pills - Horizontally Scrollable */}
+              <div className="flex gap-2 overflow-x-auto py-1 scrollbar-hide shrink-0">
+                {(['all', 'waiting', 'completed', 'cancelled'] as const).map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setRegistryFilter(status)}
+                    className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border
+                      ${registryFilter === status
+                        ? "bg-slate-900 text-white border-slate-900 shadow-premium"
+                        : "bg-white text-slate-400 border-slate-100 hover:border-slate-300"
+                      }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="mt-8 p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0"><AlertCircle size={20} /></div>
-              <p className="text-xs font-bold text-slate-600">This dashboard reflects real-time bookings from patients. New entries appear automatically as they occur.</p>
-            </div>
-            <Button onClick={() => onNavigate?.('/doctor/manual-booking')} className="h-11 px-6 rounded-xl text-xs font-black shadow-none whitespace-nowrap bg-slate-800">Add Walk-in Patient</Button>
+          <div className="overflow-x-auto">
+            {isResolving ? (
+              <div className="py-20 text-center space-y-4">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Resolving Schedule...</p>
+              </div>
+            ) : hospitals.length === 0 ? (
+              <div className="py-20 text-center space-y-4">
+                <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                  <MapPin size={32} />
+                </div>
+                <h1 className="text-xl font-black text-slate-800 tracking-tight">No Chambers Configured</h1>
+                <p className="text-slate-500 font-bold max-w-sm mx-auto">Please go to Practice Settings to add your chambers and weekly schedule.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-[0.15em] bg-slate-50/50">
+                    <th className="py-4 pl-4 rounded-l-2xl">Serial</th>
+                    <th className="py-4">Patient Name</th>
+                    <th className="py-4">Time Slot</th>
+                    <th className="py-4">Status</th>
+                    <th className="py-4 pr-4 rounded-r-2xl text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-700 text-sm">
+                  {registryAppointments.length > 0 ? registryAppointments.slice(0, 10).map((row, i) => (
+                    <tr key={i} className={`border-b border-slate-50 last:border-0 group ${row.status === 'cancelled' ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                      <td className={`py-5 pl-4 font-black ${row.status === 'cancelled' ? 'text-slate-400' : 'text-blue-600'}`}>#{(row.serialNumber || 0).toString().padStart(2, '0')}</td>
+                      <td className="py-5">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-[10px] ${row.status === 'cancelled' ? 'bg-slate-100 text-slate-400' : 'bg-blue-50 text-blue-500'}`}>P</div>
+                          <span className={`font-bold ${row.status === 'cancelled' ? 'text-slate-500' : 'text-slate-800'}`}>{row.patientName}</span>
+                        </div>
+                      </td>
+                      <td className="py-5 font-bold text-slate-500">{row.time}</td>
+                      <td className="py-5">
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${row.status === 'waiting' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
+                          row.status === 'consulting' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                            row.status === 'cancelled' ? 'bg-red-50 text-red-500 border-red-100' :
+                              'bg-green-50 text-green-600 border-green-100'
+                          }`}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="py-5 pr-4 text-right">
+                        {row.status !== 'cancelled' && (
+                          <button onClick={() => onNavigate?.('/doctor/serial-manager')} className="text-slate-400 hover:text-blue-600 transition-colors font-black text-[10px] uppercase tracking-widest border border-slate-200 px-4 py-2 rounded-xl hover:border-blue-200 hover:bg-blue-50/50">Manage</button>
+                        )}
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={5} className="py-20 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center">
+                            <Activity size={24} />
+                          </div>
+                          <p className="text-slate-400 font-bold">No active chamber today</p>
+                          <p className="text-[10px] text-slate-300 uppercase font-black">Select a chamber above to see appointments</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
-        </GlassCard>
+
+          <div className="p-4 bg-slate-50 rounded-[1.5rem] border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0"><AlertCircle size={16} /></div>
+              <p className="text-[10px] font-bold text-slate-600 leading-tight">Live bookings reflect real-time hospital context. Filter scope to manage specific sessions.</p>
+            </div>
+            <Button onClick={() => onNavigate?.('/doctor/manual-booking')} className="w-full md:w-auto h-10 px-6 rounded-xl text-xs font-black shadow-none bg-slate-800">Add Walk-in</Button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -53,11 +53,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
   const isDoctor = userRole === UserRole.DOCTOR;
 
   return (
-    <div className="min-h-screen relative font-sans text-slate-800 bg-slate-50">
-      
+    <div className="min-h-screen relative font-sans text-slate-800 bg-medical-50">
+
       {/* NAVBAR (TOP) */}
-      <nav className="fixed top-0 w-full z-50 px-4 py-4">
-        <div className="glass-panel max-w-7xl mx-auto rounded-2xl px-6 py-3 flex justify-between items-center h-16 shadow-lg">
+      <nav className="fixed top-0 w-full z-50 px-4 py-4 pointer-events-none">
+        <div className="glass-panel max-w-7xl mx-auto rounded-[24px] px-6 py-3 flex justify-between items-center h-14 shadow-premium pointer-events-auto border-medical-100/50">
           {/* Brand Logo */}
           <div className="flex items-center gap-3 cursor-pointer group shrink-0" onClick={() => onNavigate('/')}>
             <Logo />
@@ -71,7 +71,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             {isPublic && (
               <>
                 <button onClick={() => onNavigate('/for-doctors')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 transition-colors">
-                  <BriefcaseMedical size={18}/> For Doctors
+                  <BriefcaseMedical size={18} /> For Doctors
                 </button>
                 <div ref={dropdownRef} className="relative">
                   <Button onClick={() => setIsLoginDropdownOpen(!isLoginDropdownOpen)} className="gap-2 px-6 font-black h-11 rounded-xl shadow-lg shadow-blue-100">
@@ -94,19 +94,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             {isPatient && (
               <>
                 <button onClick={() => onNavigate('/patient/home')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
-                  <Home size={18}/> Home
+                  <Home size={18} /> Home
                 </button>
                 <button onClick={() => onNavigate('/patient/medicine-tracker')} className="font-bold text-slate-600 hover:text-indigo-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-indigo-50 transition-all">
-                  <Pill size={18}/> Meds
+                  <Pill size={18} /> Meds
                 </button>
                 <button onClick={() => onNavigate('/patient/appointments')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
-                  <Calendar size={18}/> Appointments
+                  <Calendar size={18} /> Appointments
                 </button>
                 <button onClick={() => onNavigate('/patient/prescriptions')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
-                  <FileText size={18}/> Rx
+                  <FileText size={18} /> Rx
                 </button>
                 <button onClick={() => onNavigate('/patient/more')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
-                  <UserCircle size={18}/> Profile
+                  <UserCircle size={18} /> Profile
                 </button>
               </>
             )}
@@ -114,16 +114,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             {isDoctor && (
               <>
                 <button onClick={() => onNavigate('/doctor/dashboard')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
-                  <LayoutDashboard size={18}/> Dashboard
+                  <LayoutDashboard size={18} /> Dashboard
                 </button>
                 <button onClick={() => onNavigate('/doctor/serial-manager')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
-                  <Users size={18}/> Queue
+                  <Users size={18} /> Queue
                 </button>
                 <button onClick={() => onNavigate('/doctor/prescription')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
-                  <FileText size={18}/> RX
+                  <FileText size={18} /> RX
                 </button>
                 <button onClick={() => onNavigate('/doctor/analytics')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
-                  <BarChart2 size={18}/> Analytics
+                  <BarChart2 size={18} /> Analytics
                 </button>
                 <button onClick={onLogout} className="flex items-center gap-2 text-red-500 font-black hover:text-red-700 bg-red-50 px-4 py-2 rounded-xl transition ml-2">
                   <LogOut size={18} /> Logout
@@ -150,7 +150,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
       {isMobileMenuOpen && isPublic && (
         <div className="fixed inset-0 z-[45] bg-white/95 backdrop-blur-xl pt-24 px-8 flex flex-col gap-4 animate-fade-in md:hidden">
           <button onClick={() => { onNavigate('/for-doctors'); setIsMobileMenuOpen(false); }} className="w-full text-left py-4 text-xl font-black border-b border-slate-100 flex justify-between items-center">
-            For Doctors <BriefcaseMedical size={20}/>
+            For Doctors <BriefcaseMedical size={20} />
           </button>
           <div className="flex flex-col gap-3 mt-4">
             <Button onClick={() => { onLoginClick?.(UserRole.PATIENT); setIsMobileMenuOpen(false); }} fullWidth className="h-14 text-lg font-black">Patient Login</Button>
@@ -164,54 +164,46 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
         {children}
       </main>
 
-      {/* PATIENT MOBILE BOTTOM NAV - REDESIGNED */}
-      {isPatient && (
-        <div className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.12)] z-50 px-2 py-3 flex justify-around items-end h-24">
-           <button onClick={() => onNavigate('/patient/home')} className="flex flex-col items-center gap-1.5 font-black text-[10px] text-slate-400 active:text-blue-600 transition-all pb-2">
-              <Home size={24} /> <span>Home</span>
-           </button>
-           <button onClick={() => onNavigate('/patient/medicine-tracker')} className="flex flex-col items-center gap-1.5 font-black text-[10px] text-slate-400 active:text-indigo-600 transition-all pb-2">
-              <Pill size={24} /> <span>Meds</span>
-           </button>
-           
-           {/* HIGHLIGHTED APPOINTMENTS ACTION */}
-           <div className="relative -top-6">
-              <button 
-                onClick={() => onNavigate('/patient/appointments')} 
-                className="w-18 h-18 bg-blue-600 text-white rounded-[2rem] flex flex-col items-center justify-center shadow-[0_15px_30px_rgba(37,99,235,0.4)] ring-8 ring-white/80 active:scale-90 transition-all p-4"
-              >
-                 <Calendar size={28} strokeWidth={2.5}/>
-                 <span className="text-[10px] font-black mt-1 uppercase">Appts</span>
-              </button>
-           </div>
-
-           <button onClick={() => onNavigate('/patient/prescriptions')} className="flex flex-col items-center gap-1.5 font-black text-[10px] text-slate-400 active:text-blue-600 transition-all pb-2">
-              <FileText size={24} /> <span>Rx</span>
-           </button>
-           <button onClick={() => onNavigate('/patient/more')} className="flex flex-col items-center gap-1.5 font-black text-[10px] text-slate-400 active:text-blue-600 transition-all pb-2">
-              <MoreHorizontal size={24} /> <span>More</span>
-           </button>
+      {/* DOCTOR MOBILE BOTTOM NAV - FLOATING PREMIUM */}
+      {isDoctor && (
+        <div className="md:hidden fixed bottom-6 left-6 right-6 z-50">
+          <div className="bg-slate-900/95 backdrop-blur-2xl border border-white/10 shadow-premium px-2 flex justify-around items-center h-14 rounded-[28px]">
+            <button onClick={() => onNavigate('/doctor/dashboard')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-400 transition-colors">
+              <LayoutDashboard size={18} /> Dash
+            </button>
+            <button onClick={() => onNavigate('/doctor/serial-manager')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-400 transition-colors">
+              <Users size={18} /> Queue
+            </button>
+            <button onClick={() => onNavigate('/doctor/prescription')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-400 transition-colors">
+              <FileText size={18} /> Rx
+            </button>
+            <button onClick={() => onNavigate('/doctor/manual-booking')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-400 transition-colors">
+              <ClipboardList size={18} /> Book
+            </button>
+            <button onClick={onLogout} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-red-400 active:text-red-500 transition-colors">
+              <LogOut size={18} /> Exit
+            </button>
+          </div>
         </div>
       )}
 
-      {/* DOCTOR MOBILE BOTTOM NAV */}
-      {isDoctor && (
-        <div className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.12)] z-50 px-8 py-4 flex justify-between items-center h-22 rounded-t-[2.5rem]">
-           <button onClick={() => onNavigate('/doctor/dashboard')} className="flex flex-col items-center gap-1.5 font-bold text-xs text-slate-400 active:text-teal-600 transition-colors">
-              <LayoutDashboard size={26} /> Home
-           </button>
-           <button onClick={() => onNavigate('/doctor/serial-manager')} className="flex flex-col items-center gap-1.5 font-bold text-xs text-slate-400 active:text-teal-600 transition-colors">
-              <Users size={26} /> Queue
-           </button>
-           <button onClick={() => onNavigate('/doctor/prescription')} className="flex flex-col items-center gap-1.5 font-bold text-xs text-slate-400 active:text-teal-600 transition-colors">
-              <FileText size={26} /> Rx
-           </button>
-           <button onClick={() => onNavigate('/doctor/manual-booking')} className="flex flex-col items-center gap-1.5 font-bold text-xs text-slate-400 active:text-teal-600 transition-colors">
-              <ClipboardList size={26} /> Book
-           </button>
-           <button onClick={onLogout} className="flex flex-col items-center gap-1.5 font-bold text-xs text-red-400 active:text-red-600 transition-colors">
-              <LogOut size={26} /> Exit
-           </button>
+      {/* PATIENT MOBILE BOTTOM NAV - FLOATING PREMIUM */}
+      {isPatient && (
+        <div className="md:hidden fixed bottom-6 left-6 right-6 z-50">
+          <div className="bg-white/95 backdrop-blur-2xl border border-medical-100 shadow-premium px-2 flex justify-around items-center h-14 rounded-[28px]">
+            <button onClick={() => onNavigate('/patient/home')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-500 transition-colors">
+              <Home size={18} /> Home
+            </button>
+            <button onClick={() => onNavigate('/patient/appointments')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-500 transition-colors">
+              <Calendar size={18} /> Apps
+            </button>
+            <button onClick={() => onNavigate('/patient/medicine-tracker')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-500 transition-colors">
+              <Pill size={18} /> Meds
+            </button>
+            <button onClick={() => onNavigate('/patient/doctor-profile')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-500 transition-colors">
+              <UserCircle size={18} /> Profile
+            </button>
+          </div>
         </div>
       )}
     </div>

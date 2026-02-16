@@ -5,36 +5,68 @@ import { Appointment, AppointmentStatus } from '../../types';
 import {
    Clock, Activity, X, Phone, CheckCircle, Bell,
    FileText, UserCheck, ChevronRight, ClipboardList,
-   History, MessageSquare, AlertTriangle, Plus, Minus, Save
+   History, Plus, Minus
 } from 'lucide-react';
 import {
    getAppointments, DoctorStorage, saveAppointments,
    getArrivalStatus, saveArrivalStatus,
    getQueueSessionStatus, saveQueueSessionStatus, QueueSessionStatus,
    assignPatientToReservedSlot,
-   getSessionMeta, saveSessionMeta, DoctorSessionMeta, DEFAULT_SESSION_META
+   getSessionMeta, saveSessionMeta, DoctorSessionMeta, DEFAULT_SESSION_META,
+   getDoctorPracticeSettings
 } from '../../storage';
+import { getLocalISODate } from '../../utils/date';
 
 interface SerialManagerProps {
    onNavigate: (path: string) => void;
-   onStartPrescription: (patient: { name: string; age?: number; gender: string; phone: string }) => void;
+   onStartPrescription: (patient: { id: string; name: string; phone: string; gender: string; appointmentId: string; hospitalId: string }) => void;
 }
 
 export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStartPrescription }) => {
-   const session = DoctorStorage.get();
-   const today = new Date().toISOString().split('T')[0];
+   const doctor = DoctorStorage.get();
+   const currentDoctorId = doctor?.id;
+   const [activeHospitalId, setActiveHospitalId] = useState<string | null>(null);
+   const today = getLocalISODate();
+   const todayNumeric = new Date(today + "T00:00:00").getDay();
+
+   const practice = useMemo(() => doctor ? getDoctorPracticeSettings(doctor.id) : null, [doctor]);
+
+   // Part 8: Date-aware chamber filtering
+   const activeHospitalsToday = useMemo(() => {
+      if (!practice) return [];
+      return practice.chambers.filter(chamber =>
+         chamber.scheduleDays?.includes(todayNumeric) || chamber.schedule.some(s => s.day === todayNumeric)
+      );
+   }, [practice, todayNumeric]);
+
+   // Initialize active hospital based on today's schedule
+   useEffect(() => {
+      if (activeHospitalsToday.length > 0) {
+         const isValid = activeHospitalsToday.some(h => h.id === activeHospitalId);
+         if (!activeHospitalId || !isValid) {
+            setActiveHospitalId(activeHospitalsToday[0].id);
+         }
+      } else {
+         setActiveHospitalId(null);
+      }
+   }, [activeHospitalsToday, activeHospitalId]);
+
+   const activeChamber = useMemo(() =>
+      activeHospitalsToday.find(c => c.id === activeHospitalId),
+      [activeHospitalsToday, activeHospitalId]);
+
    const [doctorStatus, setDoctorStatus] = useState<'arrived' | 'not-arrived'>(
-      session && getArrivalStatus(session.id, today) ? 'arrived' : 'not-arrived'
+      doctor && activeChamber && getArrivalStatus(doctor.id, activeChamber.id, today) ? 'arrived' : 'not-arrived'
    );
    const [queueSessionStatus, setQueueSessionStatus] = useState<QueueSessionStatus>(
-      session ? getQueueSessionStatus(session.id, today) : 'NOT_STARTED'
+      doctor && activeChamber ? getQueueSessionStatus(doctor.id, activeChamber.id, today) : 'NOT_STARTED'
    );
    const [sessionMeta, setSessionMeta] = useState<DoctorSessionMeta>(
-      session ? getSessionMeta(session.id, today) : DEFAULT_SESSION_META
+      doctor && activeChamber ? getSessionMeta(doctor.id, activeChamber.id, today) : DEFAULT_SESSION_META
    );
    const [localDelay, setLocalDelay] = useState(0);
    const [isSavingDelay, setIsSavingDelay] = useState(false);
-   const [appointments, setAppointments] = useState<Appointment[]>([]);
+   const [refreshCount, setRefreshCount] = useState(0);
    const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
    const [filterStatus, setFilterStatus] = useState<AppointmentStatus | 'all'>('all');
    const [showAssignModal, setShowAssignModal] = useState(false);
@@ -42,27 +74,36 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
    const isArrived = doctorStatus === 'arrived';
 
-   const loadAppointments = () => {
-      if (!session || session.role !== 'doctor') return;
-      const today = new Date().toISOString().split('T')[0];
-      const allApps = getAppointments();
-      const doctorTodayApps = allApps.filter(app =>
-         app.doctorId === session.id && app.date === today
-      );
-      setAppointments(doctorTodayApps);
-   };
+   const allAppointments = useMemo(() => getAppointments(), [refreshCount]);
 
-   useEffect(() => {
-      loadAppointments();
-      const interval = setInterval(loadAppointments, 10000);
-      return () => clearInterval(interval);
-   }, [session]);
+   const filteredAppointments = useMemo(() => {
+      if (!currentDoctorId || !activeHospitalId) return [];
+
+      const filtered = allAppointments.filter(a =>
+         String(a.doctorId) === String(currentDoctorId) &&
+         String(a.hospitalId) === String(activeHospitalId) &&
+         a.date === today &&
+         a.status !== 'cancelled'
+      );
+
+      // Part 9: Safe debug guard
+      if (filtered.length === 0 && activeHospitalId) {
+         console.log("Queue Debug:", {
+            doctorId: currentDoctorId,
+            hospitalId: activeHospitalId,
+            todayISO: today,
+            allCount: allAppointments.length,
+            doctorApps: allAppointments.filter(a => String(a.doctorId) === String(currentDoctorId)).length
+         });
+      }
+
+      return filtered;
+   }, [allAppointments, currentDoctorId, activeHospitalId, today]);
 
    const handleSaveDelay = () => {
-      if (!session) return;
+      if (!doctor) return;
       setIsSavingDelay(true);
 
-      // Determine status based on current arrival status
       const newStatus = doctorStatus === 'not-arrived' ? 'DELAYED' : 'BREAK';
       const meta: DoctorSessionMeta = {
          ...DEFAULT_SESSION_META,
@@ -71,30 +112,25 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
          delayStartedAt: new Date().toISOString()
       };
 
-      saveSessionMeta(session.id, today, meta);
-      setSessionMeta(meta);
+      if (activeChamber) {
+         saveSessionMeta(doctor.id, activeChamber.id, today, meta);
+         setSessionMeta(meta);
+      }
 
       setTimeout(() => setIsSavingDelay(false), 800);
    };
 
-   // Derived State for UI distinction
-   const sessionUIStatus = useMemo(() => {
-      if (sessionMeta.status === 'DELAYED') return 'DELAYED_PRE_ARRIVAL';
-      if (sessionMeta.status === 'BREAK') return 'BREAK_IN_CHAMBER';
-      return 'NORMAL';
-   }, [sessionMeta.status]);
-
    const sortedAppointments = useMemo(() => {
-      let list = [...appointments].sort((a, b) => a.tokenNumber - b.tokenNumber);
+      let list = [...filteredAppointments].sort((a, b) => (a.serialNumber || 0) - (b.serialNumber || 0));
       if (filterStatus !== 'all') {
          list = list.filter(a => a.status === filterStatus);
       }
       return list;
-   }, [appointments, filterStatus]);
+   }, [filteredAppointments, filterStatus]);
 
    const currentApp = useMemo(() =>
-      appointments.find(a => a.status === 'consulting'),
-      [appointments]
+      filteredAppointments.find(a => a.status === 'consulting'),
+      [filteredAppointments]
    );
 
    const updateAppStatus = (id: string, newStatus: AppointmentStatus) => {
@@ -107,18 +143,18 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
       let updatedAll = allApps;
       if (newStatus === 'consulting') {
          updatedAll = allApps.map(app =>
-            (app.doctorId === session?.id && app.date === today && app.status === 'consulting')
-               ? { ...app, status: 'completed' as AppointmentStatus }
+            (String(app.doctorId) === String(currentDoctorId) && app.date === today && app.status === 'consulting')
+               ? { ...app, status: 'completed' as AppointmentStatus, completedAt: Date.now() }
                : app
          );
       }
 
       updatedAll = updatedAll.map(app =>
-         app.id === id ? { ...app, status: newStatus } : app
+         app.id === id ? { ...app, status: newStatus, completedAt: newStatus === 'completed' ? Date.now() : app.completedAt } : app
       );
 
       saveAppointments(updatedAll);
-      loadAppointments();
+      setRefreshCount(prev => prev + 1);
    };
 
    const handleNextPatient = () => {
@@ -128,8 +164,8 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
       }
 
       if (queueSessionStatus === 'NOT_STARTED') {
-         if (session) {
-            saveQueueSessionStatus(session.id, today, 'RUNNING');
+         if (doctor && activeChamber) {
+            saveQueueSessionStatus(doctor.id, activeChamber.id, today, 'RUNNING');
             setQueueSessionStatus('RUNNING');
          }
       }
@@ -138,19 +174,18 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
          updateAppStatus(currentApp.id, 'completed');
       }
 
-      const nextWaiting = [...appointments]
+      const nextWaiting = [...filteredAppointments]
          .filter(a => a.status === 'waiting' && a.isVisibleToPatient !== false && !a.isReserved)
-         .sort((a, b) => a.tokenNumber - b.tokenNumber)[0];
+         .sort((a, b) => a.serialNumber - b.serialNumber)[0];
 
       if (nextWaiting) {
          updateAppStatus(nextWaiting.id, 'consulting');
       }
    };
 
-   const selectedApp = appointments.find(a => a.id === selectedAppId);
+   const selectedApp = filteredAppointments.find(a => a.id === selectedAppId);
 
-   // Render Guard: Ensure critical session data exists
-   if (!session || !sessionMeta) {
+   if (!doctor || !sessionMeta) {
       return (
          <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
@@ -162,10 +197,33 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
    return (
       <div className="space-y-8 max-w-6xl mx-auto px-2 md:px-0 pb-20">
-         <div className="flex justify-between items-end">
+         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div>
                <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-1">Today's Queue</h1>
-               <p className="text-slate-500 font-bold">Logged in as {session?.name}</p>
+               <div className="flex items-center gap-3">
+                  <p className="text-slate-500 font-bold">Logged in as {doctor.name}</p>
+                  <span className="text-slate-200">|</span>
+                  <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hospital:</span>
+                     {activeHospitalsToday.length === 0 ? (
+                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">No chamber scheduled for today</span>
+                     ) : activeHospitalsToday.length === 1 ? (
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest pb-0.5 border-b border-blue-100">
+                           {activeHospitalsToday[0].hospitalName}
+                        </span>
+                     ) : (
+                        <select
+                           value={activeHospitalId || ''}
+                           onChange={(e) => setActiveHospitalId(e.target.value)}
+                           className="bg-transparent text-[10px] font-black text-blue-600 uppercase tracking-widest outline-none cursor-pointer border-b border-blue-100 pb-0.5"
+                        >
+                           {activeHospitalsToday.map(c => (
+                              <option key={c.id} value={c.id}>{c.hospitalName}</option>
+                           ))}
+                        </select>
+                     )}
+                  </div>
+               </div>
             </div>
             <div className="hidden md:block text-[10px] font-black text-slate-400 bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm uppercase tracking-[0.2em]">
                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -174,7 +232,6 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
          <div className="bg-slate-50/80 rounded-[2rem] p-4 md:p-6 border border-slate-100 shadow-sm mb-8">
             <div className="flex flex-col md:flex-row gap-6 md:gap-12 items-stretch md:items-center">
-               {/* Chamber Availability Section */}
                <div className="flex items-center justify-between gap-4 w-full md:w-auto md:border-r md:border-slate-200 md:pr-12 pb-6 md:pb-0 border-b md:border-b-0 border-slate-100">
                   <div className="flex items-center gap-4">
                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 ${doctorStatus === 'arrived' ? 'bg-green-100 text-green-600' : 'bg-slate-200 text-slate-400'}`}>
@@ -185,11 +242,11 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   <div className="flex p-0.5 bg-slate-200/50 rounded-lg w-fit shrink-0">
                      <button
                         onClick={() => {
-                           setDoctorStatus('arrived');
-                           if (session) {
-                              saveArrivalStatus(session.id, today, true);
+                           if (doctor && activeChamber) {
+                              saveArrivalStatus(doctor.id, activeChamber.id, today, true);
+                              setDoctorStatus('arrived');
                               const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
-                              saveSessionMeta(session.id, today, meta);
+                              saveSessionMeta(doctor.id, activeChamber.id, today, meta);
                               setSessionMeta(meta);
                            }
                         }}
@@ -199,9 +256,9 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                      </button>
                      <button
                         onClick={() => {
-                           setDoctorStatus('not-arrived');
-                           if (session) {
-                              saveArrivalStatus(session.id, today, false);
+                           if (doctor && activeChamber) {
+                              saveArrivalStatus(doctor.id, activeChamber.id, today, false);
+                              setDoctorStatus('not-arrived');
                            }
                         }}
                         className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-md transition-all ${doctorStatus === 'not-arrived' ? 'bg-white text-slate-600 shadow-sm' : 'text-slate-400'}`}
@@ -211,7 +268,6 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   </div>
                </div>
 
-               {/* Expected Delay Section */}
                <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
                   <div className="flex items-center justify-between gap-4 flex-1">
                      <div className="flex items-center gap-4">
@@ -228,14 +284,14 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   </div>
                   <Button
                      onClick={handleSaveDelay}
-                     className={`h-10 md:h-11 px-6 rounded-xl font-black tracking-widest text-[9px] transition-all w-full md:w-auto shadow-none ${isSavingDelay ? 'bg-green-500 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                     disabled={!activeChamber || isSavingDelay}
+                     className={`h-10 md:h-11 px-6 rounded-xl font-black tracking-widest text-[9px] transition-all w-full md:w-auto shadow-none ${isSavingDelay ? 'bg-green-500 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'} ${!activeChamber ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                      {isSavingDelay ? 'SAVED' : 'APPLY DELAY'}
                   </Button>
                </div>
             </div>
          </div>
-
 
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
@@ -280,9 +336,11 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                         <p className="text-sm font-bold text-blue-800/70 flex-1">Break duration: {sessionMeta.delayMinutes} minutes</p>
                         <Button
                            onClick={() => {
-                              const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
-                              saveSessionMeta(session.id, today, meta);
-                              setSessionMeta(meta);
+                              if (doctor && activeChamber) {
+                                 const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
+                                 saveSessionMeta(doctor.id, activeChamber.id, today, meta);
+                                 setSessionMeta(meta);
+                              }
                            }}
                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 font-black rounded-xl shadow-lg shadow-blue-100 uppercase tracking-widest text-xs h-11"
                         >
@@ -306,7 +364,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                               <div className="text-center md:text-left">
                                  <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tight">{currentApp.patientName}</h2>
                                  <p className="text-blue-200/60 font-bold flex items-center justify-center md:justify-start gap-4">
-                                    <span className="bg-white/10 px-3 py-1 rounded-lg">Serial #{currentApp.tokenNumber}</span>
+                                    <span className="bg-white/10 px-3 py-1 rounded-lg">Serial #{currentApp.serialNumber}</span>
                                     <span className="flex items-center gap-1"><Phone size={14} /> {currentApp.patientPhone}</span>
                                  </p>
                               </div>
@@ -334,10 +392,10 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                               <Button
                                  className="h-16 px-10 gap-3 !bg-white hover:!bg-slate-100 !text-slate-900 shadow-xl transition-all font-black text-lg rounded-2xl w-full md:w-auto"
                                  onClick={handleNextPatient}
-                                 disabled={sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK'}
+                                 disabled={!activeChamber || sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK'}
                               >
                                  <Bell size={24} />
-                                 {sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK' ? 'Session Paused' : 'Consult Next'}
+                                 {!activeChamber ? 'No Active Chamber' : sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK' ? 'Session Paused' : 'Consult Next'}
                               </Button>
                            </div>
                         )}
@@ -345,15 +403,18 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   </GlassCard>
                </div>
 
-               <div className="space-y-4">
-                  <div className="flex items-center justify-between px-2">
+               <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 gap-4">
                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Timeline</h3>
-                     <div className="flex gap-2">
-                        {(['all', 'waiting', 'completed'] as const).map(status => (
+                     <div className="flex flex-wrap gap-2">
+                        {['all', 'waiting', 'consulting', 'completed', 'cancelled'].map((status) => (
                            <button
                               key={status}
                               onClick={() => setFilterStatus(status as any)}
-                              className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all tracking-widest ${filterStatus === status ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white text-slate-400 border border-slate-100'}`}
+                              className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${filterStatus === status
+                                 ? 'bg-slate-900 text-white border-slate-900 shadow-lg'
+                                 : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'
+                                 }`}
                            >
                               {status}
                            </button>
@@ -370,14 +431,14 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                               key={app.id}
                               onClick={() => setSelectedAppId(app.id)}
                               className={`group p-5 rounded-[2rem] flex items-center justify-between cursor-pointer transition-all border-2
-                          ${isCurrent ? 'bg-blue-50/50 border-blue-500 ring-4 ring-blue-500/5' : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-xl hover:-translate-y-1'}
-                        `}
+                        ${isCurrent ? 'bg-blue-50/50 border-blue-500 ring-4 ring-blue-500/5' : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-xl hover:-translate-y-1'}
+                      `}
                            >
                               <div className="flex items-center gap-6">
                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm transition-all
-                             ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600'}
-                           `}>
-                                    {app.tokenNumber}
+                            ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600'}
+                          `}>
+                                    {app.serialNumber}
                                  </div>
                                  <div className="min-w-0">
                                     <h4 className={`font-black text-lg tracking-tight truncate transition-colors ${app.isReserved ? 'text-slate-400 italic' : 'text-slate-900 group-hover:text-blue-600'}`}>
@@ -400,7 +461,8 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                  <span className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-xl tracking-widest border ${app.status === 'waiting' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
                                     app.status === 'completed' ? 'bg-green-50 text-green-700 border-green-100' :
                                        app.status === 'consulting' ? 'bg-blue-600 text-white border-blue-600 animate-pulse' :
-                                          'bg-slate-50 text-slate-400 border-slate-100'
+                                          app.status === 'cancelled' ? 'bg-red-50 text-red-500 border-red-100' :
+                                             'bg-slate-50 text-slate-400 border-slate-100'
                                     }`}>{app.status === 'consulting' ? 'Serving' : app.status}</span>
                                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
                                     <ChevronRight size={24} />
@@ -411,7 +473,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                      }) : (
                         <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
                            <ClipboardList className="mx-auto text-slate-200 mb-4" size={48} />
-                           <p className="text-slate-400 font-bold">No appointments booked yet.</p>
+                           <p className="text-slate-400 font-bold">No appointments found matching this filter.</p>
                         </div>
                      )}
                   </div>
@@ -427,21 +489,21 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            <p className="text-sm font-black text-slate-800">Total Patients</p>
                            <p className="text-[10px] text-slate-400 font-bold">Today's registry</p>
                         </div>
-                        <span className="text-3xl font-black text-slate-900">{appointments.length}</span>
+                        <span className="text-3xl font-black text-slate-900">{filteredAppointments.length}</span>
                      </div>
                      <div className="flex justify-between items-center">
                         <div>
                            <p className="text-sm font-black text-slate-800">Remaining</p>
                            <p className="text-[10px] text-slate-400 font-bold">Waiting in queue</p>
                         </div>
-                        <span className="text-3xl font-black text-yellow-600">{appointments.filter(a => a.status === 'waiting').length}</span>
+                        <span className="text-3xl font-black text-yellow-600">{filteredAppointments.filter(a => a.status === 'waiting').length}</span>
                      </div>
                      <div className="flex justify-between items-center">
                         <div>
                            <p className="text-sm font-black text-slate-800">Finished</p>
                            <p className="text-[10px] text-slate-400 font-bold">Consultations ended</p>
                         </div>
-                        <span className="text-3xl font-black text-green-600">{appointments.filter(a => a.status === 'completed').length}</span>
+                        <span className="text-3xl font-black text-green-600">{filteredAppointments.filter(a => a.status === 'completed').length}</span>
                      </div>
                   </div>
                   <div className="mt-10 pt-8 border-t border-slate-50 space-y-4">
@@ -450,6 +512,18 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                      </Button>
                   </div>
                </GlassCard>
+
+               {activeChamber && (
+                  <div className="p-6 bg-blue-50 border border-blue-100 rounded-[2rem] flex items-center gap-4">
+                     <div className="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center shrink-0">
+                        <Activity size={24} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Active Hospital Today</p>
+                        <h4 className="font-black text-blue-900">{activeChamber.hospitalName}</h4>
+                     </div>
+                  </div>
+               )}
             </div>
          </div>
 
@@ -459,7 +533,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center">
                      <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-lg">
-                           {selectedApp.tokenNumber}
+                           {selectedApp.serialNumber}
                         </div>
                         <div>
                            <h2 className="text-2xl font-black text-slate-800">{selectedApp.patientName}</h2>
@@ -502,9 +576,12 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                        return;
                                     }
                                     onStartPrescription({
+                                       id: selectedApp.patientId,
                                        name: selectedApp.patientName,
                                        phone: selectedApp.patientPhone,
-                                       gender: 'Male'
+                                       gender: 'Male',
+                                       appointmentId: selectedApp.id,
+                                       hospitalId: selectedApp.hospitalId
                                     });
                                     setSelectedAppId(null);
                                     onNavigate('/doctor/prescription');
@@ -526,7 +603,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   <div className="flex justify-between items-start mb-6">
                      <div>
                         <h2 className="text-2xl font-black text-slate-800 tracking-tight">Assign Patient</h2>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Manual entry for Serial #{selectedApp?.tokenNumber}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Manual entry for Serial #{selectedApp?.serialNumber}</p>
                      </div>
                      <button onClick={() => setShowAssignModal(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
                         <X size={20} />
@@ -572,7 +649,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            onClick={() => {
                               if (assignData.appId && assignData.name && assignData.phone) {
                                  assignPatientToReservedSlot(assignData.appId, `p-manual-${Date.now()}`, assignData.name, assignData.phone);
-                                 loadAppointments();
+                                 setRefreshCount(prev => prev + 1);
                                  setShowAssignModal(false);
                                  setSelectedAppId(null);
                                  setAssignData({ name: '', phone: '', appId: '' });

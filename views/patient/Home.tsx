@@ -7,17 +7,18 @@ import {
    ChevronRight, Calendar, Sparkles, Bell, Pill, BriefcaseMedical
 } from 'lucide-react';
 import { Doctor, UserRole } from '../../types';
+import { DoctorCard } from '../../components/ui/DoctorCard';
 import { getAppointments, PatientStorage, getDoctors, getArrivalStatus } from '../../storage';
+import { getLocalISODate } from '../../utils/date';
 
 interface HomeProps {
    onNavigate: (path: string) => void;
    onSelectDoctor?: (doctor: Doctor) => void;
    userRole?: UserRole;
    focusSearchTrigger?: number;
-   allPrescriptions?: any[];
 }
 
-export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole, focusSearchTrigger, allPrescriptions = [] }) => {
+export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole, focusSearchTrigger }) => {
    const [searchTerm, setSearchTerm] = useState('');
    const [selectedSpecialty, setSelectedSpecialty] = useState('All');
    const [showDropdown, setShowDropdown] = useState(false);
@@ -26,7 +27,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    const searchInputRef = useRef<HTMLInputElement>(null);
    const doctorListRef = useRef<HTMLDivElement>(null);
 
-   const session = PatientStorage.get();
+   const session = useMemo(() => PatientStorage.get(), []);
    // Fetch ALL doctors from the shared registry (demo_doctors)
    const doctors = useMemo(() => getDoctors(), []);
 
@@ -52,31 +53,50 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    const activeAppointment = useMemo(() => {
       if (!session) return null;
       const apps = getAppointments();
-      const today = new Date().toISOString().split('T')[0];
-      const futureApps = apps.filter(a => (a.patientId === session.id || a.patientId.startsWith('family-')) && new Date(a.date).getTime() >= new Date().setHours(0, 0, 0, 0));
+      const today = getLocalISODate();
+
+      // Rules: Patient Appointments must filter by patientPhone
+      const futureApps = apps.filter(a =>
+         a.patientPhone === session.phone &&
+         a.date &&
+         a.date >= today &&
+         a.status !== 'cancelled'
+      );
+
       if (futureApps.length === 0) return null;
 
       const sorted = futureApps.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const earliest = sorted[0];
+      if (!earliest) return null;
+
       const doc = doctors.find(d => d.id === earliest.doctorId);
 
-      const isArrived = earliest.date === today ? getArrivalStatus(earliest.doctorId, today) : false;
+      const isArrived = (earliest.doctorId && earliest.hospitalId && earliest.date === today)
+         ? getArrivalStatus(earliest.doctorId, earliest.hospitalId, today)
+         : false;
 
       return {
          doctorName: doc?.name || 'Doctor',
-         time: earliest.time,
+         time: earliest.time || 'N/A',
          date: earliest.date === today ? 'Today' : earliest.date,
-         token: earliest.tokenNumber.toString().padStart(2, '0'),
-         chamber: doc?.chambers.find(c => c.id === earliest.chamberId)?.name || 'Chamber',
-         isArrived
+         serialNumber: earliest.serialNumber ? earliest.serialNumber.toString().padStart(2, '0') : '00',
+         chamber: doc?.chambers.find(c => c.id === earliest.hospitalId)?.name || earliest.chamberName || 'Chamber',
+         isArrived,
+         hospitalId: earliest.hospitalId
       };
    }, [session, doctors]);
 
-   const upcomingFollowUps = allPrescriptions
-      .filter(rx => rx.followUpDate && new Date(rx.followUpDate) >= new Date())
+   const patientPrescriptions = useMemo(() => {
+      if (!session) return [];
+      const allRx = JSON.parse(localStorage.getItem('demo_prescriptions') || '[]');
+      return allRx.filter((p: any) => String(p.patientId) === String(session.id));
+   }, [session]);
+
+   const upcomingFollowUps = patientPrescriptions
+      .filter((rx: any) => rx.followUpDate && new Date(rx.followUpDate) >= new Date())
       .sort((a, b) => new Date(a.followUpDate).getTime() - new Date(b.followUpDate).getTime());
 
-   const medicineCount = allPrescriptions.reduce((acc, rx) => acc + rx.medicines.length, 0);
+   const medicineCount = patientPrescriptions.reduce((acc, rx: any) => acc + (rx.medicines?.length || 0), 0);
 
    const categories = [
       { name: 'General Physician', icon: Stethoscope, color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Primary Care' },
@@ -137,7 +157,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                   <span className="text-teal-200">More Care.</span>
                </h1>
 
-               <p className="text-xl md:text-3xl text-blue-50 font-bold opacity-90 max-w-3xl leading-relaxed">
+               <p className="text-xl md:text-2xl text-blue-50 font-medium opacity-90 max-w-2xl leading-relaxed">
                   Book top specialists in minutes and track your serial live. No more long queues.
                </p>
 
@@ -217,7 +237,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                         <div className="flex flex-col sm:flex-row h-full">
                            <div className="bg-blue-600 sm:w-36 p-6 flex flex-col items-center justify-center text-white text-center shrink-0">
                               <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-2">Serial</span>
-                              <span className="text-5xl font-black leading-none">{activeAppointment.token}</span>
+                              <span className="text-5xl font-black leading-none">{activeAppointment.serialNumber}</span>
                               <div className="mt-4 flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase whitespace-nowrap">
                                  {activeAppointment.isArrived ? (
                                     <>
@@ -292,13 +312,13 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                { icon: Clock, label: "24/7", sub: "Instant Booking", color: "text-orange-500", bg: "bg-orange-50" },
                { icon: Heart, label: "700k+", sub: "Healthy Patients", color: "text-red-500", bg: "bg-red-50" }
             ].map((stat, i) => (
-               <GlassCard key={i} className="p-8 flex flex-col items-center text-center hover:border-blue-300 transition-all hover:-translate-y-2 duration-300 bg-white border-0 ring-1 ring-slate-100 shadow-sm">
-                  <div className={`w-16 h-16 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center mb-5 shadow-sm`}>
-                     <stat.icon size={32} />
+               <div key={i} className="bg-white rounded-[28px] p-6 md:p-8 flex flex-col items-center text-center shadow-soft border border-slate-100 hover:border-medical-200 transition-all duration-300">
+                  <div className={`w-14 h-14 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center mb-4`}>
+                     <stat.icon size={28} />
                   </div>
-                  <p className="text-3xl font-black text-slate-900 leading-none mb-2">{stat.label}</p>
+                  <p className="text-2xl font-black text-slate-900 leading-none mb-1">{stat.label}</p>
                   <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{stat.sub}</p>
-               </GlassCard>
+               </div>
             ))}
          </div>
 
@@ -311,23 +331,23 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                <button onClick={() => setSelectedSpecialty('All')} className="text-blue-600 font-black text-sm hover:underline">View All Departments</button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
                {categories.map((cat) => (
                   <div
                      key={cat.name}
                      onClick={() => handleCategoryClick(cat.name)}
-                     className={`group p-8 rounded-[2.5rem] border-2 transition-all duration-300 cursor-pointer flex flex-col items-center text-center
-                 ${selectedSpecialty !== 'All' && cat.name.toLowerCase().includes(selectedSpecialty.toLowerCase())
-                           ? 'bg-blue-600 border-blue-600 text-white shadow-2xl shadow-blue-100 scale-105'
-                           : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-xl hover:-translate-y-1'}
-               `}
+                     className={`group p-6 md:p-8 rounded-[32px] border-2 transition-all duration-500 cursor-pointer flex flex-col items-center text-center
+                   ${selectedSpecialty !== 'All' && cat.name.toLowerCase().includes(selectedSpecialty.toLowerCase())
+                           ? 'bg-medical-600 border-medical-600 text-white shadow-premium scale-[1.02]'
+                           : 'bg-white border-slate-50 hover:border-medical-100 hover:shadow-premium hover:-translate-y-1'}
+                 `}
                   >
-                     <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 shadow-sm
-                    ${selectedSpecialty !== 'All' && cat.name.toLowerCase().includes(selectedSpecialty.toLowerCase()) ? 'bg-white/20 text-white' : `${cat.bg} ${cat.color}`}
-                `}>
-                        <cat.icon size={40} />
+                     <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center mb-4 transition-all duration-500
+                      ${selectedSpecialty !== 'All' && cat.name.toLowerCase().includes(selectedSpecialty.toLowerCase()) ? 'bg-white/20 text-white' : `${cat.bg} ${cat.color} shadow-sm group-hover:shadow-md group-hover:scale-110`}
+                  `}>
+                        <cat.icon size={32} />
                      </div>
-                     <h3 className={`font-black text-xl leading-tight ${selectedSpecialty !== 'All' && cat.name.toLowerCase().includes(selectedSpecialty.toLowerCase()) ? 'text-white' : 'text-slate-800'}`}>
+                     <h3 className={`font-black text-sm md:text-base leading-tight ${selectedSpecialty !== 'All' && cat.name.toLowerCase().includes(selectedSpecialty.toLowerCase()) ? 'text-white' : 'text-slate-800'}`}>
                         {cat.name}
                      </h3>
                   </div>
@@ -353,69 +373,23 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
             </div>
 
             {browseList.length > 0 ? (
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                   {browseList.map((doc) => (
-                     <GlassCard key={doc.id}
-                        onClick={() => onSelectDoctor?.(doc)}
-                        className="p-0 overflow-hidden flex flex-col group hover:shadow-[0_40px_80px_rgba(0,0,0,0.12)] transition-all duration-500 border-0 ring-1 ring-slate-100 h-full bg-white cursor-pointer rounded-[2.5rem]"
-                     >
-                        <div className="p-8 flex gap-8">
-                           <div className="relative shrink-0">
-                              <img
-                                 src={doc.imageUrl}
-                                 className="w-32 h-32 rounded-[2rem] object-cover bg-slate-100 group-hover:scale-105 transition-transform duration-500 shadow-xl border-4 border-white"
-                                 alt={doc.name}
-                              />
-                              <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-1.5 rounded-full border-2 border-white shadow-lg">
-                                 <ShieldCheck size={14} />
-                              </div>
-                           </div>
-                           <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 text-yellow-600 text-xs font-black mb-3 bg-yellow-50 w-fit px-4 py-1.5 rounded-xl border border-yellow-100">
-                                 <Star size={14} fill="currentColor" />
-                                 <span>{doc.rating}</span>
-                                 <span className="text-slate-500 font-bold ml-1">({doc.totalPatients})</span>
-                              </div>
-                              <h3 className="font-black text-slate-900 text-2xl leading-tight mb-2 truncate group-hover:text-blue-600 transition-colors tracking-tight">{doc.name}</h3>
-                              <p className="text-sm text-teal-600 font-black uppercase tracking-widest truncate">{doc.specialty}</p>
-
-                              <div className="flex items-start gap-2 text-sm text-slate-800 font-bold mt-5 leading-relaxed">
-                                 <GraduationCap size={18} className="mt-0.5 text-blue-500 shrink-0" />
-                                 <span className="line-clamp-2 leading-relaxed text-slate-600 font-semibold">{doc.degrees}</span>
-                              </div>
-                           </div>
-                        </div>
-
-                        <div className="px-8 pb-8 space-y-5 mt-auto">
-                           <div className="flex items-start gap-4 text-sm text-slate-900 font-black leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                              <MapPin size={20} className="mt-0.5 text-red-500 shrink-0" />
-                              <div className="flex flex-col">
-                                 <span className="line-clamp-1">{doc.chambers[0].name}</span>
-                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{doc.chambers[0].visitingHours}</span>
-                              </div>
-                           </div>
-
-                           <div className="flex justify-between items-center px-4">
-                              <div className="flex items-center gap-2">
-                                 <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-                                 <span className="text-xs font-black text-slate-800 uppercase tracking-widest">Available</span>
-                              </div>
-                              <div className="text-right">
-                                 <p className="text-[10px] text-slate-500 uppercase font-black leading-none mb-1">Doctor Fee</p>
-                                 <p className="text-3xl font-black text-slate-900">৳ {doc.chambers[0].fee}</p>
-                              </div>
-                           </div>
-                        </div>
-
-                        <div className="p-6 pt-0">
-                           <Button
-                              fullWidth
-                              className="h-16 text-xl font-black shadow-2xl shadow-blue-100 active:scale-95 transition-all rounded-3xl"
-                           >
-                              Book Appointment
-                           </Button>
-                        </div>
-                     </GlassCard>
+                     <DoctorCard
+                        key={doc.id}
+                        doctor={{
+                           name: doc.name,
+                           specialty: doc.specialty,
+                           bmdcNumber: doc.bmdcNumber,
+                           experience: 12, // Using mock for now
+                           rating: doc.rating,
+                           reviews: doc.totalPatients,
+                           image: doc.imageUrl,
+                           hospitalName: doc.chambers[0]?.name
+                        }}
+                        variant="compact"
+                        onCtaClick={() => onSelectDoctor?.(doc)}
+                     />
                   ))}
                </div>
             ) : (
