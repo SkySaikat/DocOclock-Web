@@ -21,81 +21,74 @@ interface DoctorCardProps {
 export const DoctorCard: React.FC<DoctorCardProps> = ({
     doctor,
     ctaLabel = 'Book Appointment',
-    onCtaClick,
-    variant = 'premium'
+    onCtaClick
 }) => {
-    const isPremium = variant === 'premium';
-    const isGrid = variant === 'compact'; // Reuse compact for grid-friendly vertical layout
-
     return (
-        <div className={`bg-white rounded-[28px] shadow-soft border border-slate-100 overflow-hidden transition-all duration-500 hover:shadow-premium hover:-translate-y-1.5 flex flex-col h-full ${isPremium ? 'p-6 md:p-8' : 'p-4 md:p-6'}`}>
-            <div className={`flex flex-1 ${isGrid ? 'flex-col text-center' : 'flex-col md:flex-row text-center md:text-left'} gap-6 items-center md:items-start`}>
-                {/* Image Section */}
-                <div className="relative shrink-0">
-                    <div className={`${isGrid ? 'w-32 h-32 mx-auto' : 'w-24 h-24 md:w-36 md:h-36'} rounded-[24px] bg-medical-50 border-4 border-white shadow-xl flex items-center justify-center overflow-hidden`}>
+        <div className="flex-shrink-0 w-[260px] md:w-[300px] rounded-[24px] shadow-[0_12px_30px_rgba(0,0,0,0.08)] p-6 flex flex-col gap-4 hover:-translate-y-[6px] transition-all duration-300 border border-white/40 ring-1 ring-slate-900/5 group"
+            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85))' }}>
+            {/* Header with Centered Image */}
+            <div className="flex flex-col items-center">
+                <div className="relative">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center ring-4 ring-white shadow-sm transition-transform duration-300 group-hover:scale-105">
                         {doctor.image ? (
                             <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
                         ) : (
-                            <span className="text-medical-500 font-black text-4xl">{doctor.name.charAt(0)}</span>
+                            <span className="text-blue-500 font-bold text-2xl">{doctor.name.charAt(0)}</span>
                         )}
                     </div>
                     {doctor.rating && (
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white px-3 py-1.5 rounded-xl shadow-lg border border-slate-100 flex items-center gap-1.5">
-                            <Star size={12} className="fill-amber-400 text-amber-400" />
-                            <span className="text-[11px] font-black text-slate-800">{doctor.rating}</span>
+                        <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 bg-white shadow-sm border border-slate-100 text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 z-10 whitespace-nowrap">
+                            <Star size={10} className="fill-amber-400 text-amber-400" />
+                            <span className="font-semibold text-slate-800">{doctor.rating}</span>
                         </div>
                     )}
                 </div>
+            </div>
 
-                {/* Content Section */}
-                <div className="flex-1 space-y-4 w-full">
-                    <div>
-                        <div className={`flex flex-col ${isGrid ? 'items-center' : 'md:items-start items-center'} gap-2 mb-2`}>
-                            <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight">
-                                {doctor.name}
-                            </h3>
-                            <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                                <span className="px-3 py-1 bg-medical-50 text-medical-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-medical-100 shrink-0">
-                                    {doctor.specialty}
-                                </span>
-                                <span className="px-3 py-1 bg-teal-50 text-teal-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-teal-100 flex items-center gap-1 shrink-0">
-                                    <BadgeCheck size={10} /> Verified
-                                </span>
-                            </div>
+            {/* Content Section */}
+            <div className="flex flex-col items-center text-center gap-1.5 flex-1">
+                <h3 className="text-[18px] font-bold text-slate-900 leading-tight">
+                    {doctor.name}
+                </h3>
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                    <span className="text-[12px] text-blue-600 font-bold bg-blue-50/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                        {doctor.specialty}
+                    </span>
+                    <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 uppercase tracking-widest bg-emerald-50/80 px-2 py-0.5 rounded-md">
+                        <BadgeCheck size={10} /> Verified
+                    </span>
+                </div>
+
+                <div className="space-y-1.5 mt-2 w-full">
+                    {doctor.hospitalName && (
+                        <div className="flex items-center justify-center gap-1.5 text-[13px] text-slate-700 font-medium">
+                            <MapPin size={12} className="text-slate-400 shrink-0" />
+                            <span className="truncate">{doctor.hospitalName}</span>
                         </div>
-                        {doctor.experience && (
-                            <p className="text-[10px] font-black text-slate-400 mt-1 flex items-center justify-center md:justify-start gap-1.5 uppercase tracking-widest">
-                                <Briefcase size={12} /> {doctor.experience} Years Experience
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="space-y-2 pt-1">
-                        {doctor.hospitalName && (
-                            <div className={`flex items-start ${isGrid ? 'justify-center' : 'md:justify-start justify-center'} gap-2 text-sm font-bold text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100`}>
-                                <MapPin size={16} className="text-medical-500 shrink-0 mt-0.5" />
-                                <span className="text-left line-clamp-1">{doctor.hospitalName}</span>
-                            </div>
-                        )}
-                        <p className={`text-[10px] font-black text-slate-400 flex items-center ${isGrid ? 'justify-center' : 'md:justify-start justify-center'} gap-2 uppercase tracking-widest`}>
-                            BMDC: <span className="text-slate-800">{doctor.bmdcNumber}</span>
+                    )}
+                    {doctor.experience && (
+                        <p className="text-[11px] text-slate-500 font-bold uppercase tracking-[0.1em] flex items-center justify-center gap-1.5">
+                            <Briefcase size={12} className="text-slate-400" /> {doctor.experience} Yrs Experience
                         </p>
-                    </div>
+                    )}
+                    <p className="text-[11px] text-slate-400 font-bold tracking-tight">
+                        BMDC: <span className="text-slate-600">{doctor.bmdcNumber}</span>
+                    </p>
                 </div>
             </div>
 
             {/* Action Section */}
             {onCtaClick && (
-                <div className={`mt-6 w-full ${isGrid ? 'text-center' : ''}`}>
-                    <Button
+                <div className="mt-auto pt-2">
+                    <button
                         onClick={onCtaClick}
-                        className="w-full h-14 md:h-16 rounded-[20px] bg-medical-600 hover:bg-medical-500 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-medical-100 group transition-all"
+                        className="w-full h-11 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-blue-500/30 active:scale-95 shadow-md shadow-blue-500/20"
                     >
                         {ctaLabel}
-                        <ChevronRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
+                        <ChevronRight size={16} />
+                    </button>
                     {doctor.reviews && (
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center mt-3">
+                        <p className="text-[10px] font-bold text-slate-400 text-center mt-3 uppercase tracking-wider">
                             Based on {doctor.reviews} patient reviews
                         </p>
                     )}

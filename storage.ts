@@ -285,6 +285,7 @@ export const registerDoctor = (doctorData: any): Doctor => {
     totalPatients: 0,
     rating: 5.0,
     about: 'Passionate healthcare provider.',
+    isDemo: false,
     chambers: [
       {
         id: `c-${Date.now()}`,

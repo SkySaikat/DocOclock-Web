@@ -160,48 +160,48 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
       )}
 
       {/* MAIN CONTENT AREA */}
-      <main className="pt-24 px-4 pb-28 md:pb-12 max-w-7xl mx-auto min-h-screen">
+      <main className="pt-24 pb-32 max-w-7xl mx-auto min-h-screen">
         {children}
       </main>
 
-      {/* DOCTOR MOBILE BOTTOM NAV - FLOATING PREMIUM */}
+      {/* DOCTOR MOBILE BOTTOM NAV - FLOATING DOCK */}
       {isDoctor && (
-        <div className="md:hidden fixed bottom-6 left-6 right-6 z-50">
-          <div className="bg-slate-900/95 backdrop-blur-2xl border border-white/10 shadow-premium px-2 flex justify-around items-center h-14 rounded-[28px]">
-            <button onClick={() => onNavigate('/doctor/dashboard')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-400 transition-colors">
-              <LayoutDashboard size={18} /> Dash
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[420px] z-50">
+          <div className="bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-2xl px-2 flex justify-around items-center h-16 rounded-[32px] ring-1 ring-white/5">
+            <button onClick={() => onNavigate('/doctor/dashboard')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
+              <LayoutDashboard size={20} /> <span className="scale-90">Dash</span>
             </button>
-            <button onClick={() => onNavigate('/doctor/serial-manager')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-400 transition-colors">
-              <Users size={18} /> Queue
+            <button onClick={() => onNavigate('/doctor/serial-manager')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
+              <Users size={20} /> <span className="scale-90">Queue</span>
             </button>
-            <button onClick={() => onNavigate('/doctor/prescription')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-400 transition-colors">
-              <FileText size={18} /> Rx
+            <button onClick={() => onNavigate('/doctor/prescription')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
+              <FileText size={20} /> <span className="scale-90">Rx</span>
             </button>
-            <button onClick={() => onNavigate('/doctor/manual-booking')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-400 transition-colors">
-              <ClipboardList size={18} /> Book
+            <button onClick={() => onNavigate('/doctor/analytics')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
+              <BarChart2 size={20} /> <span className="scale-90">Stats</span>
             </button>
-            <button onClick={onLogout} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-red-400 active:text-red-500 transition-colors">
-              <LogOut size={18} /> Exit
+            <button onClick={onLogout} className="flex flex-col items-center gap-1 font-bold text-[10px] text-red-400 hover:text-red-300 transition-all">
+              <LogOut size={20} /> <span className="scale-90">Exit</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* PATIENT MOBILE BOTTOM NAV - FLOATING PREMIUM */}
+      {/* PATIENT MOBILE BOTTOM NAV - FLOATING DOCK */}
       {isPatient && (
-        <div className="md:hidden fixed bottom-6 left-6 right-6 z-50">
-          <div className="bg-white/95 backdrop-blur-2xl border border-medical-100 shadow-premium px-2 flex justify-around items-center h-14 rounded-[28px]">
-            <button onClick={() => onNavigate('/patient/home')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-500 transition-colors">
-              <Home size={18} /> Home
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[420px] z-50">
+          <div className="bg-white/80 backdrop-blur-2xl border border-slate-200/50 shadow-premium px-2 flex justify-around items-center h-16 rounded-[32px] ring-1 ring-slate-900/5">
+            <button onClick={() => onNavigate('/patient/home')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-medical-600 transition-all">
+              <Home size={20} /> <span className="scale-90">Home</span>
             </button>
-            <button onClick={() => onNavigate('/patient/appointments')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-500 transition-colors">
-              <Calendar size={18} /> Apps
+            <button onClick={() => onNavigate('/patient/appointments')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-medical-600 transition-all">
+              <Calendar size={20} /> <span className="scale-90">Apps</span>
             </button>
-            <button onClick={() => onNavigate('/patient/medicine-tracker')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-500 transition-colors">
-              <Pill size={18} /> Meds
+            <button onClick={() => onNavigate('/patient/medicine-tracker')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-medical-600 transition-all">
+              <Pill size={20} /> <span className="scale-90">Meds</span>
             </button>
-            <button onClick={() => onNavigate('/patient/doctor-profile')} className="flex flex-col items-center gap-0.5 font-bold text-[9px] text-slate-400 active:text-medical-500 transition-colors">
-              <UserCircle size={18} /> Profile
+            <button onClick={() => onNavigate('/patient/more')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-medical-600 transition-all">
+              <UserCircle size={20} /> <span className="scale-90">Profile</span>
             </button>
           </div>
         </div>

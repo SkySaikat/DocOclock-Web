@@ -95,6 +95,7 @@ export interface Doctor {
   totalPatients: number;
   rating: number;
   about: string;
+  isDemo?: boolean;
 }
 
 /**

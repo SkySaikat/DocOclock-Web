@@ -50,6 +50,7 @@ const DEMO_DOCTORS: Doctor[] = [
         template: TEMPLATE_SQUARE
       }
     ],
+    isDemo: true
   },
   {
     id: 'd-2',
@@ -73,6 +74,7 @@ const DEMO_DOCTORS: Doctor[] = [
         template: TEMPLATE_POPULAR
       }
     ],
+    isDemo: true
   }
 ];
 
