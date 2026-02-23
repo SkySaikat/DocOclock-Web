@@ -4,8 +4,8 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { ArrowUpRight, Users, CreditCard, Activity, Clock, MapPin, BadgeCheck, AlertCircle, X, UserCheck, TrendingUp } from 'lucide-react';
 import { StatCard } from '../../components/ui/StatCard';
-import { DoctorCard } from '../../components/ui/DoctorCard';
-import { DoctorStorage, getDoctorAppointments, getDoctorAppointmentsByHospital } from '../../storage';
+import { DoctorDashboardProfile } from '../../components/ui/DoctorDashboardProfile';
+import { DoctorStorage, fetchDoctorAppointments, fetchDoctorAppointmentsByHospital } from '../../storage';
 import { Appointment, AppointmentStatus } from '../../types';
 
 import { getLocalISODate } from '../../utils/date';
@@ -22,7 +22,75 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
   const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [isResolving, setIsResolving] = useState(true);
   const [registryFilter, setRegistryFilter] = useState<'all' | AppointmentStatus>('all');
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const today = getLocalISODate();
+
+  const fetchData = async () => {
+    if (!doctorId) return;
+    setIsResolving(true);
+
+    try {
+      const { fetchDoctorChambers, fetchAppointments } = await import('../../storage');
+      const chambers = await fetchDoctorChambers(doctorId);
+      const allTodayApps = await fetchAppointments({ doctorId, date: today });
+      setAppointments(allTodayApps);
+
+      if (!chambers || chambers.length === 0) {
+        setHospitals([]);
+        setSelectedHospitalId(null);
+        setIsResolving(false);
+        return;
+      }
+
+      setHospitals(chambers);
+
+      // Dynamic selection logic
+      const todayWeekday = new Date().getDay(); // 0-6
+      const scheduledToday = chambers.filter((c: any) =>
+        c.schedule && c.schedule.some((s: any) => s.day === todayWeekday)
+      );
+
+      if (scheduledToday.length === 0) {
+        setSelectedHospitalId(null);
+      } else if (scheduledToday.length === 1) {
+        setSelectedHospitalId(scheduledToday[0].id);
+      } else {
+        // Multiple matches: Pick by earliest appointment or highest waiting count
+        const doctorTodayApps = allTodayApps.filter(
+          app => String(app.doctorId) === String(doctorId) && app.date === today
+        );
+
+        let bestMatchId = scheduledToday[0].id;
+        let minTime = "11:59 PM";
+        let maxWaiting = -1;
+
+        scheduledToday.forEach((chamber: any) => {
+          const chamberApps = doctorTodayApps.filter(a => String(a.hospitalId) === String(chamber.id));
+          const waiting = chamberApps.filter(a => a.status === 'waiting').length;
+
+          // Sort apps by time to find the earliest
+          const sortedApps = [...chamberApps].sort((a, b) => compareTimeStrings(a.time, b.time));
+          const earliestTime = sortedApps.length > 0 ? sortedApps[0].time : "11:59 PM";
+
+          if (compareTimeStrings(earliestTime, minTime) < 0) {
+            minTime = earliestTime;
+            bestMatchId = chamber.id;
+            maxWaiting = waiting;
+          } else if (compareTimeStrings(earliestTime, minTime) === 0) {
+            if (waiting > maxWaiting) {
+              maxWaiting = waiting;
+              bestMatchId = chamber.id;
+            }
+          }
+        });
+        setSelectedHospitalId(bestMatchId);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setIsResolving(false);
+    }
+  };
 
   useEffect(() => {
     if (!doctor) {
@@ -34,74 +102,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
       return;
     }
 
-    const practiceKey = `doctor_practice_settings_${doctorId}`;
-    const practiceSettingsRaw = localStorage.getItem(practiceKey);
-    const practiceSettings = practiceSettingsRaw ? JSON.parse(practiceSettingsRaw) : null;
-
-    if (!practiceSettings || !practiceSettings.chambers || practiceSettings.chambers.length === 0) {
-      setHospitals([]);
-      setSelectedHospitalId(null);
-      setIsResolving(false);
-      return;
-    }
-
-    const chambers = practiceSettings.chambers;
-    setHospitals(chambers);
-
-    // Dynamic selection logic
-    const todayWeekday = new Date().getDay(); // 0-6
-    const scheduledToday = chambers.filter((c: any) =>
-      c.schedule && c.schedule.some((s: any) => s.day === todayWeekday)
-    );
-
-    if (scheduledToday.length === 0) {
-      setSelectedHospitalId(null);
-    } else if (scheduledToday.length === 1) {
-      setSelectedHospitalId(scheduledToday[0].id);
-    } else {
-      // Multiple matches: Pick by earliest appointment or highest waiting count
-      const allAppointments: Appointment[] = JSON.parse(localStorage.getItem("demo_appointments") || "[]");
-      const doctorTodayApps = allAppointments.filter(
-        app => String(app.doctorId) === String(doctorId) && app.date === today
-      );
-
-      let bestMatchId = scheduledToday[0].id;
-      let minTime = "11:59 PM";
-      let maxWaiting = -1;
-
-      scheduledToday.forEach((chamber: any) => {
-        const chamberApps = doctorTodayApps.filter(a => String(a.hospitalId) === String(chamber.id));
-        const waiting = chamberApps.filter(a => a.status === 'waiting').length;
-
-        // Sort apps by time to find the earliest
-        const sortedApps = [...chamberApps].sort((a, b) => compareTimeStrings(a.time, b.time));
-        const earliestTime = sortedApps.length > 0 ? sortedApps[0].time : "11:59 PM";
-
-        if (compareTimeStrings(earliestTime, minTime) < 0) {
-          minTime = earliestTime;
-          bestMatchId = chamber.id;
-          maxWaiting = waiting;
-        } else if (compareTimeStrings(earliestTime, minTime) === 0) {
-          if (waiting > maxWaiting) {
-            maxWaiting = waiting;
-            bestMatchId = chamber.id;
-          }
-        }
-      });
-      setSelectedHospitalId(bestMatchId);
-    }
-    setIsResolving(false);
-  }, [doctor, doctorId, onNavigate, today]);
+    fetchData();
+  }, [doctorId, onNavigate, today]);
 
   if (!doctor) return null;
 
-  // READ DATA DIRECTLY
-  const allAppointments: Appointment[] = JSON.parse(localStorage.getItem("demo_appointments") || "[]");
-
   // 1. All Today's Appointments for this Doctor (Global Scope)
-  const doctorTodayAppointments = allAppointments.filter(
-    app => String(app.doctorId) === String(doctor.id) && app.date === today
-  );
+  const doctorTodayAppointments = appointments;
 
   // 2. Filtered Appointments (Strict Hospital Scope)
   const filteredAppointments = selectedHospitalId
@@ -128,24 +135,23 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
   const selectedHospitalName = hospitals.find((h: any) => String(h.id) === String(selectedHospitalId))?.hospitalName;
 
   return (
-    <div className="space-y-8 pb-10 animate-fade-in">
+    <div className="space-y-8 pb-10 animate-fade-in max-w-6xl mx-auto px-4 md:px-0">
 
       {/* SECTION 1: DOCTOR PROFILE HEADER */}
       <div className="space-y-6">
         {/* Doctor Header Section */}
-        <DoctorCard
+        <DoctorDashboardProfile
           doctor={{
-            name: doctor.name,
+            name: doctor.name || doctor.full_name,
             specialty: doctor.specialty,
-            bmdcNumber: doctor.bmdcNumber,
-            image: doctor.image,
-            hospitalName: selectedHospitalId ? selectedHospitalName : 'Waiting for context...',
-            experience: 12, // Mock data for now
-            rating: 4.9,
-            reviews: 120
+            bmdcNumber: doctor.bmdcNumber || doctor.bmdc_number,
+            image: doctor.image || doctor.image_url,
+            hospitalName: selectedHospitalId ? selectedHospitalName : 'Main Chamber',
+            experience: doctor.experience_years || doctor.experience || 0,
+            rating: doctor.rating || 5.0,
+            totalPatients: doctor.total_patients || 0
           }}
-          ctaLabel="Manage Settings"
-          onCtaClick={() => onNavigate?.('/doctor/practice-settings')}
+          onManageClick={() => onNavigate?.('/doctor/practice-settings')}
         />
 
         {/* Operational Stats Grid */}

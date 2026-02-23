@@ -21,10 +21,12 @@ import { DoctorPracticeSettings } from './views/doctor/DoctorPracticeSettings';
 import { UserRole, Doctor, Patient } from './types';
 
 import { Activity, ShieldAlert, Lock, User } from 'lucide-react';
-import { initializeDemoData } from './seed';
-import { PatientStorage, DoctorStorage, getPatients, authenticateDoctor } from './storage';
+import { PatientStorage, DoctorStorage } from './storage';
+
+import { useAuth } from './AuthContext';
 
 const App: React.FC = () => {
+  const { profile, userRole: authRole, loading: authLoading, logout: authLogout, login: authLogin } = useAuth();
   const [currentPath, setCurrentPath] = useState('/');
   const [userRole, setUserRole] = useState<UserRole | undefined>(undefined);
   const [sessionUser, setSessionUser] = useState<any>(null);
@@ -41,27 +43,23 @@ const App: React.FC = () => {
   // Shared state for passing patient data to prescription
   const [activeRxPatient, setActiveRxPatient] = useState<{ id: string; name: string; age?: number; gender: string; phone: string; appointmentId: string; hospitalId: string } | null>(null);
 
-  // Initialize Demo Data & Check Separated Sessions on Mount
+  // Initialize AuthContext sync
   useEffect(() => {
-    initializeDemoData();
 
-    const patientSession = PatientStorage.get();
-    const doctorSession = DoctorStorage.get();
+    if (!authLoading) {
+      setUserRole(authRole);
+      setSessionUser(profile);
 
-    if (doctorSession) {
-      setSessionUser(doctorSession);
-      setUserRole(UserRole.DOCTOR);
-      if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
-        setCurrentPath('/doctor/dashboard');
-      }
-    } else if (patientSession) {
-      setSessionUser(patientSession);
-      setUserRole(UserRole.PATIENT);
-      if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
-        setCurrentPath('/patient/home');
+      // Auto-navigation on first load if already logged in
+      if (profile && (window.location.pathname === '/' || window.location.pathname === '/index.html')) {
+        if (authRole === UserRole.DOCTOR) {
+          setCurrentPath('/doctor/dashboard');
+        } else if (authRole === UserRole.PATIENT) {
+          setCurrentPath('/patient/home');
+        }
       }
     }
-  }, []);
+  }, [profile, authRole, authLoading]);
 
   const navigate = (path: string, appointmentId?: string) => {
     if ((path === '/' || path === '/patient/home') && (currentPath === '/' || currentPath === '/patient/home')) {
@@ -84,68 +82,38 @@ const App: React.FC = () => {
     navigate('/patient/profile');
   };
 
-  const handleBookSuccess = () => {
-    navigate('/live-serial');
-  };
-
-  const handleLoginSuccess = (role: UserRole, phoneOrId?: string) => {
+  const handleLoginSuccess = () => {
     setIsLoginModalOpen(false);
-
-    if (role === UserRole.DOCTOR) {
-      const doctor = authenticateDoctor(phoneOrId!);
-      if (doctor) {
-        // Store full doctor profile (excluding sensitive password if any)
-        const { password, ...doctorSessionData } = doctor as any;
-        setUserRole(UserRole.DOCTOR);
-        setSessionUser({ ...doctorSessionData, role: 'doctor' });
-        DoctorStorage.set(doctorSessionData);
-        navigate('/doctor/dashboard');
-      }
-    } else if (role === UserRole.PATIENT) {
-      const patients = getPatients();
-      const activePatient = patients.find(p => p.phone === phoneOrId);
-      if (activePatient) {
-        const patientData = {
-          id: activePatient.id,
-          name: activePatient.name,
-          phone: activePatient.phone,
-          age: activePatient.age,
-          gender: activePatient.gender
-        };
-        setUserRole(UserRole.PATIENT);
-        setSessionUser({ ...patientData, role: 'patient' });
-        PatientStorage.set(patientData);
-        if (pendingAction === 'BOOKING' && currentPath === '/patient/profile') {
-        } else {
-          navigate('/patient/home');
-        }
-      }
+    if (pendingAction === 'BOOKING' && currentPath === '/patient/profile') {
+      // Logic for after booking login
+    } else {
+      navigate('/patient/home');
     }
     setPendingAction('NONE');
   };
 
-  const handleDoctorLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const bmdc = (e.target as any).bmdc.value;
-    const password = (e.target as any).password.value;
+  const handleBookSuccess = () => {
+    navigate('/live-serial');
+  };
 
-    const doctor = authenticateDoctor(bmdc, password);
-    if (doctor) {
-      setLoginError(null);
-      handleLoginSuccess(UserRole.DOCTOR, doctor.id);
+  const handleDoctorLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const bmdc = formData.get('bmdc') as string;
+    const password = formData.get('password') as string;
+
+    setLoginError(null);
+    const result = await authLogin(bmdc, password, UserRole.DOCTOR);
+
+    if (result.success) {
+      setCurrentPath('/doctor/dashboard');
     } else {
-      setLoginError('Invalid BMDC Number or Password. If you are new, please register first.');
+      setLoginError(result.error || 'Invalid BMDC Number or Password.');
     }
   };
 
   const handleLogout = () => {
-    if (userRole === UserRole.DOCTOR) {
-      DoctorStorage.clear();
-    } else {
-      PatientStorage.clear();
-    }
-    setUserRole(undefined);
-    setSessionUser(null);
+    authLogout();
     navigate('/');
   };
 
@@ -158,7 +126,6 @@ const App: React.FC = () => {
   };
 
   const handleSavePrescription = (newRx: any) => {
-    // Persistence is handled by savePrescriptionWithAlerts in PrescriptionEditor
     setActiveRxPatient(null);
     navigate('/doctor/serial-manager');
   };
@@ -175,7 +142,6 @@ const App: React.FC = () => {
         case '/doctor/manual-booking': return <ManualBooking />;
         case '/doctor/practice-settings': return <DoctorPracticeSettings />;
         case '/doctor/prescription': return (
-
           <PrescriptionEditor
             initialPatient={activeRxPatient}
             onClearInitial={() => setActiveRxPatient(null)}
@@ -204,36 +170,36 @@ const App: React.FC = () => {
       case '/live-serial': return isPatient ? <LiveSerial appointmentId={activeAppointmentId} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
 
       case '/doctor-login': return (
-        <div className="max-w-md mx-auto mt-10 px-4 animate-fade-in-up">
-          <div className="glass-panel p-8 rounded-[2.5rem] text-center border-0 ring-1 ring-slate-200 shadow-2xl bg-white">
-            <div className="w-20 h-20 bg-teal-100 rounded-3xl flex items-center justify-center text-teal-600 mx-auto mb-6 shadow-inner">
-              <Activity size={40} />
+        <div className="max-w-md mx-auto mt-6 md:mt-10 px-4 animate-fade-in-up">
+          <div className="glass-panel p-6 md:p-8 rounded-[2.5rem] text-center border-0 ring-1 ring-slate-200 shadow-2xl bg-white">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-teal-100 rounded-3xl flex items-center justify-center text-teal-600 mx-auto mb-6 shadow-inner">
+              <Activity size={32} className="md:w-10 md:h-10" />
             </div>
-            <h2 className="text-3xl font-black mb-2 text-slate-900 tracking-tight">Doctor Portal</h2>
-            <p className="text-slate-500 font-bold mb-8 text-sm">Secure access to your practice dashboard.</p>
+            <h2 className="text-2xl md:text-3xl font-black mb-2 text-slate-900 tracking-tight">Doctor Portal</h2>
+            <p className="text-slate-500 font-bold mb-8 text-[13px] md:text-sm">Secure access to your practice dashboard.</p>
 
             {loginError && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-black rounded-2xl flex gap-3 text-left">
+              <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-[11px] md:text-xs font-black rounded-2xl flex gap-3 text-left shadow-sm">
                 <ShieldAlert size={16} className="shrink-0" /> <span>{loginError}</span>
               </div>
             )}
 
             <form onSubmit={handleDoctorLogin} className="space-y-4">
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input name="bmdc" required className="w-full pl-12 p-4 rounded-2xl border border-slate-200 font-bold outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500" placeholder="BMDC Number" />
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
+                <input name="bmdc" required className="w-full pl-12 p-3.5 md:p-4 rounded-2xl border border-slate-200 font-bold outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all" placeholder="BMDC Number" />
               </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input name="password" type="password" required className="w-full pl-12 p-4 rounded-2xl border border-slate-200 font-bold outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500" placeholder="Password" />
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
+                <input name="password" type="password" required className="w-full pl-12 p-3.5 md:p-4 rounded-2xl border border-slate-200 font-bold outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all" placeholder="Password" />
               </div>
-              <button type="submit" className="w-full bg-teal-600 text-white py-4 rounded-2xl font-black hover:bg-teal-700 transition shadow-xl shadow-teal-200 text-lg">
+              <button type="submit" className="w-full bg-teal-600 text-white py-3.5 md:py-4 rounded-2xl font-black hover:bg-teal-700 transition shadow-xl shadow-teal-200 text-lg active:scale-[0.98]">
                 Login to Dashboard
               </button>
             </form>
-            <div className="mt-8 pt-8 border-t border-slate-100">
+            <div className="mt-8 pt-6 border-t border-slate-100">
               <p className="text-sm font-bold text-slate-500">New to DocOclock?</p>
-              <button onClick={() => navigate('/for-doctors')} className="text-teal-600 font-black mt-2 hover:underline">Apply for Doctor Account</button>
+              <button onClick={() => navigate('/for-doctors')} className="text-teal-600 font-black mt-2 hover:underline text-sm">Apply for Doctor Account</button>
             </div>
           </div>
         </div>
@@ -243,7 +209,13 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout userRole={userRole} onLogout={handleLogout} onNavigate={navigate} onLoginClick={openLoginModal}>
+    <Layout
+      userRole={userRole}
+      onLogout={handleLogout}
+      onNavigate={navigate}
+      onLoginClick={openLoginModal}
+      hideMobileBottomNav={currentPath === '/patient/profile'}
+    >
       {renderView()}
       {isLoginModalOpen && (
         <LoginModal onClose={() => { setIsLoginModalOpen(false); setPendingAction('NONE'); }} onLoginSuccess={handleLoginSuccess} onDoctorLoginClick={() => { setIsLoginModalOpen(false); navigate('/doctor-login'); }} />

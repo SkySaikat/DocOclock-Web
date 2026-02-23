@@ -1,35 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { ClipboardList, Save, Printer, UserPlus, CheckCircle, Pencil, Check, X, Plus, Minus } from 'lucide-react';
-import { getDoctorPolicy, saveDoctorPolicy, DoctorStorage, bookAppointment, getDoctorPracticeSettings, getDoctorAppointments } from '../../storage';
+import { ClipboardList, UserPlus, CheckCircle, Pencil, Check, X, Plus, Minus } from 'lucide-react';
+import { getDoctorPolicy, saveDoctorPolicy, DoctorStorage, bookManualAppointment, fetchAppointments } from '../../storage';
 import { getLocalISODate } from '../../utils/date';
 
 export const ManualBooking: React.FC = () => {
-   const session = DoctorStorage.get();
-   const doctorId = session?.id || 'd-default';
-   const today = new Date().toISOString().split('T')[0];
+   const doctor = DoctorStorage.get();
+   const doctorId = doctor?.id || 'd-default';
+   const today = getLocalISODate();
 
-   const practice = getDoctorPracticeSettings(doctorId);
-   const todayNumeric = new Date(today + "T00:00:00").getDay();
-   const activeChamber = practice.chambers.find(c =>
-      c.scheduleDays?.includes(todayNumeric) || c.schedule.some(s => s.day === todayNumeric)
-   );
-
-   // Real serial calculation based on existing appointments and doctor policy
-   const getNextSerial = () => {
-      const doctorTodayApps = getDoctorAppointments(doctorId).filter(a =>
-         a.date === today &&
-         a.status !== 'cancelled'
-      );
-      const policy = getDoctorPolicy(doctorId);
-      const baseOffset = policy.reservedSlotsEnabled ? policy.reservedSlotCount : 0;
-      return baseOffset + doctorTodayApps.length + 1;
-   };
-
-   const [assignedSerial, setAssignedSerial] = useState<number>(getNextSerial());
+   const [activeChamber, setActiveChamber] = useState<any>(null);
+   const [isLoading, setIsLoading] = useState(true);
+   const [assignedSerial, setAssignedSerial] = useState<number>(1);
    const [isEditingSerial, setIsEditingSerial] = useState(false);
-   const [tempSerial, setTempSerial] = useState<string>(assignedSerial.toString());
+   const [tempSerial, setTempSerial] = useState<string>('1');
+   const [isSubmitting, setIsSubmitting] = useState(false);
 
    const [formData, setFormData] = useState({
       name: '',
@@ -44,17 +30,44 @@ export const ManualBooking: React.FC = () => {
    const [isPolicyLoaded, setIsPolicyLoaded] = useState(false);
    const [isSuccess, setIsSuccess] = useState(false);
 
-   // Load persistent policy on mount
+   // Load persistent policy and active chamber on mount
    useEffect(() => {
-      if (doctorId) {
-         const policy = getDoctorPolicy(doctorId);
-         setEnableReservedSlots(policy.reservedSlotsEnabled);
-         setReservedSlotsCount(policy.reservedSlotCount);
-         setIsPolicyLoaded(true);
-      }
-   }, [doctorId]);
+      const init = async () => {
+         setIsLoading(true);
+         try {
+            // Load Policy
+            const policy = getDoctorPolicy(doctorId);
+            setEnableReservedSlots(policy.reservedSlotsEnabled);
+            setReservedSlotsCount(policy.reservedSlotCount);
+            setIsPolicyLoaded(true);
 
-   // Save policy whenever it changes, but ONLY after initial load
+            // Load Chamber
+            const { fetchDoctorChambers } = await import('../../storage');
+            const chambers = await fetchDoctorChambers(doctorId);
+            const todayNumeric = new Date(today + "T00:00:00").getDay();
+            const match = chambers.find(c =>
+               c.scheduleDays?.includes(todayNumeric) || c.schedule.some(s => s.day === todayNumeric)
+            );
+            setActiveChamber(match);
+
+            // Calculate Serial
+            const apps = await fetchAppointments({ doctorId, date: today });
+            const baseOffset = policy.reservedSlotsEnabled ? policy.reservedSlotCount : 0;
+            const validApps = apps.filter(a => a.status !== 'cancelled');
+            const nextSerial = baseOffset + validApps.length + 1;
+            setAssignedSerial(nextSerial);
+            setTempSerial(nextSerial.toString());
+
+         } catch (error) {
+            console.error('Error initializing manual booking:', error);
+         } finally {
+            setIsLoading(false);
+         }
+      };
+      if (doctorId) init();
+   }, [doctorId, today]);
+
+   // Save policy whenever it changes
    useEffect(() => {
       if (doctorId && isPolicyLoaded) {
          saveDoctorPolicy(doctorId, {
@@ -63,11 +76,6 @@ export const ManualBooking: React.FC = () => {
          });
       }
    }, [enableReservedSlots, reservedSlotsCount, doctorId, isPolicyLoaded]);
-
-   // Update assigned serial when policy or bookings change
-   useEffect(() => {
-      setAssignedSerial(getNextSerial());
-   }, [enableReservedSlots, reservedSlotsCount, isPolicyLoaded]);
 
    const handleEditSerial = () => {
       setIsEditingSerial(true);
@@ -82,39 +90,56 @@ export const ManualBooking: React.FC = () => {
       setIsEditingSerial(false);
    };
 
-   const handleSubmit = (e: React.FormEvent) => {
+   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (!doctor || !activeChamber) return;
 
-      if (!session) return;
+      setIsSubmitting(true);
+      try {
+         await bookManualAppointment(
+            doctor.id,
+            doctor.name || doctor.full_name,
+            activeChamber.id,
+            activeChamber.hospitalName,
+            activeChamber.address,
+            activeChamber.fee || activeChamber.feeNormal,
+            today,
+            activeChamber.schedule.find(s => s.day === new Date(today + "T00:00:00").getDay())?.startTime || 'N/A',
+            `p-manual-${Date.now()}`,
+            formData.name,
+            formData.phone || '01XXXXXXXXX',
+            assignedSerial
+         );
 
-      if (!activeChamber) {
-         alert("No active chamber found for today's schedule.");
-         return;
+         setIsSuccess(true);
+         setTimeout(async () => {
+            setIsSuccess(false);
+            setFormData({ name: '', age: '', gender: 'Male', phone: '', paymentStatus: 'Paid' });
+            // Recalculate next serial
+            const apps = await fetchAppointments({ doctorId, date: today });
+            const policy = getDoctorPolicy(doctorId);
+            const baseOffset = policy.reservedSlotsEnabled ? policy.reservedSlotCount : 0;
+            const validApps = apps.filter(a => a.status !== 'cancelled');
+            const nextSerial = baseOffset + validApps.length + 1;
+            setAssignedSerial(nextSerial);
+            setTempSerial(nextSerial.toString());
+         }, 2000);
+      } catch (error) {
+         console.error('Manual booking failed:', error);
+         alert('Failed to save booking. Please try again.');
+      } finally {
+         setIsSubmitting(false);
       }
-
-      // Real booking with source of truth
-      bookAppointment(
-         session.id,
-         session.name,
-         activeChamber.id,
-         activeChamber.hospitalName,
-         activeChamber.address,
-         activeChamber.feeNormal,
-         today,
-         activeChamber.schedule.find(s => s.day === todayNumeric)?.startTime || 'N/A',
-         `p-manual-${Date.now()}`,
-         formData.name,
-         formData.phone || '01XXXXXXXXX'
-      );
-
-      setIsSuccess(true);
-      setTimeout(() => {
-         setIsSuccess(false);
-         setFormData({ name: '', age: '', gender: 'Male', phone: '', paymentStatus: 'Paid' });
-         // Refresh serial for next booking
-         setAssignedSerial(getNextSerial());
-      }, 2000);
    };
+
+   if (isLoading) {
+      return (
+         <div className="flex flex-col items-center justify-center py-24">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Accessing Cloud Queue...</p>
+         </div>
+      );
+   }
 
    return (
       <div className="max-w-2xl mx-auto space-y-6">
@@ -128,7 +153,7 @@ export const ManualBooking: React.FC = () => {
             </div>
          </div>
 
-         {/* NEW: Booking Policy Section */}
+         {/* Booking Policy Section */}
          <GlassCard className="p-6 border-l-4 border-teal-500 bg-white shadow-lg relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50/50 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
@@ -209,7 +234,7 @@ export const ManualBooking: React.FC = () => {
                      <CheckCircle size={40} />
                   </div>
                   <h2 className="text-2xl font-bold text-slate-800">Booking Confirmed!</h2>
-                  <p className="text-slate-500 mb-6">Patient added to queue with Serial #{assignedSerial - 1}</p>
+                  <p className="text-slate-500 mb-6">Patient added to queue with Serial #{assignedSerial}</p>
                   <Button onClick={() => setIsSuccess(false)}>Add Another Patient</Button>
                </div>
             ) : (
@@ -340,6 +365,7 @@ export const ManualBooking: React.FC = () => {
                         variant="outline"
                         fullWidth
                         className="h-14 rounded-2xl border-2 font-black text-slate-500"
+                        disabled={isSubmitting}
                         onClick={() => {
                            setFormData({ name: '', age: '', gender: 'Male', phone: '', paymentStatus: 'Paid' });
                            setIsEditingSerial(false);
@@ -347,8 +373,12 @@ export const ManualBooking: React.FC = () => {
                      >
                         Reset Form
                      </Button>
-                     <Button type="submit" fullWidth className="h-14 rounded-2xl font-black text-lg gap-3 shadow-xl">
-                        <UserPlus size={22} /> Confirm Booking
+                     <Button type="submit" fullWidth className="h-14 rounded-2xl font-black text-lg gap-3 shadow-xl" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                           <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                           <><UserPlus size={22} /> Confirm Booking</>
+                        )}
                      </Button>
                   </div>
                </form>

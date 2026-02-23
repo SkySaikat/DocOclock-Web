@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Clock, Activity, AlertCircle, RefreshCw, CheckCircle, ArrowRight, User, MapPin, Calendar, Smartphone } from 'lucide-react';
-import { PatientStorage, getAppointments, getArrivalStatus, getQueueSessionStatus, getSessionMeta, DoctorSessionMeta, DEFAULT_SESSION_META } from '../../storage';
+import { PatientStorage, fetchAppointments, fetchQueueSession, DoctorSessionMeta, DEFAULT_SESSION_META, QueueSessionStatus } from '../../storage';
 import { Appointment } from '../../types';
 import { calculateEstimatedTime } from '../../utils/timeUtils';
 import { getLocalISODate } from '../../utils/date';
@@ -13,16 +13,52 @@ interface LiveSerialProps {
 export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
 
    const session = PatientStorage.get();
-   const [allAppointments, setAllAppointments] = useState(getAppointments());
+   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
    const [currentTime, setCurrentTime] = useState(new Date());
+   const [isLoading, setIsLoading] = useState(true);
+   const [queueSessionStatus, setQueueSessionStatus] = useState<QueueSessionStatus>('NOT_STARTED');
+   const [sessionMeta, setSessionMeta] = useState<DoctorSessionMeta>(DEFAULT_SESSION_META);
+   const [isDoctorArrived, setIsDoctorArrived] = useState(false);
 
-   const refreshData = () => {
-      setAllAppointments(getAppointments());
-      setCurrentTime(new Date());
+   const loadData = async () => {
+      if (!session) return;
+
+      try {
+         const today = getLocalISODate();
+         const apps = await fetchAppointments({ patientId: session.id, date: today });
+
+         // If we found the user's appointment, we can fetch the rest of the queue
+         const myAppCandidate = apps.find(a =>
+            (a.patientId === session.id || a.patientId.startsWith('family-')) &&
+            a.date === today && a.status !== 'cancelled'
+         );
+
+         if (myAppCandidate) {
+            const [fullQueue, qSession] = await Promise.all([
+               fetchAppointments({ doctorId: myAppCandidate.doctorId, hospitalId: myAppCandidate.hospitalId, date: today }),
+               fetchQueueSession(myAppCandidate.doctorId, myAppCandidate.hospitalId, today)
+            ]);
+
+            setAllAppointments(fullQueue);
+            setQueueSessionStatus(qSession.sessionStatus);
+            setSessionMeta(qSession.meta);
+            setIsDoctorArrived(qSession.isDoctorArrived);
+         } else {
+            setAllAppointments(apps);
+         }
+      } catch (error) {
+         console.error('Error loading live serial data from Supabase:', error);
+      } finally {
+         setIsLoading(false);
+      }
    };
 
    useEffect(() => {
-      const timer = setInterval(refreshData, 10000);
+      loadData();
+      const timer = setInterval(() => {
+         loadData();
+         setCurrentTime(new Date());
+      }, 10000);
       return () => clearInterval(timer);
    }, []);
 
@@ -42,13 +78,10 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
          a.isVisibleToPatient !== false
       );
       return userApps.sort((a, b) => b.serialNumber - a.serialNumber)[0];
-   }, [session, allAppointments, appointmentId]);
+   }, [session?.id, allAppointments, appointmentId]);
 
 
-   const queueSessionStatus = useMemo(() => {
-      if (!myApp) return 'NOT_STARTED';
-      return getQueueSessionStatus(myApp.doctorId, myApp.hospitalId, myApp.date);
-   }, [myApp]);
+
 
    const liveStats = useMemo(() => {
       if (!myApp) return null;
@@ -68,40 +101,54 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
       const visibleQueue = doctorApps.sort((a, b) => a.serialNumber - b.serialNumber);
       const servingToken = servingApp ? servingApp.serialNumber : visibleQueue.find(a => a.status === 'waiting')?.serialNumber || (lastCompletedToken + 1);
 
-      const patientsAhead = visibleQueue.filter(a => a.serialNumber < myApp.serialNumber && a.status === 'waiting' && a.id !== myApp.id).length;
+      const patientsAheadCount = visibleQueue.filter(a => a.serialNumber < myApp.serialNumber && a.status === 'waiting' && a.id !== myApp.id).length;
 
-      const avgTimePerPatientMins = 12;
-      const waitTimeMinutes = patientsAhead * avgTimePerPatientMins;
-      const estimatedTime = new Date(currentTime.getTime() + waitTimeMinutes * 60000);
+      const avgTimePerPatientMins = 10;
+      let estimatedTime: Date;
+
+      if (servingApp) {
+         const totalPatientsToWait = Math.max(0, myApp.serialNumber - servingApp.serialNumber);
+         estimatedTime = new Date(currentTime.getTime() + totalPatientsToWait * avgTimePerPatientMins * 60000);
+      } else {
+         const startTimePart = myApp.time.split('-')[0].trim();
+         const [time, modifier] = startTimePart.split(' ');
+         let [hours, minutes] = time.split(':').map(Number);
+         if (modifier === 'PM' && hours < 12) hours += 12;
+         if (modifier === 'AM' && hours === 12) hours = 0;
+
+         const startTime = new Date();
+         startTime.setHours(hours, minutes, 0, 0);
+
+         const baselineTime = currentTime > startTime ? currentTime : startTime;
+         const waitFromStartMinutes = (myApp.serialNumber - 1) * avgTimePerPatientMins + (Number(sessionMeta.delayMinutes) || 0);
+         estimatedTime = new Date(startTime.getTime() + waitFromStartMinutes * 60000);
+
+         if (estimatedTime < baselineTime) {
+            estimatedTime = new Date(baselineTime.getTime() + (myApp.serialNumber - (lastCompletedToken + 1)) * avgTimePerPatientMins * 60000);
+         }
+      }
+
       const arrivalTime = new Date(estimatedTime.getTime() - 15 * 60000);
+      const waitTimeMinutes = Math.max(0, Math.ceil((estimatedTime.getTime() - currentTime.getTime()) / 60000));
 
       return {
          servingToken,
-         patientsAhead,
+         patientsAhead: patientsAheadCount,
          waitTimeMinutes,
          estimatedTime,
          arrivalTime,
          totalToday: doctorApps.length,
          queue: doctorApps.sort((a, b) => a.serialNumber - b.serialNumber)
       };
-   }, [myApp, allAppointments, currentTime]);
+   }, [myApp?.id, allAppointments, currentTime, sessionMeta]);
 
-   const sessionMeta = useMemo(() => {
-      if (!myApp) return DEFAULT_SESSION_META;
-      return getSessionMeta(myApp.doctorId, myApp.hospitalId, myApp.date);
-   }, [myApp]);
-
-   const isDoctorArrived = useMemo(() => {
-      if (!myApp) return false;
-      return getArrivalStatus(myApp.doctorId, myApp.hospitalId, myApp.date);
-   }, [myApp]);
 
    // Guard: return a placeholder if critical session data is not yet available
-   if (!myApp || !sessionMeta) {
+   if (isLoading) {
       return (
          <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
-               Syncing Queue...
+               Syncing with DocOclock Cloud...
             </div>
          </div>
       );
@@ -128,12 +175,18 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
    if (queueSessionStatus === 'NOT_STARTED') {
       return (
          <div className="max-w-md mx-auto py-16 text-center space-y-8 px-4 animate-fade-in">
-            <div className="w-24 h-24 bg-medical-50 rounded-[32px] flex items-center justify-center mx-auto text-medical-600 shadow-soft border border-medical-100">
-               <Clock size={40} className="animate-pulse" />
+            <div className={`w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto shadow-soft border transition-all duration-700 ${isDoctorArrived ? 'bg-green-50 text-green-600 border-green-100 scale-110 shadow-green-100' : 'bg-medical-50 text-medical-600 border-medical-100'}`}>
+               {isDoctorArrived ? <User size={40} className="animate-bounce-soft" /> : <Clock size={40} className="animate-pulse" />}
             </div>
             <div className="space-y-2">
-               <h2 className="text-3xl font-black text-slate-900 tracking-tight">Session starting soon</h2>
-               <p className="text-slate-500 font-bold max-w-[280px] mx-auto leading-relaxed">Doctor {myApp.doctorName} has not started the live queue yet.</p>
+               <h2 className={`text-3xl font-black tracking-tight leading-tight ${isDoctorArrived ? 'text-green-600' : 'text-slate-900'}`}>
+                  {isDoctorArrived ? "Doctor Arrived" : "Session starting soon"}
+               </h2>
+               <p className="text-slate-500 font-bold max-w-[280px] mx-auto leading-relaxed">
+                  {isDoctorArrived
+                     ? "The doctor is in the chamber. Please wait for your serial call."
+                     : `Doctor ${myApp.doctorName} has not started the live queue yet.`}
+               </p>
             </div>
 
             <div className="bg-white p-8 rounded-[32px] shadow-premium border border-slate-50 space-y-6">
@@ -200,10 +253,10 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
    const isMyTurn = currentServing?.id === myApp.id;
 
    return (
-      <div className="max-w-md mx-auto space-y-8 pb-32 px-4 md:px-0 animate-fade-in">
-         <div className="text-center space-y-1">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Live Tracker</h1>
-            <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em]">{myApp.doctorName} • Real-time status</p>
+      <div className="max-w-4xl mx-auto space-y-4 pb-10 px-4 md:px-0 animate-fade-in">
+         <div className="text-center space-y-0.5">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Live Tracker</h1>
+            <p className="text-slate-500 font-bold text-[9px] uppercase tracking-[0.2em]">{myApp.doctorName} • Real-time status</p>
          </div>
 
          <div className="relative">
@@ -226,7 +279,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                   </button>
                </div>
 
-               <div className="p-8 md:p-12 text-center bg-white">
+               <div className="p-6 md:p-8 text-center bg-white">
                   {isMyTurn ? (
                      <div className="py-8 space-y-10 animate-bounce-soft">
                         <div className="w-28 h-28 bg-medical-600 text-white rounded-[32px] flex items-center justify-center mx-auto shadow-premium ring-8 ring-medical-50">
@@ -264,7 +317,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                         </div>
                      </div>
                   ) : (
-                     <div className="py-4 space-y-12">
+                     <div className="py-2 space-y-8">
                         {/* High-end Timeline Visualizer */}
                         <div className="relative px-4 pb-12">
                            <div className="absolute top-1/2 left-0 right-0 h-2 bg-slate-50 rounded-full overflow-hidden">
@@ -289,7 +342,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                                  </div>
                                  <div className="absolute -bottom-8 w-max text-center">
                                     <p className="text-[10px] font-black text-medical-600 bg-medical-50 px-3 py-1 rounded-full border border-medical-100">
-                                       {calculateEstimatedTime(myApp.time, myApp.serialNumber, sessionMeta.delayMinutes)}
+                                       {stats.estimatedTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                                     </p>
                                  </div>
                               </div>
@@ -298,7 +351,6 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
 
                         <div className="space-y-1 pt-4">
                            <h2 className="text-4xl font-black text-slate-900 tracking-tight">{stats.patientsAhead} <span className="text-slate-400 text-2xl">Ahead</span></h2>
-                           <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em]">Estimated Wait Time</p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -341,20 +393,6 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
             </div>
          </div>
 
-         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft text-center space-y-3">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Session Summary</p>
-            <div className="flex justify-around items-center pt-2">
-               <div className="space-y-1">
-                  <p className="text-lg font-black text-slate-900">{stats.totalToday}</p>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Seral</p>
-               </div>
-               <div className="w-px h-8 bg-slate-100"></div>
-               <div className="space-y-1">
-                  <p className="text-lg font-black text-medical-600">{currentServing?.serialNumber || stats.servingToken}</p>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Now Serving</p>
-               </div>
-            </div>
-         </div>
       </div>
    );
 };

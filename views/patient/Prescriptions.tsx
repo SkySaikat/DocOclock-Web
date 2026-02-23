@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import {
    Download, Search, Calendar, Stethoscope, Building2,
    Eye, ShieldCheck, X, Printer, Share2, User, FileDigit
 } from 'lucide-react';
-import { PatientStorage, getPrescriptions, getAppointments, getDoctorPracticeSettings, getDoctors } from '../../storage';
-import { Prescription, Appointment, Doctor } from '../../types';
+import { PatientStorage, fetchPrescriptions, fetchDoctorChambers } from '../../storage';
+import { Prescription, Appointment, Doctor, UserRole } from '../../types';
+import { supabase } from '../../supabase';
 
 interface PrescriptionsProps {
    onNavigate: (path: string) => void;
@@ -17,30 +18,64 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
    const [searchQuery, setSearchQuery] = useState('');
 
    // 1. Get Current Patient
-   const patient = PatientStorage.get();
+   const patient = useMemo(() => PatientStorage.get(), []);
    const currentPatientId = patient?.id;
 
-   // 2. Fetch Structured Data (Exactly as requested)
-   const prescriptions = JSON.parse(localStorage.getItem('demo_prescriptions') || '[]');
-   const patientPrescriptions = prescriptions.filter(
-      (p: any) => String(p.patientId) === String(currentPatientId)
-   );
-
    // 3. Join logic for display names (since Prescription only stores IDs)
-   const allDoctors = getDoctors();
-   const enrichedPrescriptions = patientPrescriptions.map((rx: any) => {
-      const doctor = allDoctors.find(d => String(d.id) === String(rx.doctorId));
-      const practiceSettings = rx.doctorId ? getDoctorPracticeSettings(rx.doctorId) : null;
-      const hospital = practiceSettings?.chambers.find(c => String(c.id) === String(rx.hospitalId));
+   const [enrichedPrescriptions, setEnrichedPrescriptions] = useState<any[]>([]);
+   const [isLoading, setIsLoading] = useState(true);
 
-      return {
-         ...rx,
-         doctorName: doctor?.name || 'Unknown Doctor',
-         specialty: doctor?.specialty || 'General Physician',
-         hospitalName: hospital?.hospitalName || 'Unknown Hospital',
-         displayDate: rx.date
+   useEffect(() => {
+      const enrich = async () => {
+         if (!currentPatientId) return;
+         setIsLoading(true);
+         try {
+            const rxList = await fetchPrescriptions(currentPatientId);
+            if (rxList.length === 0) {
+               setEnrichedPrescriptions([]);
+               return;
+            }
+
+            // 1. Get unique IDs to batch fetch
+            const doctorIds = [...new Set(rxList.map(rx => rx.doctorId))].filter(Boolean);
+            const hospitalIds = [...new Set(rxList.map(rx => rx.hospitalId))].filter(Boolean);
+
+            // 2. Parallel batch fetch for doctors and chambers
+            const [doctorsResponse, chambersResponse] = await Promise.all([
+               doctorIds.length > 0
+                  ? supabase.from('profiles').select('*').in('id', doctorIds)
+                  : Promise.resolve({ data: [] }),
+               hospitalIds.length > 0
+                  ? supabase.from('chambers').select('*').in('id', hospitalIds)
+                  : Promise.resolve({ data: [] })
+            ]);
+
+            const allDoctors = doctorsResponse.data || [];
+            const allChambers = chambersResponse.data || [];
+
+            // 3. Merging logic
+            const results = rxList.map((rx: any) => {
+               const doctor = allDoctors.find((d: any) => String(d.id) === String(rx.doctorId));
+               const hospital = allChambers.find((c: any) => String(c.id) === String(rx.hospitalId));
+
+               return {
+                  ...rx,
+                  doctorName: doctor?.full_name || 'Doctor',
+                  specialty: doctor?.specialty || 'Specialist',
+                  hospitalName: hospital?.hospital_name || 'Health Center',
+                  displayDate: rx.date
+               };
+            });
+
+            setEnrichedPrescriptions(results.sort((a: any, b: any) => b.createdAt - a.createdAt));
+         } catch (error) {
+            console.error('Error enriching prescriptions:', error);
+         } finally {
+            setIsLoading(false);
+         }
       };
-   }).sort((a: any, b: any) => b.createdAt - a.createdAt);
+      enrich();
+   }, [currentPatientId]);
 
    const filteredRx = enrichedPrescriptions.filter((rx: any) =>
       rx.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -136,64 +171,84 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
             </div>
          </div>
 
-         {filteredRx.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-32 space-y-4">
+               <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+               <p className="text-slate-400 font-bold animate-pulse">Retrieving medical records...</p>
+            </div>
+         ) : filteredRx.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-700">
                {filteredRx.map((rx: any) => (
-                  <GlassCard key={rx.id} className="p-0 overflow-hidden bg-white border-0 ring-1 ring-slate-100 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col">
-                     <div className="p-8">
-                        <div className="flex justify-between items-start mb-8">
-                           <div className="bg-blue-600 text-white px-5 py-2 rounded-2xl flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] shadow-lg shadow-blue-200">
-                              <Calendar size={14} /> {rx.displayDate}
+                  <div key={rx.id} className="bg-white border border-slate-200/60 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group/card">
+                     {/* Section 1: Header Bar */}
+                     <div className="px-6 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/40">
+                        <div className="flex items-center gap-2">
+                           <Calendar size={12} className="text-slate-400" />
+                           <span className="text-[13px] font-semibold text-slate-900">{rx.displayDate}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-teal-100 bg-teal-50/50 text-teal-700">
+                           <ShieldCheck size={10} strokeWidth={3} />
+                           <span className="text-[9px] font-black uppercase tracking-tight">Verified</span>
+                        </div>
+                     </div>
+
+                     {/* Section 2: Core Medical Info */}
+                     <div className="p-6 grid grid-cols-2 gap-x-10 gap-y-6">
+                        {/* Left Column: Provider & Doctor */}
+                        <div className="space-y-5">
+                           <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Provider</p>
+                              <div className="flex items-center gap-2">
+                                 <Building2 size={13} className="text-slate-400 shrink-0" />
+                                 <p className="text-[14px] font-bold text-slate-900 leading-tight truncate">{rx.hospitalName}</p>
+                              </div>
                            </div>
-                           <div className="flex items-center gap-1.5 text-teal-600 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
-                              <ShieldCheck size={14} />
-                              <span className="text-[9px] font-black uppercase tracking-widest">Verified Record</span>
+                           <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Doctor</p>
+                              <div className="flex items-center gap-2">
+                                 <User size={13} className="text-slate-400 shrink-0" />
+                                 <p className="text-[14px] font-medium text-slate-800 leading-tight truncate">{rx.doctorName}</p>
+                              </div>
                            </div>
                         </div>
 
-                        <div className="space-y-6 mb-2">
-                           <div className="flex items-start gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0 border border-slate-100">
-                                 <Building2 size={20} />
-                              </div>
-                              <div>
-                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Provider</p>
-                                 <p className="text-lg font-black text-slate-800 leading-tight">{rx.hospitalName}</p>
-                              </div>
-                           </div>
-
-                           <div className="flex items-start gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0 border border-slate-100">
-                                 <User size={20} />
-                              </div>
-                              <div>
-                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Doctor</p>
-                                 <p className="text-lg font-black text-slate-900 leading-tight">{rx.doctorName}</p>
-                                 <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">{rx.specialty}</p>
+                        {/* Right Column: Specialty & Diagnosis */}
+                        <div className="space-y-5">
+                           <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Specialty</p>
+                              <div className="flex items-center gap-2">
+                                 <Stethoscope size={13} className="text-blue-500 shrink-0" />
+                                 <p className="text-[11px] font-black text-blue-600 uppercase tracking-[0.1em] truncate">{rx.specialty}</p>
                               </div>
                            </div>
-
-                           <div className="flex items-start gap-4 pt-2">
-                              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0 border border-slate-100">
-                                 <Stethoscope size={20} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Diagnosis</p>
-                                 <p className="text-base font-bold text-slate-600 truncate">{rx.diagnosis || 'General Checkup'}</p>
-                              </div>
+                           <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Diagnosis</p>
+                              <p className="text-[13px] font-medium text-slate-700 line-clamp-2 leading-relaxed">{rx.diagnosis || 'General Checkup'}</p>
                            </div>
                         </div>
                      </div>
 
-                     <div className="p-5 bg-slate-50/80 border-t border-slate-100 flex gap-3 mt-auto">
-                        <Button onClick={() => setSelectedRx(rx)} variant="outline" className="flex-1 h-14 rounded-2xl font-black text-sm bg-white border-slate-200 gap-3 shadow-sm hover:bg-slate-50"><Eye size={20} /> View Rx</Button>
-                        <Button className="flex-1 h-14 rounded-2xl font-black text-sm gap-3 bg-blue-600 shadow-xl shadow-blue-100"><Download size={20} /> Download</Button>
+                     {/* Section 3: Action Area */}
+                     <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-4 mt-auto">
+                        <button
+                           onClick={() => setSelectedRx(rx)}
+                           className="flex-1 px-4 py-2.5 rounded-[10px] border border-slate-200 text-slate-600 text-[13px] font-bold hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
+                        >
+                           <Eye size={16} />
+                           View Record
+                        </button>
+                        <button
+                           className="flex-1 px-4 py-2.5 rounded-[10px] bg-gradient-to-br from-slate-800 to-slate-950 text-white text-[13px] font-bold shadow-sm hover:shadow-lg hover:shadow-indigo-900/10 transition-all flex items-center justify-center gap-2"
+                        >
+                           <Download size={16} />
+                           Download
+                        </button>
                      </div>
-                  </GlassCard>
+                  </div>
                ))}
             </div>
          ) : (
-            <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+            <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-slate-100 animate-in fade-in zoom-in duration-500">
                <FileDigit className="mx-auto text-slate-200 mb-6" size={80} />
                <h3 className="text-2xl font-black text-slate-900 mb-2">No Records Found</h3>
                <p className="text-slate-400 font-bold max-w-xs mx-auto">Your prescriptions will appear here once your doctor shares them digitally.</p>

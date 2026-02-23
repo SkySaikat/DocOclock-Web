@@ -1,5 +1,5 @@
 
-import { Patient, Doctor, Appointment, Prescription, MedicineAlert } from './types';
+import { Patient, Doctor, Appointment, Prescription, MedicineAlert, UserRole } from './types';
 
 export interface DoctorPracticeSettings {
   dailyBookingLimit: number;
@@ -56,9 +56,7 @@ const KEYS = {
   MEDICINE_ALERTS: 'demo_medicine_alerts',
 };
 
-const getPracticeSettingsKey = (doctorId: string) => `doctor_practice_settings_${doctorId}`;
 const getClosureSettingsKey = (doctorId: string) => `doctor_closure_settings_${doctorId}`;
-const getChambersKey = (doctorId: string) => `doctor_chambers_${doctorId}`;
 
 
 
@@ -141,188 +139,24 @@ export const getCurrentSession = () => {
   return PatientStorage.get() || DoctorStorage.get();
 };
 
-// --- Specific Getters ---
-export const getPatients = (): Patient[] => getFromStorage<Patient>(KEYS.PATIENTS);
-export const getDoctors = (): Doctor[] => getFromStorage<Doctor>(KEYS.DOCTORS);
-export const getAppointments = (): Appointment[] => {
-  const appointments = getFromStorage<Appointment>(KEYS.APPOINTMENTS);
-  return appointments.map(app => ({
-    ...app,
-    category: app.category || 'normal',
-    cancelledAt: app.cancelledAt || null,
-    completedAt: app.completedAt || null
-  }));
-};
-
-
-/**
- * Unified helper for strict doctor isolation.
- * Used by Dashboard, Queue, and Analytics.
- */
-export const getDoctorAppointments = (doctorId: string): Appointment[] => {
-  const all = getAppointments();
-  return all.filter(a => String(a.doctorId) === String(doctorId));
-};
-
-export const getPrescriptions = (): Prescription[] => getFromStorage<Prescription>(KEYS.PRESCRIPTIONS);
-
-export const getMedicineAlerts = (): MedicineAlert[] => getFromStorage<MedicineAlert>(KEYS.MEDICINE_ALERTS);
-
-export const savePrescriptionWithAlerts = (prescription: Prescription) => {
-  // 1. Save Prescription
-  const prescriptions = getPrescriptions();
-  saveToStorage(KEYS.PRESCRIPTIONS, [...prescriptions, prescription]);
-
-  // 2. Update Appointment
-  const appointments = getAppointments();
-  const appIndex = appointments.findIndex(a => a.id === prescription.appointmentId);
-  if (appIndex !== -1) {
-    appointments[appIndex] = {
-      ...appointments[appIndex],
-      hasPrescription: true,
-      prescriptionId: prescription.id
-    };
-    saveAppointments(appointments);
-  }
-
-  // 3. Generate Medicine Alerts
-  const existingAlerts = getMedicineAlerts();
-  const newAlerts: MedicineAlert[] = prescription.medicines.map(med => ({
-    id: `alert-${crypto.randomUUID()}`,
-    patientId: prescription.patientId,
-    appointmentId: prescription.appointmentId,
-    medicineName: med.name,
-    dosage: med.dosage,
-    startDate: med.startDate,
-    durationDays: med.durationDays,
-    completed: false
-  }));
-
-  saveToStorage(KEYS.MEDICINE_ALERTS, [...existingAlerts, ...newAlerts]);
+// --- Medicine Alerts (Local Storage Bridge for now) ---
+export const getMedicineAlerts = (): MedicineAlert[] => {
+  if (!isBrowser) return [];
+  const raw = localStorage.getItem(KEYS.MEDICINE_ALERTS);
+  return raw ? JSON.parse(raw) : [];
 };
 
 export const toggleMedicineAlert = (alertId: string) => {
+  if (!isBrowser) return;
   const alerts = getMedicineAlerts();
   const index = alerts.findIndex(a => a.id === alertId);
   if (index !== -1) {
     alerts[index].completed = !alerts[index].completed;
-    saveToStorage(KEYS.MEDICINE_ALERTS, alerts);
+    localStorage.setItem(KEYS.MEDICINE_ALERTS, JSON.stringify(alerts));
   }
 };
 
-/**
- * Filtered helper for hospital-level segmentation inside doctor scope.
- */
-export const getDoctorAppointmentsByHospital = (doctorId: string, hospitalId: string | null): Appointment[] => {
-  if (!hospitalId) return [];
-  const all = getDoctorAppointments(doctorId);
-  return all.filter(a => String(a.hospitalId) === String(hospitalId));
-};
-
-
-// --- Specific Setters ---
-export const savePatients = (data: Patient[]) => saveToStorage(KEYS.PATIENTS, data);
-export const saveDoctors = (data: Doctor[]) => saveToStorage(KEYS.DOCTORS, data);
-export const saveAppointments = (data: Appointment[]) => saveToStorage(KEYS.APPOINTMENTS, data);
-
-export const saveAppointment = (appointment: Appointment) => {
-  const appointments = getAppointments();
-  const exists = appointments.findIndex(a => a.id === appointment.id);
-  if (exists !== -1) {
-    appointments[exists] = appointment;
-    saveToStorage(KEYS.APPOINTMENTS, appointments);
-  } else {
-    saveToStorage(KEYS.APPOINTMENTS, [...appointments, appointment]);
-  }
-};
-
-export const cancelAppointment = (appointmentId: string, cancelledBy: "patient" | "doctor") => {
-  const appointments = getAppointments();
-  const index = appointments.findIndex(a => a.id === appointmentId);
-  if (index !== -1) {
-    appointments[index] = {
-      ...appointments[index],
-      status: 'cancelled',
-      cancelledAt: Date.now(),
-      cancelledBy
-    };
-    saveAppointments(appointments);
-  }
-};
-
-export const savePrescriptions = (data: Prescription[]) => saveToStorage(KEYS.PRESCRIPTIONS, data);
-
-// --- Patient Helpers ---
-export const registerPatient = (patient: Omit<Patient, 'id' | 'createdAt'>): Patient => {
-  const patients = getPatients();
-  const existing = patients.find(p => p.phone === patient.phone);
-  if (existing) return existing;
-
-  const newPatient: Patient = {
-    ...patient,
-    id: `p-${Date.now()}`,
-    createdAt: new Date().toISOString()
-  };
-
-  savePatients([...patients, newPatient]);
-  return newPatient;
-};
-
-// --- Doctor Helpers ---
-export const registerDoctor = (doctorData: any): Doctor => {
-  const doctors = getDoctors();
-  const existing = doctors.find(d => d.bmdcNumber === doctorData.bmdcNumber);
-  if (existing) return existing;
-
-  const newDoctor: Doctor & { password?: string } = {
-    id: `d-${Date.now()}`,
-    name: doctorData.name,
-    specialty: doctorData.specialty,
-    degrees: doctorData.degrees || 'MBBS',
-    bmdcNumber: doctorData.bmdcNumber,
-    imageUrl: `https://picsum.photos/200/200?random=${doctors.length + 10}`,
-    experienceYears: 1,
-    totalPatients: 0,
-    rating: 5.0,
-    about: 'Passionate healthcare provider.',
-    isDemo: false,
-    chambers: [
-      {
-        id: `c-${Date.now()}`,
-        name: 'General Consultation Center',
-        address: 'Dhaka, Bangladesh',
-        fee: 500,
-        visitingHours: '6:00 PM - 9:00 PM',
-        visitingDays: ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'],
-        template: {
-          id: `tpl-${Date.now()}`,
-          hospitalName: 'DocOclock Clinic',
-          logoUrl: 'https://cdn-icons-png.flaticon.com/512/5996/5996258.png',
-          themeColor: '#14b8a6',
-          address: 'Digital Practice',
-          phone: doctorData.phone,
-          email: doctorData.email,
-          layout: 'modern',
-          watermarkOpacity: 0.05,
-          footerDisclaimer: 'Computer generated prescription.'
-        }
-      }
-    ],
-    password: doctorData.password
-  };
-
-  saveDoctors([...doctors, newDoctor]);
-  return newDoctor;
-};
-
-export const authenticateDoctor = (identifier: string, password?: string): Doctor | null => {
-  const doctors = getDoctors() as (Doctor & { password?: string })[];
-  const found = doctors.find(d =>
-    (d.bmdcNumber === identifier || d.id === identifier) &&
-    (password ? d.password === password : true)
-  );
-  return found || null;
-};
+// --- (REMOVED: registerPatient, registerDoctor, authenticateDoctor are now in AuthContext.tsx) ---
 
 // --- Doctor Policy Helpers ---
 export interface DoctorPolicy {
@@ -347,21 +181,11 @@ export const saveDoctorPolicy = (doctorId: string, policy: DoctorPolicy): void =
   localStorage.setItem(key, JSON.stringify(policy));
 };
 
-// --- Arrival Status Helpers ---
-export const getArrivalStatus = (doctorId: string, hospitalId: string, date: string): boolean => {
-  if (!isBrowser) return false;
-  const key = `demo_arrival_status_${doctorId}_${hospitalId}_${date}`;
-  return localStorage.getItem(key) === 'true';
-};
 
-export const saveArrivalStatus = (doctorId: string, hospitalId: string, date: string, status: boolean): void => {
-  if (!isBrowser) return;
-  const key = `demo_arrival_status_${doctorId}_${hospitalId}_${date}`;
-  localStorage.setItem(key, String(status));
-};
 
 // --- Unified Session Meta Helpers ---
 export type SessionStatus = 'IDLE' | 'DELAYED' | 'BREAK' | 'ACTIVE';
+export type QueueSessionStatus = 'NOT_STARTED' | 'RUNNING';
 
 export interface DoctorSessionMeta {
   status: SessionStatus;
@@ -377,73 +201,15 @@ export const DEFAULT_SESSION_META: DoctorSessionMeta = {
   note: ''
 };
 
-export const getSessionMeta = (doctorId: string, hospitalId: string, date: string): DoctorSessionMeta => {
-  if (!isBrowser) return DEFAULT_SESSION_META;
-  const key = `demo_session_meta_${doctorId}_${hospitalId}_${date}`;
-  const raw = localStorage.getItem(key);
-  try {
-    if (!raw) return DEFAULT_SESSION_META;
-    const parsed = JSON.parse(raw);
-    return {
-      ...DEFAULT_SESSION_META,
-      ...parsed
-    };
-  } catch {
-    return DEFAULT_SESSION_META;
-  }
-};
 
-export const saveSessionMeta = (doctorId: string, hospitalId: string, date: string, meta: DoctorSessionMeta): void => {
-  if (!isBrowser) return;
-  const key = `demo_session_meta_${doctorId}_${hospitalId}_${date}`;
-  localStorage.setItem(key, JSON.stringify(meta));
-};
 
-// --- (Legacy) Doctor Delay Helpers - Deprecated in favor of DoctorSessionMeta ---
-export interface DoctorDelay {
-  delayInMinutes: number;
-  status: SessionStatus;
-  startTime: string | null;
-  note?: string;
-}
 
-export const getDoctorDelay = (doctorId: string, hospitalId: string, date: string): DoctorDelay => {
-  const meta = getSessionMeta(doctorId, hospitalId, date);
-  return {
-    delayInMinutes: meta.delayMinutes || 0,
-    status: meta.status || 'ACTIVE',
-    startTime: meta.delayStartedAt,
-    note: meta.note
-  };
-};
-
-// --- Queue Session Status Helpers ---
-export type QueueSessionStatus = 'NOT_STARTED' | 'RUNNING';
-
-export const getQueueSessionStatus = (doctorId: string, hospitalId: string, date: string): QueueSessionStatus => {
-  if (!isBrowser) return 'NOT_STARTED';
-  const key = `demo_queue_session_${doctorId}_${hospitalId}_${date}`;
-  const status = localStorage.getItem(key);
-  return (status === 'RUNNING' ? 'RUNNING' : 'NOT_STARTED') as QueueSessionStatus;
-};
-
-export const saveQueueSessionStatus = (doctorId: string, hospitalId: string, date: string, status: QueueSessionStatus): void => {
-  if (!isBrowser) return;
-  const key = `demo_queue_session_${doctorId}_${hospitalId}_${date}`;
-  localStorage.setItem(key, status);
-};
-
-// --- (Legacy) Break Status Helpers - Deprecated in favor of DoctorSessionMeta ---
-export interface BreakStatus {
-  onBreak: boolean;
-  breakDuration: number;
-}
 
 // --- Appointment Helpers ---
-export const bookAppointment = (
+export const bookAppointment = async (
   doctorId: string,
   doctorName: string,
-  hospitalId: string, // Renamed from chamberId
+  hospitalId: string,
   chamberName: string,
   chamberLocation: string,
   fee: number,
@@ -453,173 +219,93 @@ export const bookAppointment = (
   patientName: string,
   patientPhone: string
 ) => {
+  console.log('[DEBUG] bookAppointment: Starting booking flow...', { doctorId, hospitalId, date, patientId });
 
-  const appointments = getAppointments();
-  // Filter only for this doctor+hospital on this day to find current count
-  const doctorHospitalApps = appointments.filter(a =>
-    a.doctorId === doctorId &&
-    a.hospitalId === hospitalId &&
-    a.date === date &&
-    a.status !== 'cancelled'
-  );
+  try {
+    const appointments = await fetchAppointments({ doctorId, hospitalId, date });
+    const activeApps = appointments.filter(a => a.status !== 'cancelled');
+    console.log(`[DEBUG] bookAppointment: Found ${activeApps.length} active appointments for this slot.`);
 
-  const practice = getDoctorPracticeSettings(doctorId);
-  const chamber = practice.chambers.find(c => c.id === hospitalId);
+    const policy = getDoctorPolicy(doctorId);
+    const baseOffset = policy.reservedSlotsEnabled ? policy.reservedSlotCount : 0;
+    const nextSerial = baseOffset + activeApps.length + 1;
+    console.log(`[DEBUG] bookAppointment: Calculated serial: ${nextSerial}`);
 
-  const dayNumeric = new Date(date + "T00:00:00").getDay();
-  const daySchedule = chamber?.schedule.find(s => s.day === dayNumeric);
-  const dailyLimit = daySchedule?.dailyLimit || practice.dailyBookingLimit || 40;
+    const newApp: Appointment = {
+      id: crypto.randomUUID(),
+      doctorId,
+      doctorName,
+      hospitalId,
+      hospitalName: chamberName,
+      chamberName,
+      chamberLocation,
+      patientId,
+      patientName,
+      patientPhone,
+      date,
+      time,
+      status: 'waiting',
+      serialNumber: nextSerial,
+      fee,
+      isReserved: false,
+      isVisibleToPatient: true,
+      category: 'normal',
+      cancelledAt: null,
+      completedAt: null
+    };
 
-  if (doctorHospitalApps.length >= dailyLimit) {
-    alert("Today's booking limit for this hospital has been reached.");
-    return;
+    console.log('[DEBUG] bookAppointment: Upserting appointment...', newApp.id);
+    await upsertAppointment(newApp);
+    console.log('[DEBUG] bookAppointment: Success!');
+    return newApp;
+  } catch (err: any) {
+    console.error('[DEBUG] bookAppointment: Failed to book:', err.message);
+    throw err;
   }
+};
 
-  const policy = getDoctorPolicy(doctorId);
-  const baseOffset = policy.reservedSlotsEnabled ? policy.reservedSlotCount : 0;
+export const cancelAppointment = async (appointmentId: string, cancelledBy: "patient" | "doctor") => {
+  try {
+    const { error } = await supabase
+      .from('appointments')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: cancelledBy
+      })
+      .eq('id', appointmentId);
 
-  // Serial calculation respects the persistent doctor policy and is hospital-specific
-  const nextSerial = baseOffset + doctorHospitalApps.length + 1;
-
-  // Create the new appointment object strictly
-  const newApp: Appointment = {
-    id: crypto.randomUUID(),
-    doctorId,
-    doctorName,
-    hospitalId,
-    hospitalName: chamberName,
-    chamberName,
-    chamberLocation,
-    patientId,
-    patientName,
-    patientPhone,
-    date,
-    time,
-    status: 'waiting',
-    serialNumber: nextSerial,
-    fee,
-    isReserved: false,
-    isVisibleToPatient: true,
-    category: 'normal',
-    cancelledAt: null,
-    completedAt: null
-  };
-
-  saveAppointment(newApp);
-  return newApp;
+    if (error) throw error;
+  } catch (err) {
+    console.error('Error cancelling appointment in Supabase:', err);
+    throw err;
+  }
 };
 
 
 // --- Appointment Search & Filter ---
 
-export const assignPatientToReservedSlot = (
+export const assignPatientToReservedSlot = async (
   slotId: string,
   patientId: string,
   patientName: string,
   patientPhone: string
 ) => {
-  const appointments = getAppointments();
-  const index = appointments.findIndex(a => a.id === slotId);
-  if (index !== -1) {
-    appointments[index] = {
-      ...appointments[index],
+  const appointments = await fetchAppointments(); // Generic fetch if needed, though usually filtered
+  const target = appointments.find(a => a.id === slotId);
+  if (target) {
+    await upsertAppointment({
+      ...target,
       patientId,
       patientName,
       patientPhone,
       isReserved: false,
       isVisibleToPatient: true
-    };
-    saveAppointments(appointments);
+    });
   }
 };
 
-export function getDoctorPracticeSettings(doctorId: string): DoctorPracticeSettings {
-  if (!doctorId) {
-    return {
-      dailyBookingLimit: 40,
-      reportFreeDays: 7,
-      chambers: []
-    };
-  }
-  const key = getPracticeSettingsKey(doctorId);
-  const raw = localStorage.getItem(key);
 
-
-  if (!raw) {
-    const defaultSettings: DoctorPracticeSettings = {
-      dailyBookingLimit: 40,
-      reportFreeDays: 7,
-      chambers: []
-    };
-    localStorage.setItem(
-      key,
-      JSON.stringify(defaultSettings)
-    );
-    return defaultSettings;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    const dayMap: Record<string, number> = {
-      'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6,
-      'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
-    };
-
-    return {
-      dailyBookingLimit: parsed.dailyBookingLimit ?? 40,
-      reportFreeDays: parsed.reportFreeDays ?? 7,
-      chambers: (parsed.chambers || []).map((c: any) => {
-        // Migration: Convert string days to numbers
-        const normalizedSchedule = (c.schedule || []).map((s: any) => {
-          if (typeof s.day === 'string') {
-            return { ...s, day: dayMap[s.day] ?? 0 };
-          }
-          return s;
-        });
-
-        // Migration: Populate scheduleDays array for fast lookup
-        const scheduleDays = Array.from(new Set(normalizedSchedule.map((s: any) => s.day as number)));
-
-        return {
-          ...c,
-          schedule: normalizedSchedule,
-          scheduleDays: c.scheduleDays || scheduleDays
-        };
-      })
-    };
-
-  } catch (error) {
-    console.error("Failed to parse practice settings", error);
-    return {
-      dailyBookingLimit: 40,
-      reportFreeDays: 7,
-      chambers: []
-    };
-  }
-}
-
-export function saveDoctorPracticeSettings(doctorId: string, settings: DoctorPracticeSettings) {
-  if (!doctorId) return;
-  localStorage.setItem(
-    getPracticeSettingsKey(doctorId),
-    JSON.stringify(settings)
-  );
-}
-
-
-export function updateDoctorPracticeSettings(
-  doctorId: string,
-  updates: Partial<DoctorPracticeSettings>
-) {
-  if (!doctorId) return;
-  const current = getDoctorPracticeSettings(doctorId);
-  const updated = { ...current, ...updates };
-
-  localStorage.setItem(
-    getPracticeSettingsKey(doctorId),
-    JSON.stringify(updated)
-  );
-}
 
 export function getDoctorClosureSettings(doctorId: string): DoctorClosureSettings {
   if (!doctorId) return { isClosed: false, reason: "" };
@@ -668,40 +354,483 @@ export function updateDoctorClosureSettings(
   );
 }
 
-export function getDoctorChambers(doctorId: string): DoctorChamber[] {
-  if (!doctorId) return [];
-  const key = getChambersKey(doctorId);
-  const raw = localStorage.getItem(key);
+import { supabase } from './supabase';
 
-  if (!raw) {
-    const defaultValue: DoctorChamber[] = [];
-    localStorage.setItem(
-      key,
-      JSON.stringify(defaultValue)
-    );
-    return defaultValue;
-  }
+export async function fetchDoctorChambers(doctorId: string): Promise<PracticeChamber[]> {
+  if (!doctorId) return [];
 
   try {
-    return JSON.parse(raw) || [];
-  } catch {
+    console.log('[DEBUG] Fetching chambers for Doctor ID:', doctorId);
+    const { data: chambersData, error: chambersError } = await supabase
+      .from('chambers')
+      .select(`
+        *,
+        schedules (*)
+      `)
+      .eq('doctor_id', doctorId);
+
+    if (chambersError) throw chambersError;
+
+    const dayMap: Record<string, number> = {
+      'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6,
+      'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+    };
+
+    return (chambersData || []).map(c => {
+      const schedule: WeeklyDaySchedule[] = (c.schedules || []).map((s: any) => ({
+        day: dayMap[s.day_of_week] ?? 0,
+        startTime: s.start_time,
+        endTime: s.end_time,
+        dailyLimit: s.max_patients
+      }));
+
+      return {
+        id: c.id,
+        hospitalName: c.hospital_name,
+        address: c.address,
+        feeNormal: c.consultation_fee,
+        feeReport: Math.floor(c.consultation_fee * 0.6), // Derived for now
+        schedule,
+        scheduleDays: schedule.map(s => s.day)
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching chambers:', error);
     return [];
   }
 }
 
-export function setDoctorChambers(doctorId: string, chambers: DoctorChamber[]) {
+export async function saveChamberWithSchedules(doctorId: string, chamber: PracticeChamber) {
   if (!doctorId) return;
-  localStorage.setItem(
-    getChambersKey(doctorId),
-    JSON.stringify(chambers)
-  );
+
+  try {
+    // 1. Upsert Chamber
+    const chamberRow = {
+      doctor_id: doctorId,
+      hospital_name: chamber.hospitalName,
+      address: chamber.address,
+      consultation_fee: chamber.feeNormal
+    };
+
+    let chamberId = chamber.id;
+    const isNew = !chamberId || chamberId.length < 15; // Simple check for Date.now() vs UUID
+
+    if (isNew) {
+      const { data, error } = await supabase
+        .from('chambers')
+        .insert([chamberRow])
+        .select()
+        .single();
+      if (error) throw error;
+      chamberId = data.id;
+    } else {
+      const { error } = await supabase
+        .from('chambers')
+        .update(chamberRow)
+        .eq('id', chamberId);
+      if (error) throw error;
+    }
+
+    // 2. Clear existing schedules and re-insert
+    const { error: delError } = await supabase
+      .from('schedules')
+      .delete()
+      .eq('chamber_id', chamberId);
+    if (delError) throw delError;
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const scheduleRows = chamber.schedule.map(s => ({
+      chamber_id: chamberId,
+      day_of_week: dayNames[s.day],
+      start_time: s.startTime,
+      end_time: s.endTime,
+      max_patients: s.dailyLimit
+    }));
+
+    if (scheduleRows.length > 0) {
+      const { error: insError } = await supabase
+        .from('schedules')
+        .insert(scheduleRows);
+      if (insError) throw insError;
+    }
+
+    return chamberId;
+  } catch (error: any) {
+    console.error('Error saving chamber:', error);
+    if (error?.message?.includes('foreign key')) {
+      throw new Error('Supabase Schema Error: Please ensure your "chambers" table references the "profiles" table, not "doctors". Follow the SQL in your implementation plan.');
+    }
+    throw error;
+  }
 }
 
-export function addDoctorChamber(doctorId: string, chamber: DoctorChamber) {
-  if (!doctorId) return;
-  const existing = getDoctorChambers(doctorId);
-  setDoctorChambers(doctorId, [...existing, chamber]);
+export async function deleteChamberFromSupabase(chamberId: string) {
+  if (!chamberId) return;
+  const { error } = await supabase
+    .from('chambers')
+    .delete()
+    .eq('id', chamberId);
+  if (error) throw error;
+}
+
+// --- Supabase Profiles (Doctors) ---
+
+export async function fetchDoctors(): Promise<Doctor[]> {
+  try {
+    console.log('[DEBUG] fetchDoctors: Fetching profiles with role DOCTOR strictly using supabase-js...');
+
+    const { data: doctorsData, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'DOCTOR');
+
+    if (error) {
+      console.error('[CRITICAL] fetchDoctors: Supabase Query Error:', error.message, error.details, error.hint);
+      throw error;
+    }
+
+
+    // Now fetch chambers separately if needed or handle the join if schema supports it
+    // For now, let's just get the profiles and add empty chambers to satisfy the interface
+    // to isolate if the complex join is causing the CORS issue.
+
+    console.log(`[DEBUG] fetchDoctors: Success. Received ${doctorsData?.length || 0} profiles.`);
+
+    return (doctorsData || []).map((d: any) => ({
+      ...d,
+      id: d.id,
+      name: d.full_name,
+      imageUrl: d.image_url,
+      image: d.image_url,
+      chambers: [] // Simplified for CORS debugging
+    }));
+  } catch (err: any) {
+    console.error('[CRITICAL] fetchDoctors: Fetch failed.', err);
+    if (err.message === 'Failed to fetch') {
+      console.error('[CORS] Connection blocked. Origin:', window.location.origin, 'Target:', import.meta.env.VITE_SUPABASE_URL);
+    }
+    return [];
+  }
 }
 
 
+// --- Legacy localStorage removal for chambers ---
+export function getDoctorChambers() { return []; }
+export function setDoctorChambers() { }
+export function addDoctorChamber() { }
 
+
+
+
+// --- Supabase Appointments ---
+
+export async function fetchAppointments(filters?: { doctorId?: string; hospitalId?: string; date?: string; patientId?: string }): Promise<Appointment[]> {
+  try {
+    console.log('[DEBUG] fetchAppointments: Fetching with supabase-js client...', filters);
+    let query = supabase.from('appointments').select('*');
+
+    if (filters?.doctorId) query = query.eq('doctor_id', filters.doctorId);
+    if (filters?.hospitalId) query = query.eq('hospital_id', filters.hospitalId);
+    if (filters?.date) query = query.eq('appointment_date', filters.date);
+    if (filters?.patientId) query = query.eq('patient_id', filters.patientId);
+
+    const { data, error } = await query.order('serial_number', { ascending: true });
+
+    if (error) {
+      console.error('[CRITICAL] fetchAppointments: Supabase Query Error:', error.message);
+      throw error;
+    }
+
+    return (data || []).map(row => ({
+      id: row.id,
+      patientId: row.patient_id,
+      patientName: row.patient_name,
+      patientPhone: row.patient_phone,
+      doctorId: row.doctor_id,
+      doctorName: row.doctor_name,
+      hospitalId: row.hospital_id,
+      hospitalName: row.hospital_name,
+      chamberName: row.chamber_name,
+      chamberLocation: row.chamber_location,
+      fee: row.fee,
+      date: row.appointment_date,
+      time: row.appointment_time,
+      status: row.status,
+      serialNumber: row.serial_number,
+      isReserved: row.is_reserved,
+      isVisibleToPatient: row.is_visible_to_patient,
+      category: row.category,
+      hasPrescription: row.has_prescription,
+      prescription_id: row.prescription_id,
+      cancelledAt: row.cancelled_at ? new Date(row.cancelled_at).getTime() : null,
+      completedAt: row.completed_at ? new Date(row.completed_at).getTime() : null,
+      cancelledBy: row.cancelled_by
+    }));
+  } catch (err) {
+    console.error('[CRITICAL] fetchAppointments: Fetch failed.', err);
+    return [];
+  }
+}
+
+
+export const fetchDoctorAppointments = (doctorId: string) => fetchAppointments({ doctorId });
+export const fetchDoctorAppointmentsByHospital = (doctorId: string, hospitalId: string | null) =>
+  hospitalId ? fetchAppointments({ doctorId, hospitalId }) : Promise.resolve([]);
+
+export async function upsertAppointment(app: Appointment): Promise<void> {
+  const row = {
+    id: app.id,
+    patient_id: app.patientId,
+    patient_name: app.patientName,
+    patient_phone: app.patientPhone,
+    doctor_id: app.doctorId,
+    doctor_name: app.doctorName,
+    hospital_id: app.hospitalId,
+    hospital_name: app.hospitalName,
+    chamber_name: app.chamberName,
+    chamber_location: app.chamberLocation,
+    fee: app.fee,
+    appointment_date: app.date,
+    appointment_time: app.time,
+    status: app.status,
+    serial_number: app.serialNumber,
+    is_reserved: app.isReserved,
+    is_visible_to_patient: app.isVisibleToPatient,
+    category: app.category,
+    has_prescription: app.hasPrescription,
+    prescription_id: app.prescriptionId,
+    cancelled_at: app.cancelledAt ? new Date(app.cancelledAt).toISOString() : null,
+
+    completed_at: app.completedAt ? new Date(app.completedAt).toISOString() : null,
+    cancelled_by: app.cancelledBy
+  };
+
+  console.log('[DEBUG] upsertAppointment: Saving to Supabase...', app.id);
+  const { error } = await supabase.from('appointments').upsert([row]);
+  if (error) {
+    console.error('[CRITICAL] upsertAppointment: Supabase Upsert Error:', error.message);
+    throw error;
+  }
+}
+
+
+export async function bookManualAppointment(
+  doctorId: string,
+  doctorName: string,
+  hospitalId: string,
+  hospitalName: string,
+  address: string,
+  fee: number,
+  date: string,
+  time: string,
+  patientId: string,
+  patientName: string,
+  patientPhone: string,
+  serialNumber: number
+): Promise<void> {
+  const app: Appointment = {
+    id: `app-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    patientId,
+    patientName,
+    patientPhone,
+    doctorId,
+    doctorName,
+    hospitalId,
+    hospitalName,
+    chamberName: hospitalName,
+    chamberLocation: address,
+    fee,
+    date,
+    time,
+    status: 'waiting',
+    serialNumber,
+    cancelledAt: null,
+    completedAt: null
+  };
+
+  await upsertAppointment(app);
+}
+
+// --- Supabase Prescriptions ---
+
+export async function fetchPrescriptions(patientId?: string, doctorId?: string): Promise<Prescription[]> {
+  try {
+    console.log('[DEBUG] fetchPrescriptions: Fetching from Supabase...', { patientId, doctorId });
+    let query = supabase.from('prescriptions').select(`
+      *,
+      medicines:prescription_medicines(*)
+    `);
+
+    if (patientId) query = query.eq('patient_id', patientId);
+    if (doctorId) query = query.eq('doctor_id', doctorId);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[CRITICAL] fetchPrescriptions: Supabase Query Error:', error.message);
+      throw error;
+    }
+
+    return (data || []).map(row => ({
+      id: row.id,
+      appointmentId: row.appointment_id,
+      doctorId: row.doctor_id,
+      patientId: row.patient_id,
+      hospitalId: row.hospital_id,
+      date: row.date,
+      diagnosis: row.diagnosis,
+      notes: row.notes,
+      medicines: (row.medicines || []).map((m: any) => ({
+        name: m.name,
+        dosage: m.dosage,
+        durationDays: m.duration_days,
+        beforeAfterMeal: m.before_after_meal,
+        startDate: m.start_date
+      })),
+      createdAt: new Date(row.created_at).getTime()
+    }));
+  } catch (err) {
+    console.error('[CRITICAL] fetchPrescriptions: Fetch failed.', err);
+    return [];
+  }
+}
+
+
+export async function savePrescriptionToSupabase(rx: Prescription): Promise<void> {
+  try {
+    console.log('[DEBUG] savePrescriptionToSupabase: Saving prescription and medicines...', rx.id);
+    // 1. Insert Prescription
+    const { error: rxError } = await supabase.from('prescriptions').insert([{
+      id: rx.id,
+      appointment_id: rx.appointmentId,
+      doctor_id: rx.doctorId,
+      patient_id: rx.patientId,
+      hospital_id: rx.hospitalId,
+      date: rx.date,
+      diagnosis: rx.diagnosis,
+      notes: rx.notes,
+      created_at: new Date(rx.createdAt).toISOString()
+    }]);
+
+    if (rxError) throw rxError;
+
+    // 2. Insert Medicines
+    const medicineRows = rx.medicines.map(m => ({
+      prescription_id: rx.id,
+      name: m.name,
+      dosage: m.dosage,
+      duration_days: m.durationDays,
+      before_after_meal: m.beforeAfterMeal,
+      start_date: m.startDate
+    }));
+
+    if (medicineRows.length > 0) {
+      const { error: medError } = await supabase.from('prescription_medicines').insert(medicineRows);
+      if (medError) throw medError;
+    }
+
+    // 3. Update Appointment
+    const { error: appError } = await supabase
+      .from('appointments')
+      .update({ has_prescription: true, prescription_id: rx.id })
+      .eq('id', rx.appointmentId);
+
+    if (appError) throw appError;
+
+  } catch (err: any) {
+    console.error('[CRITICAL] savePrescriptionToSupabase: Save failed.', err);
+    throw err;
+  }
+}
+
+
+// --- Supabase Queue Sessions ---
+
+export interface QueueSession {
+  doctorId: string;
+  hospitalId: string;
+  date: string;
+  isDoctorArrived: boolean;
+  sessionStatus: QueueSessionStatus;
+  meta: DoctorSessionMeta;
+}
+
+export async function fetchQueueSession(doctorId: string, hospitalId: string, date: string): Promise<QueueSession> {
+  try {
+    console.log('[DEBUG] fetchQueueSession: Fetching from Supabase...', { doctorId, hospitalId, date });
+    const { data, error } = await supabase
+      .from('queue_sessions')
+      .select('*')
+      .eq('doctor_id', doctorId)
+      .eq('hospital_id', hospitalId)
+      .eq('session_date', date)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[CRITICAL] fetchQueueSession: Supabase Query Error:', error.message);
+      throw error;
+    }
+
+    if (!data) {
+      return {
+        doctorId,
+        hospitalId,
+        date,
+        isDoctorArrived: false,
+        sessionStatus: 'NOT_STARTED',
+        meta: DEFAULT_SESSION_META
+      };
+    }
+
+    return {
+      doctorId: data.doctor_id,
+      hospitalId: data.hospital_id,
+      date: data.session_date,
+      isDoctorArrived: data.is_doctor_arrived,
+      sessionStatus: data.session_status,
+      meta: {
+        status: data.meta_status,
+        delayMinutes: data.delay_minutes,
+        delayStartedAt: data.delay_started_at,
+        note: data.note
+      }
+    };
+  } catch (err) {
+    console.error('[CRITICAL] fetchQueueSession: Fetch failed.', err);
+    return {
+      doctorId,
+      hospitalId,
+      date,
+      isDoctorArrived: false,
+      sessionStatus: 'NOT_STARTED',
+      meta: DEFAULT_SESSION_META
+    };
+  }
+}
+
+
+export async function upsertQueueSession(session: QueueSession): Promise<void> {
+  try {
+    const row = {
+      doctor_id: session.doctorId,
+      hospital_id: session.hospitalId,
+      session_date: session.date,
+      is_doctor_arrived: session.isDoctorArrived,
+      session_status: session.sessionStatus,
+      meta_status: session.meta.status,
+      delay_minutes: session.meta.delayMinutes,
+      delay_started_at: session.meta.delayStartedAt,
+      note: session.meta.note
+    };
+
+    console.log('[DEBUG] upsertQueueSession: Saving to Supabase...', { doctorId: session.doctorId, date: session.date });
+    const { error } = await supabase.from('queue_sessions').upsert([row]);
+    if (error) {
+      console.error('[CRITICAL] upsertQueueSession: Supabase Upsert Error:', error.message);
+      throw error;
+    }
+  } catch (err: any) {
+    console.error('[CRITICAL] upsertQueueSession: Save failed.', err);
+    throw err;
+  }
+}

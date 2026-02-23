@@ -2,14 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Doctor, Chamber, UserRole, Relationship, Appointment } from '../../types';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { MapPin, Clock, Calendar, ArrowLeft, Star, GraduationCap, AlertCircle, CheckCircle, X, ChevronRight, Briefcase, Award } from 'lucide-react';
-import { getCurrentSession, bookAppointment, getDoctorPracticeSettings } from '../../storage';
-import { StatCard } from '../../components/ui/StatCard';
-import { DoctorCard } from '../../components/ui/DoctorCard';
+import { MapPin, Clock, Calendar, ArrowLeft, Star, GraduationCap, AlertCircle, CheckCircle, X, ChevronRight, Briefcase, Award, Users, Heart, Share2 } from 'lucide-react';
+import { getCurrentSession, bookAppointment } from '../../storage';
 import { ChamberCard } from '../../components/ui/ChamberCard';
 import { validateBooking } from '../../utils/bookingUtils';
 import { getLocalISODate, getWeekdayNumber } from '../../utils/date';
-
 
 interface DoctorProfileProps {
   doctor: Doctor;
@@ -21,54 +18,51 @@ interface DoctorProfileProps {
 }
 
 export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, onBookSuccess, userRole, onLoginRequest, onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'chambers'>('overview');
+  const [activeTab, setActiveTab] = useState<'About' | 'Availability' | 'Experience' | 'Education' | 'Reviews'>('About');
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [confirmedApp, setConfirmedApp] = useState<Appointment | null>(null);
 
-  // SYNC: Load real-time chambers from Practice Settings
-  const practice = getDoctorPracticeSettings(doctor.id);
-  const chambers = practice.chambers || [];
+  const [chambers, setChambers] = useState<any[]>([]);
+  const [isLoadingChambers, setIsLoadingChambers] = useState(true);
+
+  useEffect(() => {
+    const loadChambers = async () => {
+      setIsLoadingChambers(true);
+      try {
+        const { fetchDoctorChambers } = await import('../../storage');
+        const data = await fetchDoctorChambers(doctor.id);
+        setChambers(data);
+      } catch (error) {
+        console.error('Error loading chambers:', error);
+      } finally {
+        setIsLoadingChambers(false);
+      }
+    };
+    loadChambers();
+  }, [doctor.id]);
 
   const [selectedDate, setSelectedDate] = useState(getLocalISODate());
-
   const [availableChambers, setAvailableChambers] = useState<Chamber[]>([]);
   const [selectedChamber, setSelectedChamber] = useState<Chamber | null>(null);
 
-  // Patient Profile Flow
   const session = getCurrentSession();
   const [selectedPatientId, setSelectedPatientId] = useState<string>(session?.id || '');
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newPatientData, setNewPatientData] = useState({ name: '', gender: 'Male' as const, relationship: 'Other' as Relationship });
 
-  // Booking UI State
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
-
-  const getBookingErrorMessage = (reason: string) => {
-    switch (reason) {
-      case "LIMIT_REACHED":
-        return "Booking limit reached for this date. Please try another day.";
-      case "NO_SCHEDULE":
-        return "Doctor is not available at this hospital on selected date.";
-      case "DOCTOR_OFF":
-        return "Doctor is unavailable on selected date.";
-      default:
-        return "Unable to complete booking. Please try again.";
-    }
-  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  // AUTO-REVALIDATION
   useEffect(() => {
     if (selectedDate && isBookingModalOpen) {
       const dayNumeric = getWeekdayNumber(selectedDate);
       const matches = chambers.filter(c => c.scheduleDays?.includes(dayNumeric) || c.schedule.some(s => s.day === dayNumeric));
       setAvailableChambers(matches as any);
 
-      // If currently selected chamber is not in matches, reset it
       if (selectedChamber && !matches.some(m => m.id === selectedChamber.id)) {
         setSelectedChamber(null);
       } else if (matches.length === 1 && !selectedChamber) {
@@ -85,27 +79,19 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
     }
   };
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const dateStr = e.target.value;
-    setSelectedDate(dateStr);
-    // Intersection will be handled by useEffect
-  };
-
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (!selectedChamber || !selectedDate || !session) return;
-
     setIsBooking(true);
     setBookingError(null);
 
-    // Smart Validation Layer
-    const validation = validateBooking({
+    const validation = await validateBooking({
       doctorId: doctor.id,
       chamberId: selectedChamber.id,
       selectedDate
     });
 
     if (!validation.success) {
-      setBookingError(getBookingErrorMessage(validation.reason || 'UNKNOWN'));
+      setBookingError(validation.reason || 'UNKNOWN');
       setIsBooking(false);
       return;
     }
@@ -113,10 +99,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
     const familySuffix = session.id.includes('-') ? session.id.split('-')[1] : session.id;
     const finalPatientId = isAddingNew ? `family-${familySuffix}-${Date.now()}` : session.id;
 
-    const finalPatientName = isAddingNew ? newPatientData.name : session.name;
-    const finalPatientPhone = isAddingNew ? session.phone : session.phone; // Assuming family members share same phone or use main user's
-
-    const newApp = bookAppointment(
+    const newApp = await bookAppointment(
       doctor.id,
       doctor.name,
       selectedChamber.id,
@@ -126,25 +109,26 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
       selectedDate,
       (selectedChamber as any).schedule[0]?.startTime || 'N/A',
       finalPatientId,
-      finalPatientName,
-      finalPatientPhone
+      isAddingNew ? newPatientData.name : session.name,
+      session.phone
     );
 
-    // Artificial delay to show processing state (demo UX)
     setTimeout(() => {
       setConfirmedApp(newApp);
       setIsBooking(false);
     }, 800);
   };
 
-  const handlePatientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    if (val === 'ADD_NEW') {
-      setIsAddingNew(true);
-      setSelectedPatientId('');
-    } else {
-      setIsAddingNew(false);
-      setSelectedPatientId(val);
+  const getBookingErrorMessage = (reason: string) => {
+    switch (reason) {
+      case "LIMIT_REACHED":
+        return "Booking limit reached for this date. Please try another day.";
+      case "NO_SCHEDULE":
+        return "Doctor is not available at this hospital on selected date.";
+      case "DOCTOR_OFF":
+        return "Doctor is unavailable on selected date.";
+      default:
+        return "Unable to complete booking. Please try again.";
     }
   };
 
@@ -153,187 +137,299 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
     if (onNavigate) {
       onNavigate('/patient/appointments');
     } else {
-      // Fallback if onNavigate not provided
       onBookSuccess();
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-32 relative animate-fade-in px-4 md:px-0">
-      <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-medical-600 transition-colors group">
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Search
-      </button>
-
-      <DoctorCard
-        doctor={{
-          name: doctor.name,
-          specialty: doctor.specialty,
-          bmdcNumber: doctor.bmdcNumber,
-          image: doctor.imageUrl,
-          hospitalName: chambers[0]?.hospitalName,
-          experience: doctor.experienceYears,
-          rating: doctor.rating,
-          reviews: doctor.totalPatients
-        }}
-        ctaLabel="Book Appointment"
-        onCtaClick={handleBookClick}
-      />
-
-      <div className="flex gap-4 border-b border-slate-100 px-2 overflow-x-auto scrollbar-hide">
-        <button onClick={() => setActiveTab('overview')} className={`pb-4 px-4 font-black text-xs uppercase tracking-widest transition-all relative ${activeTab === 'overview' ? 'text-medical-600' : 'text-slate-400 hover:text-slate-600'}`}>{activeTab === 'overview' && <div className="absolute bottom-0 left-0 w-full h-1 bg-medical-600 rounded-t-full"></div>} Overview</button>
-        <button onClick={() => setActiveTab('chambers')} className={`pb-4 px-4 font-black text-xs uppercase tracking-widest transition-all relative ${activeTab === 'chambers' ? 'text-medical-600' : 'text-slate-400 hover:text-slate-600'}`}>{activeTab === 'chambers' && <div className="absolute bottom-0 left-0 w-full h-1 bg-medical-600 rounded-t-full"></div>} Chambers</button>
+    <div className="min-h-screen bg-white pb-32 font-sans overflow-x-hidden">
+      {/* HEADER NAVIGATION */}
+      <div className="max-w-4xl mx-auto px-6 pt-6 flex justify-between items-center">
+        <button onClick={onBack} className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-900 bg-white shadow-sm hover:bg-slate-50 transition-all">
+          <ArrowLeft size={20} />
+        </button>
+        <div className="flex gap-3">
+          <button className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-900 bg-white shadow-sm hover:bg-slate-50 transition-all">
+            <Heart size={20} />
+          </button>
+          <button className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-900 bg-white shadow-sm hover:bg-slate-50 transition-all">
+            <Share2 size={20} />
+          </button>
+        </div>
       </div>
 
-      <div className="min-h-[300px]">
-        {activeTab === 'overview' ? (
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-bold mb-3 text-slate-800">About Doctor</h3>
-            <p className="text-slate-600 leading-relaxed text-sm md:text-base">{doctor.about}</p>
-          </GlassCard>
-        ) : (
-          <div className="space-y-4">
-            {chambers.length === 0 ? (
-              <div className="p-20 bg-white border border-dashed border-slate-200 rounded-[32px] text-center shadow-soft">
-                <MapPin size={48} className="text-slate-200 mx-auto mb-4" />
-                <p className="text-slate-400 font-bold">No chambers available for this specialist</p>
+      <div className="max-w-4xl mx-auto px-6 mt-10">
+        <div className="flex flex-col md:flex-row gap-10 items-center md:items-start text-center md:text-left">
+          {/* Doctor Info Column */}
+          <div className="flex-1 space-y-6">
+            <div className="space-y-2">
+              <span className="text-sm font-bold text-slate-400 capitalize">{doctor.specialty}</span>
+              <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                {doctor.name}
+              </h1>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest max-w-md mx-auto md:mx-0 leading-relaxed">
+                {doctor.degrees || "MBBS, MD, FCPS (Cardiology), FACC (USA)"}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <span className="text-4xl font-black text-blue-600">৳ {chambers[0]?.feeNormal || 840}</span>
+              <span className="text-slate-400 font-bold">/session</span>
+            </div>
+
+            {/* Micro Stats Row */}
+            <div className="flex flex-wrap justify-center md:justify-start gap-4">
+              <div className="bg-slate-50 border border-slate-100 p-4 px-6 rounded-[24px] flex flex-col items-center md:items-start gap-1 w-[120px]">
+                <Briefcase size={20} className="text-blue-500 mb-1" />
+                <span className="text-sm font-black text-slate-900 leading-none">{doctor.experienceYears || 12} Years</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Experience</span>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {chambers.map(chamber => (
-                  <ChamberCard
-                    key={chamber.id}
-                    chamber={{
-                      hospitalName: chamber.hospitalName,
-                      location: chamber.address,
-                      schedule: chamber.schedule || [],
-                      fee: chamber.feeNormal,
-                      availableToday: true // Mock logic for now
-                    }}
-                    onSelect={handleBookClick}
-                  />
-                ))}
+              <div className="bg-slate-50 border border-slate-100 p-4 px-6 rounded-[24px] flex flex-col items-center md:items-start gap-1 w-[120px]">
+                <Star size={20} className="text-amber-500 mb-1" />
+                <span className="text-sm font-black text-slate-900 leading-none">{doctor.rating || 4.8}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Rating</span>
               </div>
-            )}
+              <div className="bg-slate-50 border border-slate-100 p-4 px-6 rounded-[24px] flex flex-col items-center md:items-start gap-1 w-[120px]">
+                <Users size={20} className="text-indigo-500 mb-1" />
+                <span className="text-sm font-black text-slate-900 leading-none">{doctor.totalPatients || "2500"}+</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Patients</span>
+              </div>
+            </div>
           </div>
 
-        )}
+          {/* Doctor Large Image Column */}
+          <div className="md:w-1/3 shrink-0 relative">
+            <div className="w-64 h-80 md:w-full md:h-[400px] bg-slate-100 rounded-[48px] overflow-hidden shadow-2xl skew-y-0 md:-skew-y-3 hover:skew-y-0 transition-all duration-700">
+              <img
+                src={doctor.imageUrl || `https://picsum.photos/400/600?random=${doctor.id}`}
+                className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000"
+                alt={doctor.name}
+              />
+            </div>
+            {/* Experience Floating Badge */}
+            <div className="absolute -bottom-6 -left-6 bg-white p-4 px-6 rounded-[24px] shadow-premium border border-slate-100 hidden md:flex items-center gap-3">
+              <div className="bg-blue-600 p-2 rounded-xl text-white">
+                <Award size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-black text-slate-900">Elite Specialist</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Top Tier Verified</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* TAB NAVIGATION */}
+        <div className="mt-20 flex gap-1 border-b border-slate-50 overflow-x-auto no-scrollbar py-2">
+          {['About', 'Availability', 'Experience', 'Education', 'Reviews'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={`px-6 py-3 text-sm font-black transition-all relative whitespace-nowrap ${activeTab === tab ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                }`}
+            >
+              {tab}
+              {activeTab === tab && (
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-full animate-fade-in"></div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* TAB CONTENT Area */}
+        <div className="mt-10 min-h-[400px]">
+          {activeTab === 'About' && (
+            <div className="space-y-12 animate-fade-in-up">
+              <div className="space-y-4">
+                <p className="text-slate-500 font-medium leading-[1.8] text-lg max-w-2xl">
+                  {doctor.about || `${doctor.name} is a board-certified specialist with over ${doctor.experienceYears || 12} years of experience in the field of cardiovascular medicine. He specializes in advanced cardiac imaging and preventive cardiology.`}
+                  <button className="text-blue-600 font-black ml-2">...More</button>
+                </p>
+              </div>
+
+              {/* Key Metrics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { icon: Heart, label: "Session Fee", val: `৳ ${chambers[0]?.feeNormal || 840}` },
+                  { icon: Award, label: "Follow-Up Fee", val: `৳ ${Math.floor((chambers[0]?.feeNormal || 840) * 0.6)}`, sub: "Within 30 days" },
+                  { icon: Clock, label: "Avg. Session", val: "12-15 Minutes" },
+                  { icon: Users, label: "Attended Patients", val: `${doctor.totalPatients || "2.5k"}+ Cases` }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-slate-50/50 border border-slate-100/50 p-6 px-8 rounded-[32px] flex items-center gap-6 group hover:bg-white hover:border-blue-100 transition-all">
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-700 shadow-sm group-hover:text-blue-600 group-hover:scale-110 transition-all duration-500">
+                      <stat.icon size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-black text-slate-900">{stat.val}</span>
+                        {stat.sub && <span className="text-[10px] font-bold text-slate-400">({stat.sub})</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'Availability' && (
+            <div className="space-y-4 animate-fade-in-up">
+              {chambers.length === 0 ? (
+                <div className="py-20 text-center border-2 border-dashed border-slate-100 rounded-[48px]">
+                  <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No Chamber Schedule Set</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {chambers.map(c => (
+                    <ChamberCard
+                      key={c.id}
+                      chamber={{
+                        hospitalName: c.hospitalName,
+                        location: c.address,
+                        schedule: c.schedule,
+                        fee: c.feeNormal,
+                        availableToday: true
+                      }}
+                      onSelect={handleBookClick}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {(activeTab === 'Experience' || activeTab === 'Education' || activeTab === 'Reviews') && (
+            <div className="py-20 text-center animate-fade-in-up">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 mb-4">
+                <GraduationCap size={32} />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 uppercase tracking-widest">Section Empty</h3>
+              <p className="text-slate-400 font-bold mt-2">The doctor hasn't uploaded these details yet.</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* MOBILE CTA */}
-      <div className="md:hidden fixed bottom-6 left-6 right-6 z-[100]">
-        <Button
-          onClick={handleBookClick}
-          fullWidth
-          className="h-16 text-sm font-black uppercase tracking-widest bg-medical-600 text-white rounded-[24px] shadow-premium"
-        >
-          Book Appointment Now
-        </Button>
+      {/* STICKY BOOKING CTA */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-6 pt-12 pointer-events-none md:bg-none bg-gradient-to-t from-white via-white/90 to-transparent">
+        <div className="max-w-4xl mx-auto flex justify-center md:justify-end">
+          <Button
+            onClick={handleBookClick}
+            className="h-16 px-16 rounded-[28px] bg-blue-600 text-white font-black text-lg shadow-2xl shadow-blue-500/50 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all pointer-events-auto flex items-center gap-3 group w-full md:w-auto shadow-blue-200"
+          >
+            <span>Book Appointment</span>
+            <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
+          </Button>
+        </div>
       </div>
 
-      {/* BOOKING MODAL */}
+      {/* BOOKING MODAL (STAYS SAME LOGIC) */}
       {isBookingModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <GlassCard className="w-full max-w-lg bg-white p-0 overflow-hidden relative max-h-[90vh] overflow-y-auto">
+          <GlassCard className="w-full max-w-lg bg-white p-0 overflow-hidden relative max-h-[90vh] overflow-y-auto rounded-[40px]">
             {confirmedApp ? (
               <div className="p-10 text-center animate-fade-in">
-                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle size={40} />
+                <div className="w-24 h-24 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                  <CheckCircle size={48} />
                 </div>
-                <h2 className="text-3xl font-black text-slate-900 mb-2">Booking Confirmed!</h2>
-                <p className="text-slate-500 mb-8 font-medium">Your appointment is scheduled with <br /><span className="text-blue-600 font-bold">{doctor.name}</span></p>
+                <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Booking Confirmed!</h2>
+                <p className="text-slate-500 mb-10 font-medium">Your appointment is scheduled with <br /><span className="text-blue-600 font-bold">{doctor.name}</span></p>
 
-                <div className="bg-slate-50 rounded-[2rem] p-8 mb-8 border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Your Serial Number</p>
-                  <p className="text-6xl font-black text-blue-600">#{confirmedApp.serialNumber ?? "-"}</p>
+                <div className="bg-slate-50 rounded-[2.5rem] p-10 mb-10 border border-slate-100 flex flex-col items-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Your Serial No.</p>
+                  <p className="text-7xl font-black text-slate-900 leading-none">#{confirmedApp.serialNumber ?? "-"}</p>
                 </div>
 
-                <Button fullWidth className="h-14 text-lg shadow-xl" onClick={finishAndGoToAppointments}>View Appointments</Button>
+                <Button fullWidth className="h-14 text-sm font-black uppercase tracking-widest bg-slate-900" onClick={finishAndGoToAppointments}>View My Schedule</Button>
               </div>
             ) : (
               <>
-                <div className="bg-gradient-to-r from-blue-600 to-teal-600 p-6 text-white relative">
-                  <h3 className="text-2xl font-bold">Book Appointment</h3>
-                  <button onClick={() => setIsBookingModalOpen(false)} className="absolute top-4 right-4 bg-white/20 p-1 rounded-full"><X size={20} /></button>
+                <div className="bg-slate-900 p-8 text-white relative flex justify-between items-center">
+                  <div>
+                    <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Clinic Booking</h3>
+                    <h3 className="text-2xl font-black tracking-tight leading-none">Secure Today's Slot</h3>
+                  </div>
+                  <button onClick={() => setIsBookingModalOpen(false)} className="w-10 h-10 bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center rounded-xl"><X size={20} /></button>
                 </div>
 
-                <div className="p-6 space-y-6">
-                  <div>
-                    <label className="block text-sm font-black text-slate-700 mb-2">Appointment Date</label>
-                    <input type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={handleDateChange} className="w-full p-3 border border-slate-300 rounded-xl outline-none" />
+                <div className="p-8 space-y-8">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Choose Date</label>
+                    <input type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-slate-900 outline-none focus:ring-2 ring-blue-500/20 transition-all cursor-pointer" />
                   </div>
 
                   {selectedDate && (
-                    <div className="animate-fade-in-up">
+                    <div className="space-y-4 animate-fade-in-up">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Select Hospital</label>
                       {availableChambers.length === 0 ? (
-                        <div className="bg-red-50 p-4 rounded-xl text-red-700 text-sm flex gap-3"><AlertCircle size={18} />Doctor not available today.</div>
+                        <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100 flex items-center gap-4 text-rose-600">
+                          <AlertCircle size={24} className="shrink-0" />
+                          <p className="text-sm font-black">Specialist not available on this date.</p>
+                        </div>
                       ) : (
                         <div className="space-y-3">
-                          <p className="text-sm font-bold text-slate-700">Choose Chamber:</p>
                           {availableChambers.map((c: any) => (
-                            <div key={c.id} onClick={() => setSelectedChamber(c)} className={`p-4 border rounded-xl cursor-pointer transition-all ${selectedChamber?.id === c.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
-                              <div className="flex justify-between font-bold text-slate-800"><span>{c.hospitalName}</span><span>৳ {c.feeNormal}</span></div>
-                              <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                                <Clock size={12} /> {c.schedule[0]?.startTime} - {c.schedule[0]?.endTime}
+                            <div key={c.id} onClick={() => setSelectedChamber(c)} className={`p-6 rounded-[2rem] cursor-pointer transition-all border-2 flex items-center justify-between ${selectedChamber?.id === c.id ? 'border-blue-600 bg-blue-50/50' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+                              <div>
+                                <h4 className="font-black text-slate-900">{c.hospitalName}</h4>
+                                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">{c.schedule[0]?.startTime} - {c.schedule[0]?.endTime}</p>
                               </div>
+                              <span className="text-lg font-black text-blue-600">৳ {c.feeNormal}</span>
                             </div>
                           ))}
-
                         </div>
                       )}
                     </div>
                   )}
 
                   {selectedChamber && (
-                    <div className="space-y-4 pt-4 border-t border-slate-100">
-                      <div className="bg-slate-50 p-4 rounded-xl">
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Patient Selection</label>
+                    <div className="space-y-8 pt-4 animate-fade-in-up">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Patient Details</label>
                         <select
                           value={isAddingNew ? 'ADD_NEW' : selectedPatientId}
-                          onChange={handlePatientSelect}
-                          className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 outline-none"
+                          onChange={e => {
+                            if (e.target.value === 'ADD_NEW') setIsAddingNew(true);
+                            else { setIsAddingNew(false); setSelectedPatientId(e.target.value); }
+                          }}
+                          className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-slate-900 outline-none"
                         >
                           {session && <option value={session.id}>{session.name} (Self)</option>}
-                          <option value="ADD_NEW">+ Add New Family Member</option>
+                          <option value="ADD_NEW">+ Family Member</option>
                         </select>
                       </div>
 
                       {isAddingNew && (
-                        <div className="space-y-4 animate-fade-in bg-blue-50 p-4 rounded-xl border border-blue-100">
-                          <input placeholder="New Patient Name" value={newPatientData.name} onChange={e => setNewPatientData({ ...newPatientData, name: e.target.value })} className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none" />
-                          <div className="flex gap-4">
-                            <select value={newPatientData.gender} onChange={e => setNewPatientData({ ...newPatientData, gender: e.target.value as any })} className="flex-1 p-3 bg-white border border-slate-200 rounded-xl">
+                        <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 animate-fade-in">
+                          <input placeholder="Full Name" value={newPatientData.name} onChange={e => setNewPatientData({ ...newPatientData, name: e.target.value })} className="w-full h-12 bg-white border border-slate-200 rounded-xl px-4 font-bold outline-none" />
+                          <div className="flex gap-2">
+                            <select className="flex-1 h-12 bg-white border border-slate-200 rounded-xl px-4 font-bold outline-none" onChange={e => setNewPatientData({ ...newPatientData, gender: e.target.value as any })}>
                               <option>Male</option><option>Female</option>
                             </select>
-                            <select value={newPatientData.relationship} onChange={e => setNewPatientData({ ...newPatientData, relationship: e.target.value as any })} className="flex-1 p-3 bg-white border border-slate-200 rounded-xl">
-                              <option>Daughter</option><option>Son</option><option>Spouse</option><option>Parent</option><option>Other</option>
+                            <select className="flex-1 h-12 bg-white border border-slate-200 rounded-xl px-4 font-bold outline-none" onChange={e => setNewPatientData({ ...newPatientData, relationship: e.target.value as any })}>
+                              <option>Child</option><option>Spouse</option><option>Parent</option>
                             </select>
                           </div>
                         </div>
                       )}
 
-                      <div className="bg-blue-600/5 p-4 rounded-xl text-sm space-y-2">
-                        <div className="flex justify-between"><span>Fee</span><span className="font-bold">৳ {(selectedChamber as any).feeNormal}</span></div>
-                        <div className="flex justify-between text-blue-600"><span>Booking Charge</span><span className="font-bold">- ৳ 200</span></div>
-                        <div className="border-t border-slate-200 pt-2 flex justify-between font-black"><span>Due at Chamber</span><span className="text-lg">৳ {(selectedChamber as any).feeNormal - 200}</span></div>
+                      <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 space-y-3">
+                        <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400 uppercase">Consultation Fee</span><span className="font-black text-slate-900">৳ {(selectedChamber as any).feeNormal}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400 uppercase">Discount Code</span><span className="text-emerald-600 font-bold">- ৳ 200</span></div>
+                        <div className="border-t border-slate-200 pt-3 flex justify-between items-center"><span className="text-sm font-black text-slate-900">Amount to Pay</span><span className="text-2xl font-black text-blue-600">৳ {(selectedChamber as any).feeNormal - 200}</span></div>
                       </div>
 
-
                       {bookingError && (
-                        <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 text-red-600 animate-shake">
-                          <AlertCircle size={20} className="shrink-0" />
-                          <p className="text-sm font-bold">{bookingError}</p>
+                        <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 text-rose-600 flex items-center gap-3 animate-shake">
+                          <AlertCircle size={20} />
+                          <p className="text-sm font-bold uppercase tracking-widest">{getBookingErrorMessage(bookingError)}</p>
                         </div>
                       )}
 
-                      <div className="flex gap-3 pt-2">
-                        <Button variant="outline" fullWidth onClick={() => { setIsBookingModalOpen(false); setBookingError(null); }} disabled={isBooking}>Cancel</Button>
-                        <Button fullWidth onClick={handleConfirmBooking} disabled={isBooking}>
-                          {isBooking ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                              <span>Processing...</span>
-                            </div>
-                          ) : "Confirm Booking"}
+                      <div className="flex gap-4">
+                        <Button fullWidth variant="outline" className="h-14 rounded-2xl font-black uppercase text-xs tracking-widest" onClick={() => setIsBookingModalOpen(false)}>Cancel</Button>
+                        <Button fullWidth className="h-14 rounded-2xl font-black uppercase text-xs tracking-widest bg-blue-600 text-white" onClick={handleConfirmBooking} disabled={isBooking}>
+                          {isBooking ? "Finalizing..." : "Confirm Securely"}
                         </Button>
                       </div>
                     </div>

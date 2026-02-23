@@ -3,7 +3,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Plus, Hospital, MapPin, CreditCard, Save, X, Edit2, Trash2, Clock, ChevronRight } from 'lucide-react';
 import { ChamberCard } from '../../components/ui/ChamberCard';
-import { getDoctorPracticeSettings, saveDoctorPracticeSettings, PracticeChamber, DoctorPracticeSettings as SettingsType, WeeklyDaySchedule, DoctorStorage } from '../../storage';
+import { fetchDoctorChambers, saveChamberWithSchedules, deleteChamberFromSupabase, PracticeChamber, DoctorPracticeSettings as SettingsType, WeeklyDaySchedule, DoctorStorage } from '../../storage';
 
 const DAY_LABELS: Record<number, string> = {
     0: 'Sunday',
@@ -21,16 +21,27 @@ export const DoctorPracticeSettings: React.FC = () => {
     const session = DoctorStorage.get();
     const doctorId = session?.id || '';
 
-    const [settings, setSettings] = useState<SettingsType>(() =>
-        doctorId ? getDoctorPracticeSettings(doctorId) : { dailyBookingLimit: 40, reportFreeDays: 7, chambers: [] }
-    );
+    const [settings, setSettings] = useState<SettingsType>({ dailyBookingLimit: 40, reportFreeDays: 7, chambers: [] });
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
-    // Refresh settings when doctorId changes (though unlikely to change while mounted)
-    useEffect(() => {
-        if (doctorId) {
-            setSettings(getDoctorPracticeSettings(doctorId));
+    const loadSettings = async () => {
+        if (!doctorId) return;
+        setIsLoading(true);
+        try {
+            const chambers = await fetchDoctorChambers(doctorId);
+            setSettings(prev => ({ ...prev, chambers }));
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+        } finally {
+            setIsLoading(false);
         }
+    };
+
+    useEffect(() => {
+        loadSettings();
     }, [doctorId]);
+
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingChamberId, setEditingChamberId] = useState<string | null>(null);
 
@@ -48,57 +59,38 @@ export const DoctorPracticeSettings: React.FC = () => {
         }), {})
     );
 
-    const handleSaveChamber = (e: React.FormEvent) => {
+    const handleSaveChamber = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSaving(true);
 
-        const schedule: WeeklyDaySchedule[] = DAYS
-            .filter(day => scheduleState[day].active)
-            .map(day => ({
-                day,
-                startTime: scheduleState[day].startTime,
-                endTime: scheduleState[day].endTime,
-                dailyLimit: scheduleState[day].dailyLimit,
-            }));
+        try {
+            const schedule: WeeklyDaySchedule[] = DAYS
+                .filter(day => scheduleState[day].active)
+                .map(day => ({
+                    day,
+                    startTime: scheduleState[day].startTime,
+                    endTime: scheduleState[day].endTime,
+                    dailyLimit: scheduleState[day].dailyLimit,
+                }));
 
-        const scheduleDays = schedule.map(s => s.day);
-
-        let updatedChambers: PracticeChamber[];
-
-        if (editingChamberId) {
-            updatedChambers = settings.chambers.map(c =>
-                c.id === editingChamberId
-                    ? {
-                        ...c,
-                        hospitalName: formData.hospitalName,
-                        address: formData.address,
-                        feeNormal: formData.feeNormal,
-                        feeReport: formData.feeReport,
-                        schedule,
-                        scheduleDays
-                    }
-                    : c
-            );
-        } else {
-            const newChamber: PracticeChamber = {
-                id: Date.now().toString(),
+            const chamberToSave: PracticeChamber = {
+                id: editingChamberId || '',
                 hospitalName: formData.hospitalName,
                 address: formData.address,
                 schedule,
-                scheduleDays,
                 feeNormal: formData.feeNormal,
                 feeReport: formData.feeReport,
             };
-            updatedChambers = [...settings.chambers, newChamber];
+
+            await saveChamberWithSchedules(doctorId, chamberToSave);
+            await loadSettings();
+            resetForm();
+        } catch (error) {
+            console.error('Failed to save chamber:', error);
+            alert('Failed to save chamber. Please try again.');
+        } finally {
+            setIsSaving(false);
         }
-
-        const updatedSettings = {
-            ...settings,
-            chambers: updatedChambers,
-        };
-
-        saveDoctorPracticeSettings(doctorId, updatedSettings);
-        setSettings(updatedSettings);
-        resetForm();
     };
 
     const handleEditChamber = (chamber: PracticeChamber) => {
@@ -130,14 +122,18 @@ export const DoctorPracticeSettings: React.FC = () => {
         setShowAddForm(true);
     };
 
-    const handleDeleteChamber = (id: string) => {
+    const handleDeleteChamber = async (id: string) => {
         if (window.confirm("Delete this chamber?")) {
-            const updatedSettings = {
-                ...settings,
-                chambers: settings.chambers.filter(c => c.id !== id),
-            };
-            saveDoctorPracticeSettings(doctorId, updatedSettings);
-            setSettings(updatedSettings);
+            setIsLoading(true);
+            try {
+                await deleteChamberFromSupabase(id);
+                await loadSettings();
+            } catch (error) {
+                console.error('Failed to delete chamber:', error);
+                alert('Failed to delete chamber.');
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -168,20 +164,12 @@ export const DoctorPracticeSettings: React.FC = () => {
     };
 
     return (
-        <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 animate-fade-in">
+        <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                     <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Practice Settings</h1>
                     <p className="text-slate-500 font-bold">Manage your consultation chambers, fees, and weekly schedule.</p>
                 </div>
-                {!showAddForm && (
-                    <Button
-                        onClick={() => setShowAddForm(true)}
-                        className="bg-medical-600 hover:bg-medical-500 text-white h-14 px-8 rounded-2xl text-sm font-black flex items-center gap-2 shadow-xl shadow-medical-100"
-                    >
-                        <Plus size={20} /> Add New Chamber
-                    </Button>
-                )}
             </div>
 
             {/* CHAMBERS LIST */}

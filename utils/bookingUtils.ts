@@ -1,4 +1,4 @@
-import { getDoctorClosureSettings, getDoctorPracticeSettings, getAppointments } from '../storage';
+import { getDoctorClosureSettings, fetchDoctorChambers, fetchAppointments } from '../storage';
 import { getWeekdayNumber } from './date';
 
 export type ValidationResult = {
@@ -16,11 +16,11 @@ interface ValidateBookingParams {
  * Validates if a booking can be made based on doctor closure, 
  * chamber schedule, and daily limits.
  */
-export const validateBooking = ({
+export const validateBooking = async ({
     doctorId,
     chamberId,
     selectedDate
-}: ValidateBookingParams): ValidationResult => {
+}: ValidateBookingParams): Promise<ValidationResult> => {
     // 1. Check Doctor Closure
     const closure = getDoctorClosureSettings(doctorId);
     if (closure.isClosed) {
@@ -28,8 +28,8 @@ export const validateBooking = ({
     }
 
     // 2. Check Hospital Schedule
-    const practice = getDoctorPracticeSettings(doctorId);
-    const chamber = practice.chambers.find(c => c.id === chamberId);
+    const chambers = await fetchDoctorChambers(doctorId);
+    const chamber = chambers.find(c => c.id === chamberId);
 
     if (!chamber) {
         return { success: false, reason: 'NO_SCHEDULE' };
@@ -43,15 +43,15 @@ export const validateBooking = ({
     }
 
     // 3. Check Daily Booking Limit
-    const allAppointments = getAppointments();
-    const existingBookings = allAppointments.filter(app =>
-        app.doctorId === doctorId &&
-        app.hospitalId === chamberId &&
-        app.date === selectedDate &&
-        app.status !== 'cancelled'
-    );
+    const existingBookings = await fetchAppointments({
+        doctorId,
+        hospitalId: chamberId,
+        date: selectedDate
+    });
 
-    if (existingBookings.length >= daySchedule.dailyLimit) {
+    const activeBookings = existingBookings.filter(app => app.status !== 'cancelled');
+
+    if (activeBookings.length >= daySchedule.dailyLimit) {
         return { success: false, reason: 'LIMIT_REACHED' };
     }
 

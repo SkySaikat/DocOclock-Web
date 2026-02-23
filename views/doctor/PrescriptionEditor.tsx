@@ -3,8 +3,9 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { MOCK_MEDICINES, MOCK_DOCTORS, COMMON_DOSAGES, COMMON_INSTRUCTIONS } from '../../constants';
 import { Trash2, Printer, Save, Share2, Search, Building2, Phone, Mail, X, Star, History, CalendarDays, Calendar, Eye, Edit3, Check, ChevronDown, ClipboardCheck, User, Send } from 'lucide-react';
-import { DoctorStorage, savePrescriptionWithAlerts } from '../../storage';
+import { DoctorStorage, savePrescriptionToSupabase, PracticeChamber } from '../../storage';
 import { Medicine, PrescriptionMedicine, Prescription } from '../../types';
+import { getActiveChamber } from '../../utils/chamber';
 
 interface PrescriptionEditorProps {
   initialPatient?: { id: string; name: string; age?: number; gender: string; phone: string; appointmentId: string; hospitalId: string } | null;
@@ -32,6 +33,35 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
   const [advice, setAdvice] = useState('Avoid fatty foods. Walk for 30 mins daily.');
   const [followUpDate, setFollowUpDate] = useState<string>(''); // YYYY-MM-DD
 
+  // Chamber/Template State
+  const [chambers, setChambers] = useState<PracticeChamber[]>([]);
+  const [selectedChamberId, setSelectedChamberId] = useState<string | null>(initialPatient?.hospitalId || null);
+
+  const [isLoadingChambers, setIsLoadingChambers] = useState(true);
+
+  useEffect(() => {
+    const loadChambersData = async () => {
+      if (!doctorId) return;
+      setIsLoadingChambers(true);
+      try {
+        const { fetchDoctorChambers } = await import('../../storage');
+        const data = await fetchDoctorChambers(doctorId);
+        setChambers(data);
+
+        // Automation: Priority 1: Appointment Hospital | Priority 2: Currently Active Chamber | Priority 3: First available
+        if (!selectedChamberId) {
+          const autoSelectedId = initialPatient?.hospitalId || getActiveChamber(data);
+          setSelectedChamberId(autoSelectedId);
+        }
+      } catch (error) {
+        console.error('Error loading chambers for editor:', error);
+      } finally {
+        setIsLoadingChambers(false);
+      }
+    };
+    loadChambersData();
+  }, [doctorId, initialPatient?.hospitalId]);
+
   useEffect(() => {
     if (initialPatient) {
       setPatientName(initialPatient.name);
@@ -50,11 +80,11 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
   const [recentMedIds, setRecentMedIds] = useState<string[]>([]);
 
   // Derived State for Current Template
-  const selectedChamber = doctor?.chambers?.[0]; // Defaulting to first for template
-  const currentTemplate = selectedChamber?.template || {
-    hospitalName: 'DocOclock General',
-    address: 'Dhaka, Bangladesh',
-    phone: '+8801XXXXXXX',
+  const activeChamber = chambers.find(c => c.id === selectedChamberId);
+  const currentTemplate = {
+    hospitalName: activeChamber?.hospitalName || 'DocOclock General',
+    address: activeChamber?.address || 'Dhaka, Bangladesh',
+    phone: doctor?.phone || '+8801XXXXXXX',
     themeColor: '#3b82f6',
     logoUrl: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png',
     watermarkOpacity: 0.1
@@ -125,7 +155,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
   };
 
   // FINISH & SEND Logic (Refactored for Structured System)
-  const handleFinishPrescription = () => {
+  const handleFinishPrescription = async () => {
     if (!patientName) { alert('Patient name is required'); return; }
     if (!initialPatient?.appointmentId) { alert('No active appointment found. Please start from the queue.'); return; }
 
@@ -137,7 +167,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       appointmentId: initialPatient.appointmentId,
       doctorId: doctorId || '',
       patientId: initialPatient.id,
-      hospitalId: initialPatient.hospitalId,
+      hospitalId: selectedChamberId || initialPatient.hospitalId,
       date: new Date().toISOString().split('T')[0],
       diagnosis: Array.isArray(diagnosis) ? diagnosis.join(', ') : diagnosis,
       notes: advice,
@@ -164,12 +194,17 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       specialty: doctor?.specialty
     };
 
-    // 3. Structured Persistence (Step 12)
-    savePrescriptionWithAlerts(rxRecord);
+    try {
+      // 3. Structured Persistence (Supabase)
+      await savePrescriptionToSupabase(rxRecord);
 
-    if (onSave) {
-      onSave(rxPackage);
-      alert('Prescription saved and medicine alerts generated for ' + patientName);
+      if (onSave) {
+        onSave(rxPackage);
+        alert('Prescription saved and medicine alerts generated for ' + patientName);
+      }
+    } catch (error) {
+      console.error('Error saving prescription to Supabase:', error);
+      alert('Failed to save prescription to cloud. Please try again.');
     }
   };
 
@@ -291,19 +326,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
             />
           </GlassCard>
 
-          <GlassCard className="p-4 relative z-20 overflow-visible min-h-[450px]">
-            <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><CalendarDays size={16} className="text-blue-500" /> Next Follow Up</h3>
-            <div className="space-y-3 mb-6">
-              <input type="date" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 h-12 outline-none focus:ring-2 focus:ring-blue-500" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
-              <div className="flex gap-2">
-                {[7, 14, 30].map(days => (
-                  <button type="button" key={days} onClick={() => handleQuickDate(days)} className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold border transition-all ${followUpDate ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                    +{days === 30 ? '1 Month' : `${days} Days`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <GlassCard className="p-4 relative z-20 overflow-visible">
             <h3 className="text-sm font-bold text-slate-500 uppercase mb-3">Add Medicine</h3>
             {tempMed ? (
               <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100 animate-fade-in">
@@ -328,7 +351,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
                 </div>
               </div>
             ) : (
-              <div className="relative">
+              <div className="relative mb-6">
                 <Search className="absolute left-3 top-3.5 text-slate-400" size={20} />
                 <input
                   className="w-full pl-10 bg-white border border-slate-200 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-blue-500"
@@ -352,6 +375,18 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
                 )}
               </div>
             )}
+
+            <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><CalendarDays size={16} className="text-blue-500" /> Next Follow Up</h3>
+            <div className="space-y-3">
+              <input type="date" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 h-12 outline-none focus:ring-2 focus:ring-blue-500" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
+              <div className="flex gap-2">
+                {[7, 14, 30].map(days => (
+                  <button type="button" key={days} onClick={() => handleQuickDate(days)} className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold border transition-all ${followUpDate ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                    +{days === 30 ? '1 Month' : `${days} Days`}
+                  </button>
+                ))}
+              </div>
+            </div>
           </GlassCard>
 
           <GlassCard className="p-4">

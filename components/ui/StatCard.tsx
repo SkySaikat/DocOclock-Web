@@ -32,21 +32,21 @@ export const StatCard: React.FC<StatCardProps> = ({
     return (
         <div
             onClick={onClick}
-            className={`bg-white/90 backdrop-blur-xl p-5 rounded-3xl shadow-soft border border-slate-100/50 flex items-center gap-5 transition-all duration-300 group ${onClick ? 'cursor-pointer hover:shadow-premium hover:-translate-y-1.5 active:scale-95' : ''}`}
+            className={`bg-white/90 backdrop-blur-xl p-3.5 md:p-6 rounded-2xl md:rounded-3xl shadow-soft border border-slate-100/50 flex items-center gap-3 md:gap-5 transition-all duration-300 group ${onClick ? 'cursor-pointer hover:shadow-premium hover:-translate-y-1.5 active:scale-95' : ''}`}
         >
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br flex items-center justify-center shrink-0 border shadow-lg group-hover:scale-110 transition-transform ${colorMap[color]}`}>
-                <Icon size={24} />
+            <div className={`w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br flex items-center justify-center shrink-0 border shadow-md group-hover:scale-110 transition-transform ${colorMap[color]}`}>
+                <Icon size={18} className="md:w-7 md:h-7" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] leading-none mb-2 truncate font-manrope">
+                <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest md:tracking-[0.2em] leading-none mb-1 md:mb-2 truncate">
                     {label}
                 </p>
-                <div className="flex items-baseline gap-2">
-                    <h4 className="text-2xl font-extrabold text-slate-900 tracking-tighter leading-none font-manrope">
+                <div className="flex items-baseline gap-1 md:gap-2">
+                    <h4 className="text-lg md:text-3xl font-black text-slate-900 tracking-tighter leading-none">
                         {loading ? <div className="w-12 h-6 bg-slate-100 animate-pulse rounded-md" /> : value}
                     </h4>
                     {subValue && (
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                        <span className="text-[9px] md:text-xs font-black text-slate-400 uppercase tracking-widest leading-none">
                             {subValue}
                         </span>
                     )}

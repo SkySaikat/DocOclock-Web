@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { MapPin, Star, GraduationCap } from 'lucide-react';
-import { Doctor } from '../../types';
-import { getDoctors } from '../../storage';
+import { Doctor, UserRole } from '../../types';
+import { fetchDoctors } from '../../storage';
 
 interface DoctorSearchProps {
   onSelectDoctor: (doctor: Doctor) => void;
@@ -12,13 +12,27 @@ interface DoctorSearchProps {
 export const DoctorSearch: React.FC<DoctorSearchProps> = ({ onSelectDoctor }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [specialtyFilter, setSpecialtyFilter] = useState('All');
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch ALL doctors from storage
-  const doctors = useMemo(() => getDoctors(), []);
+  useEffect(() => {
+    const loadDoctors = async () => {
+      setIsLoading(true);
+      try {
+        const mappedDoctors = await fetchDoctors();
+        setDoctors(mappedDoctors);
+      } catch (err) {
+        console.error('Error fetching doctors:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadDoctors();
+  }, []);
 
   const filteredDoctors = doctors.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          doc.specialty.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.specialty.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSpecialty = specialtyFilter === 'All' || doc.specialty === specialtyFilter;
     return matchesSearch && matchesSpecialty;
   });
@@ -36,7 +50,7 @@ export const DoctorSearch: React.FC<DoctorSearchProps> = ({ onSelectDoctor }) =>
 
       {/* Search Bar & Filters */}
       <GlassCard className="p-4 flex flex-col md:flex-row gap-4">
-        <input 
+        <input
           type="text"
           placeholder="Search doctor name or specialty..."
           className="flex-1 bg-white/50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -48,11 +62,10 @@ export const DoctorSearch: React.FC<DoctorSearchProps> = ({ onSelectDoctor }) =>
             <button
               key={spec}
               onClick={() => setSpecialtyFilter(spec)}
-              className={`px-4 py-2 rounded-xl whitespace-nowrap transition-colors ${
-                specialtyFilter === spec 
-                ? 'bg-blue-600 text-white shadow-md' 
+              className={`px-4 py-2 rounded-xl whitespace-nowrap transition-colors ${specialtyFilter === spec
+                ? 'bg-blue-600 text-white shadow-md'
                 : 'bg-white/50 text-slate-600 hover:bg-blue-50'
-              }`}
+                }`}
             >
               {spec}
             </button>
@@ -62,12 +75,17 @@ export const DoctorSearch: React.FC<DoctorSearchProps> = ({ onSelectDoctor }) =>
 
       {/* Results */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDoctors.map(doctor => (
+        {isLoading ? (
+          <div className="col-span-full py-24 text-center">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-500 font-bold">Searching Cloud Registry...</p>
+          </div>
+        ) : filteredDoctors.map(doctor => (
           <GlassCard key={doctor.id} className="flex flex-col h-full hover:shadow-xl transition-all duration-300">
             <div className="flex gap-4 mb-4">
-              <img 
-                src={doctor.imageUrl} 
-                alt={doctor.name} 
+              <img
+                src={doctor.imageUrl}
+                alt={doctor.name}
                 className="w-20 h-20 rounded-2xl object-cover bg-slate-200"
               />
               <div>
@@ -80,7 +98,7 @@ export const DoctorSearch: React.FC<DoctorSearchProps> = ({ onSelectDoctor }) =>
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-2 mb-6 flex-1">
               <div className="flex items-start gap-2 text-sm text-slate-600">
                 <GraduationCap size={16} className="mt-0.5 shrink-0" />
@@ -102,7 +120,7 @@ export const DoctorSearch: React.FC<DoctorSearchProps> = ({ onSelectDoctor }) =>
           </GlassCard>
         ))}
 
-        {filteredDoctors.length === 0 && (
+        {!isLoading && filteredDoctors.length === 0 && (
           <div className="col-span-full py-12 text-center text-slate-500">
             No doctors found matching your criteria.
           </div>

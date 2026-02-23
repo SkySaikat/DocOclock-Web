@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserRole } from '../types';
-import { LogOut, Menu, X, Users, Home, FileText, Calendar, Activity, Gift, MoreHorizontal, User, ChevronDown, Stethoscope, BriefcaseMedical, BarChart2, ClipboardList, LayoutDashboard, Pill, UserCircle } from 'lucide-react';
+import { LogOut, Menu, X, Users, Home, FileText, Calendar, Activity, Gift, MoreHorizontal, User, ChevronDown, Stethoscope, BriefcaseMedical, BarChart2, ClipboardList, LayoutDashboard, Pill, UserCircle, PlusCircle } from 'lucide-react';
 import { Button } from './ui/Button';
 
 interface LayoutProps {
@@ -9,6 +9,7 @@ interface LayoutProps {
   onLogout?: () => void;
   onNavigate: (path: string) => void;
   onLoginClick?: (role: UserRole) => void;
+  hideMobileBottomNav?: boolean;
 }
 
 const Logo = () => (
@@ -33,7 +34,7 @@ const Logo = () => (
   </svg>
 );
 
-export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, onNavigate, onLoginClick }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, onNavigate, onLoginClick, hideMobileBottomNav }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoginDropdownOpen, setIsLoginDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -139,10 +140,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             </button>
           )}
           {(isPatient || isDoctor) && (
-            <button className="md:hidden w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500" onClick={() => onNavigate(isPatient ? '/patient/medicine-tracker' : '/doctor/analytics')}>
-              {isPatient ? <Pill size={20} /> : <BarChart2 size={20} />}
+            <button className="md:hidden w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500" onClick={() => onNavigate(isPatient ? '/patient/more' : '/doctor/analytics')}>
+              {isPatient ? <UserCircle size={20} /> : <BarChart2 size={20} />}
             </button>
           )}
+
         </div>
       </nav>
 
@@ -160,12 +162,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
       )}
 
       {/* MAIN CONTENT AREA */}
-      <main className="pt-24 pb-32 max-w-7xl mx-auto min-h-screen">
-        {children}
+      <main className={`pt-24 ${hideMobileBottomNav ? 'pb-0' : 'pb-32'} max-w-7xl mx-auto min-h-screen`}>
+        <div className="w-full">
+          {children}
+        </div>
       </main>
 
       {/* DOCTOR MOBILE BOTTOM NAV - FLOATING DOCK */}
-      {isDoctor && (
+      {isDoctor && !hideMobileBottomNav && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[420px] z-50">
           <div className="bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-2xl px-2 flex justify-around items-center h-16 rounded-[32px] ring-1 ring-white/5">
             <button onClick={() => onNavigate('/doctor/dashboard')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
@@ -177,8 +181,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             <button onClick={() => onNavigate('/doctor/prescription')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
               <FileText size={20} /> <span className="scale-90">Rx</span>
             </button>
-            <button onClick={() => onNavigate('/doctor/analytics')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
-              <BarChart2 size={20} /> <span className="scale-90">Stats</span>
+            <button onClick={() => onNavigate('/doctor/manual-booking')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-blue-400 hover:text-blue-300 transition-all">
+              <PlusCircle size={22} className="shadow-lg shadow-blue-500/20" /> <span className="scale-90">Enroll</span>
             </button>
             <button onClick={onLogout} className="flex flex-col items-center gap-1 font-bold text-[10px] text-red-400 hover:text-red-300 transition-all">
               <LogOut size={20} /> <span className="scale-90">Exit</span>
@@ -188,7 +192,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
       )}
 
       {/* PATIENT MOBILE BOTTOM NAV - FLOATING DOCK */}
-      {isPatient && (
+      {isPatient && !hideMobileBottomNav && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[420px] z-50">
           <div className="bg-white/80 backdrop-blur-2xl border border-slate-200/50 shadow-premium px-2 flex justify-around items-center h-16 rounded-[32px] ring-1 ring-slate-900/5">
             <button onClick={() => onNavigate('/patient/home')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-medical-600 transition-all">
@@ -200,9 +204,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             <button onClick={() => onNavigate('/patient/medicine-tracker')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-medical-600 transition-all">
               <Pill size={20} /> <span className="scale-90">Meds</span>
             </button>
-            <button onClick={() => onNavigate('/patient/more')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-medical-600 transition-all">
-              <UserCircle size={20} /> <span className="scale-90">Profile</span>
+            <button onClick={() => onNavigate('/patient/prescriptions')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-medical-600 transition-all">
+              <FileText size={20} /> <span className="scale-90">Rx</span>
             </button>
+
           </div>
         </div>
       )}

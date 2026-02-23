@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { BarChart2, TrendingUp, Users, CreditCard, Clock, MapPin, X, UserPlus, UserCheck } from 'lucide-react';
 
-import { DoctorStorage, getDoctorAppointments } from '../../storage';
+import { DoctorStorage, fetchAppointments, fetchDoctorChambers } from '../../storage';
 import { Appointment, AppointmentStatus } from '../../types';
 
 import { getLocalISODate } from '../../utils/date';
@@ -19,22 +19,29 @@ export const DoctorAnalytics: React.FC = () => {
    const [hospitals, setHospitals] = useState<any[]>([]);
    const [selectedHospitalId, setSelectedHospitalId] = useState<string>('all');
 
-   // 1. Strict Isolation Loading
+   const [isLoading, setIsLoading] = useState(true);
+
+   // 1. Fetch Data
    useEffect(() => {
-      if (currentDoctorId) {
-         const myAppointments = getDoctorAppointments(currentDoctorId);
-         setAppointments(myAppointments);
+      const loadData = async () => {
+         if (!currentDoctorId) return;
+         setIsLoading(true);
 
-         // Load hospitals exactly as requested
-         const practiceKey = `doctor_practice_settings_${currentDoctorId}`;
-         const practiceSettings = JSON.parse(localStorage.getItem(practiceKey) || '{}');
+         try {
+            // Fetch all appointments for this doctor
+            const myAppointments = await fetchAppointments({ doctorId: currentDoctorId });
+            setAppointments(myAppointments);
 
-         if (practiceSettings?.chambers) {
-            setHospitals(practiceSettings.chambers);
-         } else {
-            setHospitals([]);
+            // Load chambers/hospitals
+            const chambers = await fetchDoctorChambers(currentDoctorId);
+            setHospitals(chambers || []);
+         } catch (error) {
+            console.error('Error loading analytics data:', error);
+         } finally {
+            setIsLoading(false);
          }
-      }
+      };
+      loadData();
    }, [currentDoctorId]);
 
    // 2. Real Analytics Computation

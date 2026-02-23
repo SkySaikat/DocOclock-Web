@@ -67,11 +67,11 @@ export const RecommendedDoctorsSection: React.FC<RecommendedDoctorsSectionProps>
                                         name: doc.name,
                                         specialty: doc.specialty,
                                         bmdcNumber: doc.bmdcNumber,
-                                        experience: 12,
-                                        rating: doc.rating,
-                                        reviews: doc.totalPatients,
+                                        experience: doc.experienceYears || 12,
+                                        rating: doc.rating || 4.8,
+                                        totalPatients: doc.totalPatients || 2500,
                                         image: doc.imageUrl,
-                                        hospitalName: doc.chambers[0]?.name
+                                        hospitalName: (doc.chambers || [])[0]?.hospitalName
                                     }}
                                     onCtaClick={() => onSelectDoctor?.(doc)}
                                 />

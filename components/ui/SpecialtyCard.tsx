@@ -3,6 +3,7 @@ import { LucideIcon } from 'lucide-react';
 
 interface SpecialtyCardProps {
     name: string;
+    subtitle?: string;
     icon: LucideIcon;
     color: string;
     bg: string;
@@ -12,24 +13,34 @@ interface SpecialtyCardProps {
 
 export const SpecialtyCard: React.FC<SpecialtyCardProps> = ({
     name,
+    subtitle,
     icon: Icon,
     color,
     bg,
     onClick,
-    isSelected
+    isSelected: active
 }) => {
     return (
         <div
             onClick={onClick}
-            className={`flex-shrink-0 w-[260px] md:w-[240px] bg-white rounded-[20px] shadow-[0_12px_30px_rgba(0,0,0,0.05)] hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all p-6 flex flex-col items-center text-center cursor-pointer border-2 ${isSelected ? 'border-blue-600 shadow-md scale-105' : 'border-transparent'
-                }`}
+            className={`flex flex-col items-center text-center py-5 px-2 md:py-8 md:px-4 rounded-[16px] md:rounded-[24px] cursor-pointer transition-all duration-500 group border relative overflow-hidden h-full min-h-[115px] md:min-h-[150px] justify-center ${active
+                ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200'
+                : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-50/50 hover:-translate-y-1'}`}
         >
-            <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 ${bg}/60 ${color} mb-2 shadow-inner ring-1 ring-white/10`}>
-                <Icon size={28} />
+            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center mb-2 transition-all duration-500 ${active ? 'bg-white/20' : 'bg-slate-50 group-hover:bg-blue-50 shadow-inner'}`}>
+                <Icon className={`w-5 h-5 md:w-6 md:h-6 transition-colors duration-500 ${active ? 'text-white' : 'text-blue-500'}`} />
             </div>
-            <h3 className="mt-2 text-[16px] font-bold text-slate-800 line-clamp-1">
-                {name}
-            </h3>
+            <div className="space-y-0.5">
+                <h3 className={`text-[9px] md:text-[13px] font-black leading-tight transition-colors duration-500 ${active ? 'text-white' : 'text-slate-900 group-hover:text-blue-600'}`}>
+                    {name}
+                </h3>
+                {subtitle && (
+                    <p className={`text-[7px] md:text-[10px] font-bold leading-tight transition-colors duration-500 ${active ? 'text-white/80' : 'text-slate-400'} line-clamp-1`}>
+                        {subtitle}
+                    </p>
+                )}
+            </div>
         </div>
+
     );
 };

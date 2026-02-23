@@ -3,7 +3,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Calendar, Clock, MapPin, Search, Activity, CheckCircle, AlertCircle, User, X, Trash2, Filter, History, ChevronLeft } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { AppointmentCard } from '../../components/ui/AppointmentCard';
-import { getAppointments, PatientStorage, getDoctorDelay, cancelAppointment } from '../../storage';
+import { fetchAppointments, PatientStorage, cancelAppointment } from '../../storage';
 import { calculateEstimatedTime } from '../../utils/timeUtils';
 
 interface AppointmentsProps {
@@ -14,19 +14,36 @@ interface AppointmentsProps {
 const useAppointmentsLogic = (onNavigate: (path: string) => void) => {
    const session = PatientStorage.get();
    const [refresh, setRefresh] = useState(0);
+   const [rawAppointments, setRawAppointments] = useState<any[]>([]);
+   const [isLoading, setIsLoading] = useState(false);
    const [cancellingAppId, setCancellingAppId] = useState<string | null>(null);
    const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('upcoming');
-   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('today');
+   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('all');
 
    // Scalability Preps: State Structured for Future UI
    const [searchQuery, setSearchQuery] = useState('');
    const [hospitalFilter, setHospitalFilter] = useState('all');
    const [pagination, setPagination] = useState({ currentPage: 1, itemsPerPage: 6 });
 
+   React.useEffect(() => {
+      const loadApps = async () => {
+         if (!session) return;
+         setIsLoading(true);
+         try {
+            const apps = await fetchAppointments({ patientId: session.id });
+            setRawAppointments(apps);
+         } catch (error) {
+            console.error('Error fetching appointments for patient:', error);
+         } finally {
+            setIsLoading(false);
+         }
+      };
+      loadApps();
+   }, [session?.id, refresh]);
+
    const filteredAppointments = useMemo(() => {
       if (!session) return [];
-      const allApps = getAppointments();
-      let filtered = allApps.filter(a => a.patientPhone === session.phone);
+      let filtered = rawAppointments;
 
       // Status Filtering
       if (statusFilter !== 'all') {
@@ -70,11 +87,16 @@ const useAppointmentsLogic = (onNavigate: (path: string) => void) => {
       return filteredAppointments.slice(start, start + pagination.itemsPerPage);
    }, [filteredAppointments, pagination]);
 
-   const handleCancel = () => {
+   const handleCancel = async () => {
       if (cancellingAppId) {
-         cancelAppointment(cancellingAppId, "patient");
-         setCancellingAppId(null);
-         setRefresh(prev => prev + 1);
+         try {
+            await cancelAppointment(cancellingAppId, "patient");
+            setCancellingAppId(null);
+            setRefresh(prev => prev + 1);
+         } catch (error) {
+            console.error('Failed to cancel appointment:', error);
+            alert('Could not cancel appointment. Please try again.');
+         }
       }
    };
 
@@ -95,6 +117,7 @@ const useAppointmentsLogic = (onNavigate: (path: string) => void) => {
       cancellingAppId,
       setCancellingAppId,
       handleCancel,
+      isLoading,
    };
 };
 
@@ -103,19 +126,21 @@ const StatusTabs: React.FC<{
    current: string;
    onChange: (s: 'all' | 'upcoming' | 'completed' | 'cancelled') => void;
 }> = ({ current, onChange }) => (
-   <div className="flex-1 flex gap-2 p-1.5 bg-white rounded-2xl border border-slate-100 shadow-soft overflow-x-auto scrollbar-hide">
-      {(['all', 'upcoming', 'completed', 'cancelled'] as const).map((status) => (
-         <button
-            key={status}
-            onClick={() => onChange(status)}
-            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${current === status
-               ? 'bg-slate-900 text-white border-slate-900 shadow-premium'
-               : 'text-slate-400 border-transparent hover:text-slate-600 hover:bg-slate-50'
-               }`}
-         >
-            {status}
-         </button>
-      ))}
+   <div className="bg-white p-1 rounded-2xl border border-slate-100 shadow-sm w-full">
+      <div className="grid grid-cols-4 gap-1">
+         {(['all', 'upcoming', 'completed', 'cancelled'] as const).map((status) => (
+            <button
+               key={status}
+               onClick={() => onChange(status)}
+               className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-tight transition-all text-center ${current === status
+                  ? 'bg-slate-900 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                  }`}
+            >
+               {status === 'cancelled' ? 'CANC.' : status}
+            </button>
+         ))}
+      </div>
    </div>
 );
 
@@ -124,19 +149,21 @@ const TimeFilters: React.FC<{
    current: string;
    onChange: (t: 'today' | 'week' | 'month' | 'year' | 'all') => void;
 }> = ({ current, onChange }) => (
-   <div className="flex gap-2 p-1.5 bg-white rounded-2xl border border-slate-100 shadow-soft overflow-x-auto scrollbar-hide">
-      {(['today', 'week', 'month', 'year', 'all'] as const).map((time) => (
-         <button
-            key={time}
-            onClick={() => onChange(time)}
-            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${current === time
-               ? 'bg-medical-500 text-white border-medical-500 shadow-premium'
-               : 'text-slate-400 border-transparent hover:text-slate-600 hover:bg-slate-50'
-               }`}
-         >
-            {time === 'today' ? 'Today' : time === 'week' ? 'This Week' : time === 'month' ? 'This Month' : time === 'year' ? 'Year' : 'All Time'}
-         </button>
-      ))}
+   <div className="bg-white p-1 rounded-2xl border border-slate-100 shadow-sm w-full">
+      <div className="grid grid-cols-5 gap-1">
+         {(['today', 'week', 'month', 'year', 'all'] as const).map((time) => (
+            <button
+               key={time}
+               onClick={() => onChange(time)}
+               className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-tight transition-all text-center ${current === time
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                  }`}
+            >
+               {time === 'today' ? 'Day' : time === 'week' ? 'Week' : time === 'month' ? 'Mon' : time === 'year' ? 'Year' : 'All'}
+            </button>
+         ))}
+      </div>
    </div>
 );
 
@@ -196,32 +223,34 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate }) => {
       cancellingAppId,
       setCancellingAppId,
       handleCancel,
+      isLoading,
    } = useAppointmentsLogic(onNavigate);
 
    return (
-      <div className="space-y-8 animate-fade-in max-w-4xl mx-auto px-2 pb-24">
+      <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-24">
          {/* Header */}
-         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-               <h1 className="text-4xl font-black text-slate-900 tracking-tight">My Appointments</h1>
-               <p className="text-slate-500 font-bold text-lg mt-2">Track your serials and history.</p>
+         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-0.5">
+               <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">My Appointments</h1>
+               <p className="text-slate-500 font-bold text-base tracking-tight">Track your serials and history.</p>
             </div>
-            <Button onClick={() => onNavigate('/patient/home')} variant="outline" className="rounded-2xl h-14 px-8 font-black gap-2 border-slate-200 bg-white">
-               <Search size={20} /> Book New
-            </Button>
          </div>
 
+
          {/* Filtering Logic Layer */}
-         <div className="flex flex-col md:flex-row gap-4">
+         <div className="flex flex-col md:flex-row gap-3">
             <StatusTabs current={statusFilter} onChange={setStatusFilter} />
-            {statusFilter !== 'upcoming' && (
-               <TimeFilters current={timeFilter} onChange={setTimeFilter} />
-            )}
+            <TimeFilters current={timeFilter} onChange={setTimeFilter} />
          </div>
 
          {/* UI Grid Layer */}
-         {userAppointments.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-32 space-y-4">
+               <div className="w-12 h-12 border-4 border-slate-900/20 border-t-slate-900 rounded-full animate-spin"></div>
+               <p className="text-slate-400 font-bold animate-pulse">Syncing your appointments...</p>
+            </div>
+         ) : userAppointments.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-700">
                {userAppointments.map(app => (
                   <AppointmentCard
                      key={app.id}
@@ -242,7 +271,7 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate }) => {
                ))}
             </div>
          ) : (
-            <div className="py-24 text-center bg-white rounded-[32px] border border-slate-100 shadow-premium">
+            <div className="py-24 text-center bg-white rounded-[32px] border border-slate-100 shadow-premium animate-in fade-in zoom-in duration-500">
                <div className="w-20 h-20 bg-medical-50 text-medical-500 rounded-[24px] flex items-center justify-center mx-auto mb-6">
                   {statusFilter === 'all' ? <Calendar size={40} /> : <Filter size={40} />}
                </div>

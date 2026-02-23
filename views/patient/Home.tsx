@@ -3,15 +3,18 @@ import { Button } from '../../components/ui/Button';
 import {
    Search, Heart, Activity, Brain, Stethoscope, Star, MapPin,
    ShieldCheck, Users, Clock, ArrowRight, X, GraduationCap,
-   ChevronRight, Calendar, Sparkles, Bell, Pill, BriefcaseMedical
+   ChevronRight, Calendar, Sparkles, Bell, Pill, BriefcaseMedical,
+   Baby, BabyIcon, VenetianMask, Syringe, Thermometer, BrainCircuit,
+   Microscope, Droplets, UserRound, Zap, Bone, HeartPulse, ClipboardPlus
 } from 'lucide-react';
 import { Doctor, UserRole } from '../../types';
 import { DoctorCard } from '../../components/ui/DoctorCard';
 import { SpecialtyCard } from '../../components/ui/SpecialtyCard';
-import { getAppointments, PatientStorage, getDoctors, getArrivalStatus } from '../../storage';
+import { fetchAppointments, PatientStorage, fetchQueueSession, fetchDoctors } from '../../storage';
 import { getLocalISODate } from '../../utils/date';
 import { BrowseSpecialtySection } from '../../components/ui/BrowseSpecialtySection';
 import { RecommendedDoctorsSection } from '../../components/ui/RecommendedDoctorsSection';
+import { supabase } from '../../supabase';
 
 interface HomeProps {
    onNavigate: (path: string) => void;
@@ -29,7 +32,24 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    const searchInputRef = useRef<HTMLInputElement>(null);
 
    const session = useMemo(() => PatientStorage.get(), []);
-   const doctors = useMemo(() => getDoctors(), []);
+   const [doctors, setDoctors] = useState<Doctor[]>([]);
+   const [activeAppointment, setActiveAppointment] = useState<any>(null);
+   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+
+   useEffect(() => {
+      const loadDoctors = async () => {
+         try {
+            console.log('[Home] Fetching doctors from storage...');
+            const data = await fetchDoctors();
+            console.log('[Home] Doctors loaded:', data.length);
+            setDoctors(data);
+         } catch (err) {
+            console.error('[Home] Error loading doctors:', err);
+         }
+      };
+
+      loadDoctors();
+   }, []);
 
    useEffect(() => {
       if (focusSearchTrigger && searchContainerRef.current) {
@@ -50,49 +70,70 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
 
    const isPatient = userRole === UserRole.PATIENT;
 
-   const activeAppointment = useMemo(() => {
-      if (!session) return null;
-      const apps = getAppointments();
-      const today = getLocalISODate();
+   useEffect(() => {
+      const loadActiveSchedule = async () => {
+         if (!session || !doctors.length) return;
+         setIsLoadingSchedule(true);
+         try {
+            const today = getLocalISODate();
+            const apps = await fetchAppointments({ patientId: session.id, date: today });
 
-      // Rules: Patient Appointments must filter by patientPhone
-      const futureApps = apps.filter(a =>
-         a.patientPhone === session.phone &&
-         a.date &&
-         a.date >= today &&
-         a.status !== 'cancelled'
-      );
+            // Rules: Patient Appointments must filter by patient session
+            const patientApps = apps.filter(a =>
+               (a.patientId === session.id || a.patientId.startsWith('family-')) &&
+               a.date === today &&
+               a.status !== 'cancelled'
+            );
 
-      if (futureApps.length === 0) return null;
+            if (patientApps.length === 0) {
+               setActiveAppointment(null);
+               return;
+            }
 
-      const sorted = futureApps.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      const earliest = sorted[0];
-      if (!earliest) return null;
+            const sorted = patientApps.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            const earliest = sorted[0];
+            if (!earliest) {
+               setActiveAppointment(null);
+               return;
+            }
 
-      const doc = doctors.find(d => d.id === earliest.doctorId);
+            const doc = doctors.find(d => d.id === earliest.doctorId);
 
-      const isArrived = (earliest.doctorId && earliest.hospitalId && earliest.date === today)
-         ? getArrivalStatus(earliest.doctorId, earliest.hospitalId, today)
-         : false;
+            let isArrived = false;
+            if (earliest.doctorId && earliest.hospitalId) {
+               const qSession = await fetchQueueSession(earliest.doctorId, earliest.hospitalId, today);
+               isArrived = qSession.isDoctorArrived;
+            }
 
-      return {
-         doctorName: doc?.name || 'Doctor',
-         time: earliest.time || 'N/A',
-         date: earliest.date === today ? 'Today' : earliest.date,
-         serialNumber: earliest.serialNumber ? earliest.serialNumber.toString().padStart(2, '0') : '00',
-         chamber: doc?.chambers.find(c => c.id === earliest.hospitalId)?.name || earliest.chamberName || 'Chamber',
-         isArrived,
-         hospitalId: earliest.hospitalId
+            setActiveAppointment({
+               doctorName: doc?.name || 'Doctor',
+               time: earliest.time || 'N/A',
+               date: earliest.date === today ? 'Today' : earliest.date,
+               serialNumber: earliest.serialNumber ? earliest.serialNumber.toString().padStart(2, '0') : '00',
+               chamber: (doc?.chambers || []).find(c => c.id === earliest.hospitalId)?.name || earliest.chamberName || 'Chamber',
+               isArrived,
+               hospitalId: earliest.hospitalId
+            });
+         } catch (error) {
+            console.error('Error loading schedule on Home:', error);
+         } finally {
+            setIsLoadingSchedule(false);
+         }
       };
-   }, [session, doctors]);
+
+      loadActiveSchedule();
+   }, [session, doctors, userRole]);
 
    const categories = [
-      { name: 'General Physician', icon: Stethoscope, color: 'text-blue-600', bg: 'bg-blue-50' },
-      { name: 'Cardiology', icon: Heart, color: 'text-rose-600', bg: 'bg-rose-50' },
-      { name: 'Neurology', icon: Brain, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-      { name: 'Pediatrics', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-      { name: 'Dermatology', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
-      { name: 'Orthopedics', icon: Activity, color: 'text-sky-600', bg: 'bg-sky-50' },
+      { name: 'General Physician', subtitle: 'Primary Care Physician', icon: Stethoscope, color: 'text-blue-600', bg: 'bg-blue-50' },
+      { name: 'Pediatrics', subtitle: 'Child Health Care', icon: Baby, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+      { name: 'Gynae & Obs', subtitle: "Women's Health Care", icon: HeartPulse, color: 'text-rose-600', bg: 'bg-rose-50' },
+      { name: 'Dermatology', subtitle: 'Skin, Hair & Sexual Health', icon: Sparkles, color: 'text-orange-600', bg: 'bg-orange-50' },
+      { name: 'Internal Medicine', subtitle: 'General Health & Medicine', icon: ClipboardPlus, color: 'text-sky-600', bg: 'bg-sky-50' },
+      { name: 'Endocrinology', subtitle: 'Diabetes, Thyroid & Hormone', icon: Droplets, color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Neurology', subtitle: 'Brain, Spine & Nerve', icon: BrainCircuit, color: 'text-purple-600', bg: 'bg-purple-50' },
+      { name: 'Gastroenterology', subtitle: 'Stomach, Liver & Gut', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+      { name: 'Cardiology', subtitle: 'Heart Disease & Vascular Disease', icon: Heart, color: 'text-red-600', bg: 'bg-red-50' },
    ];
 
    const handleCategoryClick = (categoryName: string) => {
@@ -102,7 +143,10 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
          'Neurology': 'Neurologist',
          'Pediatrics': 'Pediatrician',
          'Dermatology': 'Dermatologist',
-         'Orthopedics': 'Orthopedics'
+         'Internal Medicine': 'Medicine',
+         'Endocrinology': 'Endocrinology',
+         'Gastroenterology': 'Gastroenterologist',
+         'Gynae & Obs': 'Gynecologist'
       };
       const specialty = keywords[categoryName] || categoryName;
       setSelectedSpecialty(specialty === selectedSpecialty ? 'All' : specialty);
@@ -135,8 +179,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    return (
       <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-24" style={{ fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif' }}>
          {/* HERO SECTION */}
-         <div className="max-w-6xl mx-auto px-4 pt-10 pb-20 md:pt-16 md:pb-28">
-            <div className="relative overflow-hidden rounded-[28px] bg-slate-900 shadow-[0_40px_80px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.05)] border border-white/5"
+         <div className="max-w-4xl mx-auto pt-6 pb-16 md:pt-16 md:pb-28 px-4 md:px-0">
+            <div className="relative overflow-hidden rounded-[28px] md:rounded-[32px] bg-slate-900 shadow-[0_40px_80px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.05)] border border-white/5"
                style={{
                   background: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 50%), linear-gradient(135deg, #0F172A, #1E293B)'
                }}>
@@ -152,12 +196,12 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                      <span>BMDC Verified Doctors Only</span>
                   </div>
 
-                  <h1 className="text-[clamp(32px,6vw,48px)] font-bold tracking-[-0.5px] text-white leading-[1.1] mb-6">
+                  <h1 className="text-[clamp(32px,9vw,56px)] font-black tracking-[-0.04em] text-white leading-[1.05] mb-6 break-words">
                      Healthcare, <br />
                      <span className="bg-gradient-to-br from-[#5B8CFF] to-[#2ED6A1] bg-clip-text text-transparent">Simplified.</span>
                   </h1>
 
-                  <p className="text-[15px] text-slate-300 font-medium mb-10 max-w-[90%] leading-relaxed opacity-85">
+                  <p className="text-[14px] md:text-[16px] text-slate-300 font-medium mb-10 max-w-[280px] md:max-w-[80%] leading-relaxed opacity-90">
                      Book top specialists instantly, track your live serial status, and manage your health records in one premium platform.
                   </p>
 
@@ -204,22 +248,22 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
             </div>
          </div>
 
-         <div className="max-w-6xl mx-auto px-4">
+         <div className="max-w-4xl mx-auto px-4">
             {/* STATS STRIP */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 -mt-12 mb-20 relative z-20">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 -mt-8 md:-mt-12 mb-16 md:mb-20 relative z-20">
                {[
                   { icon: Users, label: "Specialists", value: "1.7k+", color: "bg-blue-600/10 text-blue-600" },
                   { icon: ShieldCheck, label: "BMDC Verified", value: "100%", color: "bg-emerald-600/10 text-emerald-600" },
                   { icon: Clock, label: "Live Queue", value: "24/7", color: "bg-indigo-600/10 text-indigo-600" },
                   { icon: Heart, label: "Happy Patients", value: "99%", color: "bg-rose-600/10 text-rose-600" }
                ].map((stat, i) => (
-                  <div key={i} className="bg-white p-6 rounded-[20px] shadow-[0_12px_30px_rgba(0,0,0,0.08)] border border-slate-100 flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.12)]">
-                     <div className={`w-12 h-12 rounded-[14px] ${stat.color} flex items-center justify-center shrink-0 shadow-sm font-bold`}>
-                        <stat.icon size={24} />
+                  <div key={i} className="bg-white p-4 md:p-6 rounded-[24px] shadow-[0_12px_30px_rgba(0,0,0,0.06)] border border-slate-100 flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)]">
+                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-[12px] md:rounded-[14px] ${stat.color} flex items-center justify-center shrink-0 shadow-sm font-bold`}>
+                        <stat.icon size={20} className="md:w-6 md:h-6" />
                      </div>
-                     <div>
-                        <p className="text-[11px] font-bold text-slate-900/60 uppercase tracking-[1px]">{stat.label}</p>
-                        <h4 className="text-[22px] font-bold text-slate-900 leading-none mt-1">{stat.value}</h4>
+                     <div className="min-w-0">
+                        <p className="text-[9px] md:text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] md:tracking-[1px] truncate whitespace-nowrap">{stat.label}</p>
+                        <h4 className="text-[18px] md:text-[22px] font-black text-slate-900 leading-none mt-1">{stat.value}</h4>
                      </div>
                   </div>
                ))}
@@ -264,17 +308,17 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
             )}
 
             {/* MODULAR SECTIONS */}
-            <BrowseSpecialtySection
-               categories={categories}
-               onCategoryClick={handleCategoryClick}
-               selectedSpecialty={selectedSpecialty}
-            />
-
             <RecommendedDoctorsSection
                doctors={browseList}
                selectedSpecialty={selectedSpecialty}
                onSelectDoctor={onSelectDoctor}
                onClearFilters={() => { setSelectedSpecialty('All'); setSearchTerm(''); }}
+            />
+
+            <BrowseSpecialtySection
+               categories={categories}
+               onCategoryClick={handleCategoryClick}
+               selectedSpecialty={selectedSpecialty}
             />
 
             {/* DOCTOR PARTNERSHIP Section */}

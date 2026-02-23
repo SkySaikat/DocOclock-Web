@@ -5,15 +5,14 @@ import { Appointment, AppointmentStatus } from '../../types';
 import {
    Clock, Activity, X, Phone, CheckCircle, Bell,
    FileText, UserCheck, ChevronRight, ClipboardList,
-   History, Plus, Minus
+   History, Plus, Minus, MapPin, Calendar
 } from 'lucide-react';
 import {
-   getAppointments, DoctorStorage, saveAppointments,
-   getArrivalStatus, saveArrivalStatus,
-   getQueueSessionStatus, saveQueueSessionStatus, QueueSessionStatus,
-   assignPatientToReservedSlot,
-   getSessionMeta, saveSessionMeta, DoctorSessionMeta, DEFAULT_SESSION_META,
-   getDoctorPracticeSettings
+   DoctorStorage,
+   fetchAppointments, upsertAppointment,
+   fetchQueueSession, upsertQueueSession,
+   QueueSessionStatus, DoctorSessionMeta, DEFAULT_SESSION_META,
+   assignPatientToReservedSlot
 } from '../../storage';
 import { getLocalISODate } from '../../utils/date';
 
@@ -29,15 +28,28 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
    const today = getLocalISODate();
    const todayNumeric = new Date(today + "T00:00:00").getDay();
 
-   const practice = useMemo(() => doctor ? getDoctorPracticeSettings(doctor.id) : null, [doctor]);
+   const [activeHospitalsToday, setActiveHospitalsToday] = useState<any[]>([]);
+   const [isLoadingChambers, setIsLoadingChambers] = useState(true);
 
-   // Part 8: Date-aware chamber filtering
-   const activeHospitalsToday = useMemo(() => {
-      if (!practice) return [];
-      return practice.chambers.filter(chamber =>
-         chamber.scheduleDays?.includes(todayNumeric) || chamber.schedule.some(s => s.day === todayNumeric)
-      );
-   }, [practice, todayNumeric]);
+   useEffect(() => {
+      const loadChambers = async () => {
+         if (!currentDoctorId) return;
+         setIsLoadingChambers(true);
+         try {
+            const { fetchDoctorChambers } = await import('../../storage');
+            const chambers = await fetchDoctorChambers(currentDoctorId);
+            const matches = chambers.filter(chamber =>
+               chamber.scheduleDays?.includes(todayNumeric) || chamber.schedule.some(s => s.day === todayNumeric)
+            );
+            setActiveHospitalsToday(matches);
+         } catch (error) {
+            console.error('Error loading chambers for manager:', error);
+         } finally {
+            setIsLoadingChambers(false);
+         }
+      };
+      loadChambers();
+   }, [currentDoctorId, todayNumeric]);
 
    // Initialize active hospital based on today's schedule
    useEffect(() => {
@@ -55,26 +67,47 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
       activeHospitalsToday.find(c => c.id === activeHospitalId),
       [activeHospitalsToday, activeHospitalId]);
 
-   const [doctorStatus, setDoctorStatus] = useState<'arrived' | 'not-arrived'>(
-      doctor && activeChamber && getArrivalStatus(doctor.id, activeChamber.id, today) ? 'arrived' : 'not-arrived'
-   );
-   const [queueSessionStatus, setQueueSessionStatus] = useState<QueueSessionStatus>(
-      doctor && activeChamber ? getQueueSessionStatus(doctor.id, activeChamber.id, today) : 'NOT_STARTED'
-   );
-   const [sessionMeta, setSessionMeta] = useState<DoctorSessionMeta>(
-      doctor && activeChamber ? getSessionMeta(doctor.id, activeChamber.id, today) : DEFAULT_SESSION_META
-   );
+   const [doctorStatus, setDoctorStatus] = useState<'arrived' | 'not-arrived'>('not-arrived');
+   const [queueSessionStatus, setQueueSessionStatus] = useState<QueueSessionStatus>('NOT_STARTED');
+   const [sessionMeta, setSessionMeta] = useState<DoctorSessionMeta>(DEFAULT_SESSION_META);
+   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+
+   const [refreshCount, setRefreshCount] = useState(0);
    const [localDelay, setLocalDelay] = useState(0);
    const [isSavingDelay, setIsSavingDelay] = useState(false);
-   const [refreshCount, setRefreshCount] = useState(0);
    const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
    const [filterStatus, setFilterStatus] = useState<AppointmentStatus | 'all'>('all');
    const [showAssignModal, setShowAssignModal] = useState(false);
    const [assignData, setAssignData] = useState({ name: '', phone: '', appId: '' });
 
-   const isArrived = doctorStatus === 'arrived';
+   // Unified state sync for persistent status from Supabase
+   useEffect(() => {
+      const loadQueueData = async () => {
+         if (!doctor || !activeHospitalId) return;
+         setIsLoadingQueue(true);
+         try {
+            const [apps, session] = await Promise.all([
+               fetchAppointments({ doctorId: doctor.id, hospitalId: activeHospitalId, date: today }),
+               fetchQueueSession(doctor.id, activeHospitalId, today)
+            ]);
 
-   const allAppointments = useMemo(() => getAppointments(), [refreshCount]);
+            setAllAppointments(apps);
+            setDoctorStatus(session.isDoctorArrived ? 'arrived' : 'not-arrived');
+            setQueueSessionStatus(session.sessionStatus);
+            setSessionMeta(session.meta);
+         } catch (error) {
+            console.error('Error loading queue data from Supabase:', error);
+         } finally {
+            setIsLoadingQueue(false);
+         }
+      };
+      loadQueueData();
+   }, [currentDoctorId, activeHospitalId, today, refreshCount]);
+
+
+
+   const isArrived = doctorStatus === 'arrived';
 
    const filteredAppointments = useMemo(() => {
       if (!currentDoctorId || !activeHospitalId) return [];
@@ -100,24 +133,34 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
       return filtered;
    }, [allAppointments, currentDoctorId, activeHospitalId, today]);
 
-   const handleSaveDelay = () => {
-      if (!doctor) return;
+   const handleSaveDelay = async () => {
+      if (!doctor || !activeChamber) return;
       setIsSavingDelay(true);
 
-      const newStatus = doctorStatus === 'not-arrived' ? 'DELAYED' : 'BREAK';
-      const meta: DoctorSessionMeta = {
-         ...DEFAULT_SESSION_META,
-         status: newStatus,
-         delayMinutes: localDelay,
-         delayStartedAt: new Date().toISOString()
-      };
+      try {
+         const newStatus = doctorStatus === 'not-arrived' ? 'DELAYED' : 'BREAK';
+         const meta: DoctorSessionMeta = {
+            ...DEFAULT_SESSION_META,
+            status: newStatus,
+            delayMinutes: localDelay,
+            delayStartedAt: new Date().toISOString()
+         };
 
-      if (activeChamber) {
-         saveSessionMeta(doctor.id, activeChamber.id, today, meta);
+         await upsertQueueSession({
+            doctorId: doctor.id,
+            hospitalId: activeChamber.id,
+            date: today,
+            isDoctorArrived: isArrived,
+            sessionStatus: queueSessionStatus,
+            meta
+         });
+
          setSessionMeta(meta);
+      } catch (error) {
+         console.error('Error saving delay to Supabase:', error);
+      } finally {
+         setIsSavingDelay(false);
       }
-
-      setTimeout(() => setIsSavingDelay(false), 800);
    };
 
    const sortedAppointments = useMemo(() => {
@@ -133,161 +176,178 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
       [filteredAppointments]
    );
 
-   const updateAppStatus = (id: string, newStatus: AppointmentStatus) => {
+   const updateAppStatus = async (id: string, newStatus: AppointmentStatus) => {
       if (newStatus === 'consulting' && !isArrived) {
          alert("Please mark yourself as Arrived to start today’s session.");
          return;
       }
 
-      const allApps = getAppointments();
-      let updatedAll = allApps;
-      if (newStatus === 'consulting') {
-         updatedAll = allApps.map(app =>
-            (String(app.doctorId) === String(currentDoctorId) && app.date === today && app.status === 'consulting')
-               ? { ...app, status: 'completed' as AppointmentStatus, completedAt: Date.now() }
-               : app
-         );
+      try {
+         // If starting consultation, complete the previous one
+         if (newStatus === 'consulting') {
+            const currentConsulting = allAppointments.find(a => a.status === 'consulting');
+            if (currentConsulting) {
+               await upsertAppointment({
+                  ...currentConsulting,
+                  status: 'completed',
+                  completedAt: Date.now()
+               });
+            }
+         }
+
+         const targetApp = allAppointments.find(a => a.id === id);
+         if (targetApp) {
+            await upsertAppointment({
+               ...targetApp,
+               status: newStatus,
+               completedAt: newStatus === 'completed' ? Date.now() : targetApp.completedAt
+            });
+         }
+
+         setRefreshCount(prev => prev + 1);
+      } catch (error) {
+         console.error('Error updating appointment status in Supabase:', error);
       }
-
-      updatedAll = updatedAll.map(app =>
-         app.id === id ? { ...app, status: newStatus, completedAt: newStatus === 'completed' ? Date.now() : app.completedAt } : app
-      );
-
-      saveAppointments(updatedAll);
-      setRefreshCount(prev => prev + 1);
    };
 
-   const handleNextPatient = () => {
+   const handleNextPatient = async () => {
       if (!isArrived) {
          alert("Please mark yourself as Arrived to start today’s session.");
          return;
       }
 
-      if (queueSessionStatus === 'NOT_STARTED') {
-         if (doctor && activeChamber) {
-            saveQueueSessionStatus(doctor.id, activeChamber.id, today, 'RUNNING');
-            setQueueSessionStatus('RUNNING');
+      try {
+         if (queueSessionStatus === 'NOT_STARTED') {
+            if (doctor && activeChamber) {
+               await upsertQueueSession({
+                  doctorId: doctor.id,
+                  hospitalId: activeChamber.id,
+                  date: today,
+                  isDoctorArrived: true,
+                  sessionStatus: 'RUNNING',
+                  meta: sessionMeta
+               });
+               setQueueSessionStatus('RUNNING');
+            }
          }
-      }
 
-      if (currentApp) {
-         updateAppStatus(currentApp.id, 'completed');
-      }
+         if (currentApp) {
+            await updateAppStatus(currentApp.id, 'completed');
+         }
 
-      const nextWaiting = [...filteredAppointments]
-         .filter(a => a.status === 'waiting' && a.isVisibleToPatient !== false && !a.isReserved)
-         .sort((a, b) => a.serialNumber - b.serialNumber)[0];
+         const nextWaiting = [...filteredAppointments]
+            .filter(a => a.status === 'waiting' && a.isVisibleToPatient !== false && !a.isReserved)
+            .sort((a, b) => a.serialNumber - b.serialNumber)[0];
 
-      if (nextWaiting) {
-         updateAppStatus(nextWaiting.id, 'consulting');
+         if (nextWaiting) {
+            await updateAppStatus(nextWaiting.id, 'consulting');
+         }
+      } catch (error) {
+         console.error('Error handling next patient in Supabase:', error);
       }
    };
 
    const selectedApp = filteredAppointments.find(a => a.id === selectedAppId);
 
-   if (!doctor || !sessionMeta) {
+   if (!doctor || isLoadingQueue) {
       return (
          <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
-               Initializing Session...
+               Syncing with DocOclock Cloud...
             </div>
          </div>
       );
    }
 
    return (
-      <div className="space-y-8 max-w-6xl mx-auto px-2 md:px-0 pb-20">
-         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-               <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-1">Today's Queue</h1>
-               <div className="flex items-center gap-3">
-                  <p className="text-slate-500 font-bold">Logged in as {doctor.name}</p>
-                  <span className="text-slate-200">|</span>
-                  <div className="flex items-center gap-2">
-                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hospital:</span>
-                     {activeHospitalsToday.length === 0 ? (
-                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">No chamber scheduled for today</span>
-                     ) : activeHospitalsToday.length === 1 ? (
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest pb-0.5 border-b border-blue-100">
-                           {activeHospitalsToday[0].hospitalName}
-                        </span>
-                     ) : (
-                        <select
-                           value={activeHospitalId || ''}
-                           onChange={(e) => setActiveHospitalId(e.target.value)}
-                           className="bg-transparent text-[10px] font-black text-blue-600 uppercase tracking-widest outline-none cursor-pointer border-b border-blue-100 pb-0.5"
-                        >
-                           {activeHospitalsToday.map(c => (
-                              <option key={c.id} value={c.id}>{c.hospitalName}</option>
-                           ))}
-                        </select>
-                     )}
-                  </div>
+      <div className="space-y-4 max-w-6xl mx-auto px-2 md:px-0 pb-20 animate-fade-in">
+         {/* Unified Grid-Based Control Panel */}
+         <div className="bg-white border border-slate-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.01)] rounded-xl overflow-hidden">
+            {/* Row 1: Context Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50/50 bg-white">
+               <div className="flex items-baseline gap-2.5">
+                  <h1 className="text-base font-black text-slate-900 tracking-tighter leading-none">Today's Queue</h1>
+                  <span className="px-2 py-0.5 bg-blue-50/50 text-[8px] font-bold text-blue-600 rounded-md uppercase tracking-widest border border-blue-100/30">Popular</span>
+               </div>
+               <div className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50 border border-slate-200/40 rounded-lg shrink-0">
+                  <Calendar size={12} className="text-slate-400" />
+                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">
+                     {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
                </div>
             </div>
-            <div className="hidden md:block text-[10px] font-black text-slate-400 bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm uppercase tracking-[0.2em]">
-               {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </div>
-         </div>
 
-         <div className="bg-slate-50/80 rounded-[2rem] p-4 md:p-6 border border-slate-100 shadow-sm mb-8">
-            <div className="flex flex-col md:flex-row gap-6 md:gap-12 items-stretch md:items-center">
-               <div className="flex items-center justify-between gap-4 w-full md:w-auto md:border-r md:border-slate-200 md:pr-12 pb-6 md:pb-0 border-b md:border-b-0 border-slate-100">
-                  <div className="flex items-center gap-4">
-                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 ${doctorStatus === 'arrived' ? 'bg-green-100 text-green-600' : 'bg-slate-200 text-slate-400'}`}>
-                        <UserCheck size={20} />
-                     </div>
-                     <h3 className="font-black text-slate-800 uppercase tracking-widest text-[9px] truncate">Chamber Availability</h3>
+            {/* Row 2: Operational Controls (Centered) */}
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 px-5 py-5 bg-white">
+
+               {/* Availability Block */}
+               <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-end md:items-start">
+                     <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Availability</span>
+                     <span className="text-[9px] font-black text-slate-900 uppercase tracking-tighter leading-none">{doctorStatus === 'arrived' ? 'Live Now' : 'Off-Duty'}</span>
                   </div>
-                  <div className="flex p-0.5 bg-slate-200/50 rounded-lg w-fit shrink-0">
+                  <div className="flex p-0.5 bg-slate-100/80 rounded-full w-40 relative border border-slate-200/20">
                      <button
-                        onClick={() => {
+                        onClick={async () => {
                            if (doctor && activeChamber) {
-                              saveArrivalStatus(doctor.id, activeChamber.id, today, true);
-                              setDoctorStatus('arrived');
                               const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
-                              saveSessionMeta(doctor.id, activeChamber.id, today, meta);
+                              await upsertQueueSession({
+                                 doctorId: doctor.id,
+                                 hospitalId: activeChamber.id,
+                                 date: today,
+                                 isDoctorArrived: true,
+                                 sessionStatus: queueSessionStatus,
+                                 meta
+                              });
+                              setDoctorStatus('arrived');
                               setSessionMeta(meta);
                            }
                         }}
-                        className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-md transition-all ${doctorStatus === 'arrived' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}`}
+                        className={`flex-1 text-[8px] font-black uppercase py-2 rounded-full transition-all duration-300 z-10 ${doctorStatus === 'arrived' ? 'text-white' : 'text-slate-400'}`}
                      >
                         Arrived
                      </button>
                      <button
-                        onClick={() => {
+                        onClick={async () => {
                            if (doctor && activeChamber) {
-                              saveArrivalStatus(doctor.id, activeChamber.id, today, false);
+                              await upsertQueueSession({
+                                 doctorId: doctor.id,
+                                 hospitalId: activeChamber.id,
+                                 date: today,
+                                 isDoctorArrived: false,
+                                 sessionStatus: queueSessionStatus,
+                                 meta: sessionMeta
+                              });
                               setDoctorStatus('not-arrived');
                            }
                         }}
-                        className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-md transition-all ${doctorStatus === 'not-arrived' ? 'bg-white text-slate-600 shadow-sm' : 'text-slate-400'}`}
+                        className={`flex-1 text-[8px] font-black uppercase py-2 rounded-full transition-all duration-300 z-10 ${doctorStatus === 'not-arrived' ? 'text-white' : 'text-slate-400'}`}
                      >
                         Away
                      </button>
+                     <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full transition-all duration-300 shadow-lg ${doctorStatus === 'arrived' ? 'left-0.5 bg-green-600 shadow-green-500/20' : 'left-[calc(50%+0.5px)] bg-slate-900'}`} />
                   </div>
                </div>
 
-               <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
-                  <div className="flex items-center justify-between gap-4 flex-1">
-                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-100 text-blue-600 shrink-0">
-                           <History size={20} />
-                        </div>
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">Set Expected Delay</label>
+               <div className="hidden md:block w-px h-8 bg-slate-100/80" />
+
+               {/* Operations Block: Delay + Action */}
+               <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 p-0.5 bg-slate-50 border border-slate-200/40 rounded-full">
+                     <button onClick={() => setLocalDelay(Math.max(0, localDelay - 5))} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200/60 rounded-full text-slate-500 hover:text-slate-900 transition-all active:scale-95 shadow-sm"><Minus size={12} /></button>
+                     <div className="px-1 text-center min-w-[36px]">
+                        <span className="font-black text-sm text-slate-900 leading-none">{localDelay}</span>
+                        <span className="text-[9px] font-bold text-slate-400 ml-0.5">m</span>
                      </div>
-                     <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => setLocalDelay(Math.max(0, localDelay - 5))} className="w-8 h-8 flex items-center justify-center bg-slate-200/50 rounded-lg hover:bg-slate-200 transition-colors text-slate-600"><Minus size={14} /></button>
-                        <div className="w-16 bg-white border border-slate-200 rounded-lg h-8 flex items-center justify-center font-black text-sm text-slate-800">{localDelay}m</div>
-                        <button onClick={() => setLocalDelay(localDelay + 5)} className="w-8 h-8 flex items-center justify-center bg-slate-200/50 rounded-lg hover:bg-slate-200 transition-colors text-slate-600"><Plus size={14} /></button>
-                     </div>
+                     <button onClick={() => setLocalDelay(localDelay + 5)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200/60 rounded-full text-slate-500 hover:text-slate-900 transition-all active:scale-95 shadow-sm"><Plus size={12} /></button>
                   </div>
+
                   <Button
                      onClick={handleSaveDelay}
                      disabled={!activeChamber || isSavingDelay}
-                     className={`h-10 md:h-11 px-6 rounded-xl font-black tracking-widest text-[9px] transition-all w-full md:w-auto shadow-none ${isSavingDelay ? 'bg-green-500 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'} ${!activeChamber ? 'opacity-50 cursor-not-allowed' : ''}`}
+                     className={`h-10 px-6 rounded-xl font-black text-[10px] tracking-widest transition-all shadow-md active:translate-y-px ${isSavingDelay ? 'bg-green-600 text-white border-0' : 'bg-slate-900 text-white hover:bg-black active:shadow-none'}`}
                   >
-                     {isSavingDelay ? 'SAVED' : 'APPLY DELAY'}
+                     {isSavingDelay ? 'DONE' : 'SET DELAY'}
                   </Button>
                </div>
             </div>
@@ -334,18 +394,25 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                      </div>
                      <div className="flex gap-4 items-center">
                         <p className="text-sm font-bold text-blue-800/70 flex-1">Break duration: {sessionMeta.delayMinutes} minutes</p>
-                        <Button
-                           onClick={() => {
+                        <button
+                           onClick={async () => {
                               if (doctor && activeChamber) {
                                  const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
-                                 saveSessionMeta(doctor.id, activeChamber.id, today, meta);
+                                 await upsertQueueSession({
+                                    doctorId: doctor.id,
+                                    hospitalId: activeChamber.id,
+                                    date: today,
+                                    isDoctorArrived: true,
+                                    sessionStatus: queueSessionStatus,
+                                    meta
+                                 });
                                  setSessionMeta(meta);
                               }
                            }}
                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 font-black rounded-xl shadow-lg shadow-blue-100 uppercase tracking-widest text-xs h-11"
                         >
                            End Break
-                        </Button>
+                        </button>
                      </div>
                   </div>
                )}
@@ -646,9 +713,19 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            fullWidth
                            disabled={!assignData.name || !assignData.phone}
                            className="h-14 rounded-2xl font-black bg-blue-600 shadow-xl shadow-blue-100 disabled:opacity-50 disabled:shadow-none"
-                           onClick={() => {
+                           onClick={async () => {
                               if (assignData.appId && assignData.name && assignData.phone) {
-                                 assignPatientToReservedSlot(assignData.appId, `p-manual-${Date.now()}`, assignData.name, assignData.phone);
+                                 const slot = allAppointments.find(a => a.id === assignData.appId);
+                                 if (slot) {
+                                    await upsertAppointment({
+                                       ...slot,
+                                       patientId: `p-manual-${Date.now()}`,
+                                       patientName: assignData.name,
+                                       patientPhone: assignData.phone,
+                                       isReserved: false,
+                                       isVisibleToPatient: true
+                                    });
+                                 }
                                  setRefreshCount(prev => prev + 1);
                                  setShowAssignModal(false);
                                  setSelectedAppId(null);
