@@ -25,18 +25,26 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
 
       try {
          const today = getLocalISODate();
-         const apps = await fetchAppointments({ patientId: session.id, date: today });
+         let targetApp: Appointment | null = null;
 
-         // If we found the user's appointment, we can fetch the rest of the queue
-         const myAppCandidate = apps.find(a =>
-            (a.patientId === session.id || a.patientId.startsWith('family-')) &&
-            a.date === today && a.status !== 'cancelled'
-         );
+         // 1. If ID is provided, fetch specifically by ID
+         if (appointmentId) {
+            const results = await fetchAppointments({ id: appointmentId });
+            if (results.length > 0) {
+               targetApp = results[0];
+            }
+         }
 
-         if (myAppCandidate) {
+         // 2. Fallback: Search for today's appointment if no targetApp yet
+         if (!targetApp) {
+            const apps = await fetchAppointments({ patientId: session.id, date: today });
+            targetApp = apps.find(a => a.date === today && a.status !== 'cancelled' && a.isVisibleToPatient !== false);
+         }
+
+         if (targetApp) {
             const [fullQueue, qSession] = await Promise.all([
-               fetchAppointments({ doctorId: myAppCandidate.doctorId, hospitalId: myAppCandidate.hospitalId, date: today }),
-               fetchQueueSession(myAppCandidate.doctorId, myAppCandidate.hospitalId, today)
+               fetchAppointments({ doctorId: targetApp.doctorId, hospitalId: targetApp.hospitalId, date: targetApp.date }),
+               fetchQueueSession(targetApp.doctorId, targetApp.hospitalId, targetApp.date)
             ]);
 
             setAllAppointments(fullQueue);
@@ -44,7 +52,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
             setSessionMeta(qSession.meta);
             setIsDoctorArrived(qSession.isDoctorArrived);
          } else {
-            setAllAppointments(apps);
+            setAllAppointments([]);
          }
       } catch (error) {
          console.error('Error loading live serial data from Supabase:', error);

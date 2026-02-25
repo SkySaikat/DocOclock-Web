@@ -69,9 +69,16 @@ CREATE TABLE IF NOT EXISTS public.appointments (
     prescription_id TEXT,
     cancelled_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
+    arrival_time TIMESTAMPTZ,
+    consultation_start_time TIMESTAMPTZ,
+    consultation_end_time TIMESTAMPTZ,
     cancelled_by TEXT, -- 'patient', 'doctor'
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 6. Add Indexes for Queue & Search Performance
+CREATE INDEX IF NOT EXISTS idx_appointments_queue 
+ON public.appointments (doctor_id, appointment_date, serial_number);
 
 -- 6. Prescriptions Table
 CREATE TABLE IF NOT EXISTS public.prescriptions (
@@ -107,6 +114,7 @@ CREATE TABLE IF NOT EXISTS public.queue_sessions (
     meta_status TEXT DEFAULT 'IDLE', -- 'IDLE', 'DELAYED', 'BREAK'
     delay_minutes INTEGER DEFAULT 0,
     delay_started_at TIMESTAMPTZ,
+    reserved_slots_count INTEGER DEFAULT 0,
     note TEXT,
     PRIMARY KEY (doctor_id, hospital_id, session_date)
 );

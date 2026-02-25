@@ -21,7 +21,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [isResolving, setIsResolving] = useState(true);
-  const [registryFilter, setRegistryFilter] = useState<'all' | AppointmentStatus>('all');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const today = getLocalISODate();
 
@@ -123,15 +122,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
   const cancelledCount = filteredAppointments.filter(a => a.status === 'cancelled').length;
   const revenueTotal = filteredAppointments.filter(a => a.status === 'completed').reduce((sum, a) => sum + (a.fee || 0), 0);
 
-  // REGISTRY SPECIFIC FILTERING
-  const registryAppointments = useMemo(() => {
-    let list = [...filteredAppointments];
-    if (registryFilter !== 'all') {
-      list = list.filter(a => a.status === registryFilter);
-    }
-    return list.sort((a, b) => (a.serialNumber || 0) - (b.serialNumber || 0));
-  }, [filteredAppointments, registryFilter]);
-
   const selectedHospitalName = hospitals.find((h: any) => String(h.id) === String(selectedHospitalId))?.hospitalName;
 
   return (
@@ -154,183 +144,95 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
           onManageClick={() => onNavigate?.('/doctor/practice-settings')}
         />
 
-        {/* Operational Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-          <StatCard
-            label="Appointments"
-            value={totalPatients}
-            subValue="Today"
-            icon={Users}
-            color="blue"
-            loading={isResolving}
-          />
-          <StatCard
-            label="Cancelled"
-            value={cancelledCount}
-            subValue="This scope"
-            icon={X}
-            color="red"
-            loading={isResolving}
-          />
-          <StatCard
-            label="Revenue"
-            value={`৳${revenueTotal}`}
-            subValue="Earned"
-            icon={CreditCard}
-            color="teal"
-            loading={isResolving}
-          />
-          <StatCard
-            label="Remaining"
-            value={waitingCount}
-            subValue="Waiting"
-            icon={Clock}
-            color="orange"
-            loading={isResolving}
-          />
-          <StatCard
-            label="Completed"
-            value={finishedCount}
-            subValue="Consulted"
-            icon={UserCheck}
-            color="green"
-            loading={isResolving}
-          />
-        </div>
-
-        {/* Recent Appointments Registry Section */}
-        <div className="bg-white rounded-[24px] shadow-soft border border-slate-100 p-6 space-y-6">
-          <div className="flex flex-col gap-4">
-            {/* Title Row */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">Today's Registry</h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  {selectedHospitalId ? selectedHospitalName : "Patient List Overflow"}
-                </p>
-              </div>
-              <button
-                onClick={() => onNavigate?.('/doctor/serial-manager')}
-                className="px-4 py-2 bg-slate-50 text-blue-600 rounded-xl border border-slate-100 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-50 transition-colors"
-              >
-                Manage Queue <ArrowUpRight size={14} />
-              </button>
-            </div>
-
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-              {/* Scope Selector */}
-              <div className="relative flex-1">
-                <select
-                  value={selectedHospitalId || ''}
-                  onChange={(e) => setSelectedHospitalId(e.target.value || null)}
-                  className="w-full text-sm font-bold bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 appearance-none focus:outline-none focus:ring-4 focus:ring-medical-500/5 text-slate-700 transition-all"
-                >
-                  <option value="" disabled>Select Chamber Scope...</option>
-                  {hospitals.map((hospital: any) => (
-                    <option key={hospital.id} value={hospital.id}>{hospital.hospitalName}</option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <MapPin size={16} />
-                </div>
-              </div>
-
-              {/* Filter Pills - Horizontally Scrollable */}
-              <div className="flex gap-2 overflow-x-auto py-1 scrollbar-hide shrink-0">
-                {(['all', 'waiting', 'completed', 'cancelled'] as const).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setRegistryFilter(status)}
-                    className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border
-                      ${registryFilter === status
-                        ? "bg-slate-900 text-white border-slate-900 shadow-premium"
-                        : "bg-white text-slate-400 border-slate-100 hover:border-slate-300"
-                      }`}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            {isResolving ? (
-              <div className="py-20 text-center space-y-4">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Resolving Schedule...</p>
-              </div>
-            ) : hospitals.length === 0 ? (
-              <div className="py-20 text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                  <MapPin size={32} />
-                </div>
-                <h1 className="text-xl font-black text-slate-800 tracking-tight">No Chambers Configured</h1>
-                <p className="text-slate-500 font-bold max-w-sm mx-auto">Please go to Practice Settings to add your chambers and weekly schedule.</p>
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-[0.15em] bg-slate-50/50">
-                    <th className="py-4 pl-4 rounded-l-2xl">Serial</th>
-                    <th className="py-4">Patient Name</th>
-                    <th className="py-4">Time Slot</th>
-                    <th className="py-4">Status</th>
-                    <th className="py-4 pr-4 rounded-r-2xl text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="text-slate-700 text-sm">
-                  {registryAppointments.length > 0 ? registryAppointments.slice(0, 10).map((row, i) => (
-                    <tr key={i} className={`border-b border-slate-50 last:border-0 group ${row.status === 'cancelled' ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-                      <td className={`py-5 pl-4 font-black ${row.status === 'cancelled' ? 'text-slate-400' : 'text-blue-600'}`}>#{(row.serialNumber || 0).toString().padStart(2, '0')}</td>
-                      <td className="py-5">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-[10px] ${row.status === 'cancelled' ? 'bg-slate-100 text-slate-400' : 'bg-blue-50 text-blue-500'}`}>P</div>
-                          <span className={`font-bold ${row.status === 'cancelled' ? 'text-slate-500' : 'text-slate-800'}`}>{row.patientName}</span>
-                        </div>
-                      </td>
-                      <td className="py-5 font-bold text-slate-500">{row.time}</td>
-                      <td className="py-5">
-                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${row.status === 'waiting' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                          row.status === 'consulting' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                            row.status === 'cancelled' ? 'bg-red-50 text-red-500 border-red-100' :
-                              'bg-green-50 text-green-600 border-green-100'
-                          }`}>
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="py-5 pr-4 text-right">
-                        {row.status !== 'cancelled' && (
-                          <button onClick={() => onNavigate?.('/doctor/serial-manager')} className="text-slate-400 hover:text-blue-600 transition-colors font-black text-[10px] uppercase tracking-widest border border-slate-200 px-4 py-2 rounded-xl hover:border-blue-200 hover:bg-blue-50/50">Manage</button>
-                        )}
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={5} className="py-20 text-center">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center">
-                            <Activity size={24} />
-                          </div>
-                          <p className="text-slate-400 font-bold">No active chamber today</p>
-                          <p className="text-[10px] text-slate-300 uppercase font-black">Select a chamber above to see appointments</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div className="p-4 bg-slate-50 rounded-[1.5rem] border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* TODAY'S OVERVIEW SECTION */}
+        <div className="space-y-5">
+          <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0"><AlertCircle size={16} /></div>
-              <p className="text-[10px] font-bold text-slate-600 leading-tight">Live bookings reflect real-time hospital context. Filter scope to manage specific sessions.</p>
+              <div className="w-1.5 h-6 bg-teal-500 rounded-full"></div>
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">Today's Overview</h3>
             </div>
-            <Button onClick={() => onNavigate?.('/doctor/manual-booking')} className="w-full md:w-auto h-10 px-6 rounded-xl text-xs font-black shadow-none bg-slate-800">Add Walk-in</Button>
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full border border-slate-200/50">
+              Live Updates
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            {/* Row 1: Primary (Full-width) */}
+            <div className="w-full">
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-8 flex items-center justify-between group hover:border-teal-200 transition-all shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)] relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
+                <div className="space-y-1 relative z-10">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2 flex items-center gap-2">
+                    <TrendingUp size={12} className="text-teal-500" /> Total Earnings
+                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-black text-slate-900 tracking-tighter">
+                      {isResolving ? <div className="w-24 h-12 bg-slate-50 animate-pulse rounded-xl" /> : `৳${revenueTotal}`}
+                    </span>
+                    {!isResolving && <span className="text-xs font-black text-teal-600 uppercase tracking-widest bg-teal-50 px-3 py-1 rounded-lg">Today</span>}
+                  </div>
+                </div>
+                <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100/30 shadow-inner group-hover:bg-teal-600 group-hover:text-white transition-all duration-500">
+                  <CreditCard size={28} />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Secondary (2 Columns) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-7 flex flex-col justify-between hover:border-teal-200 transition-all shadow-[0_10px_40px_-15px_rgba(0,0,0,0.02)] relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-1 h-full bg-slate-200 group-hover:bg-teal-500 transition-colors"></div>
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Appointments</p>
+                  <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-teal-50 group-hover:text-teal-500 transition-all">
+                    <Users size={16} />
+                  </div>
+                </div>
+                <h4 className="text-4xl font-black text-slate-900 tracking-tighter">
+                  {isResolving ? <div className="w-12 h-10 bg-slate-50 animate-pulse rounded-lg" /> : totalPatients}
+                </h4>
+              </div>
+
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-7 flex flex-col justify-between hover:border-teal-200 transition-all shadow-[0_10px_40px_-15px_rgba(0,0,0,0.02)] relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Waiting List</p>
+                  <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
+                    <Clock size={16} />
+                  </div>
+                </div>
+                <h4 className="text-4xl font-black text-slate-900 tracking-tighter">
+                  {isResolving ? <div className="w-12 h-10 bg-slate-50 animate-pulse rounded-lg" /> : waitingCount}
+                  <span className="ml-2 text-[10px] text-orange-500 uppercase tracking-widest font-black">Active</span>
+                </h4>
+              </div>
+            </div>
+
+            {/* Row 3: Support (2 Columns - Smaller) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50/40 border border-slate-100/80 rounded-[1.5rem] p-5 flex items-center gap-5 hover:bg-white hover:border-teal-100 transition-all transition-duration-500 group">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-teal-500 shadow-sm group-hover:scale-110 transition-transform">
+                  <UserCheck size={18} />
+                </div>
+                <div>
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Completed</p>
+                  <p className="text-2xl font-black text-slate-800 leading-none mt-1.5">{finishedCount}</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50/40 border border-slate-100/80 rounded-[1.5rem] p-5 flex items-center gap-5 hover:bg-white hover:border-red-100 transition-all transition-duration-500 group">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 group-hover:text-red-400 shadow-sm group-hover:scale-110 transition-transform">
+                  <X size={18} />
+                </div>
+                <div>
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Cancelled</p>
+                  <p className="text-2xl font-black text-slate-800 leading-none mt-1.5">{cancelledCount}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
       </div>
     </div>
   );

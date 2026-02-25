@@ -79,8 +79,9 @@ export const ChamberCard: React.FC<ChamberCardProps> = ({
                 {onSelect && (
                     <Button
                         onClick={onSelect}
+                        variant="outline"
                         fullWidth
-                        className="h-14 rounded-2xl bg-white hover:bg-medical-600 hover:text-white border-2 border-medical-600 text-medical-600 font-black text-xs uppercase tracking-widest transition-all shadow-md group"
+                        className="h-14 rounded-2xl border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white font-black text-xs uppercase tracking-widest transition-all shadow-md group"
                     >
                         Select Chamber
                         <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />

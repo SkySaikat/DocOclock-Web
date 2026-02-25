@@ -45,6 +45,21 @@ export const DoctorPracticeSettings: React.FC = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingChamberId, setEditingChamberId] = useState<string | null>(null);
 
+    // Body scroll lock & Layout Hiding
+    useEffect(() => {
+        if (showAddForm) {
+            document.body.style.overflow = 'hidden';
+            document.body.setAttribute('data-modal-open', 'true');
+        } else {
+            document.body.style.overflow = 'unset';
+            document.body.removeAttribute('data-modal-open');
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+            document.body.removeAttribute('data-modal-open');
+        };
+    }, [showAddForm]);
+
     const [formData, setFormData] = useState({
         hospitalName: '',
         address: '',
@@ -80,6 +95,7 @@ export const DoctorPracticeSettings: React.FC = () => {
                 schedule,
                 feeNormal: formData.feeNormal,
                 feeReport: formData.feeReport,
+                dailyBookingLimit: settings.dailyBookingLimit, // Using global limit or could be per chamber if needed
             };
 
             await saveChamberWithSchedules(doctorId, chamberToSave);
@@ -210,150 +226,152 @@ export const DoctorPracticeSettings: React.FC = () => {
                 )}
             </div>
 
-            {/* ADD/EDIT CHAMBER FORM */}
+            {/* ADD/EDIT CHAMBER FORM MODAL */}
             {showAddForm && (
-                <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-premium border border-slate-100 animate-scale-in">
-                    <div className="flex justify-between items-center mb-10">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                                {editingChamberId ? 'Edit Chamber Configuration' : 'Setup New Chamber'}
-                            </h2>
-                            <p className="text-sm font-bold text-slate-400">Please provide accurate information for patient booking.</p>
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-premium border border-slate-100 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300 relative">
+                        <div className="flex justify-between items-center mb-10">
+                            <div className="space-y-1">
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                                    {editingChamberId ? 'Edit Chamber Configuration' : 'Setup New Chamber'}
+                                </h2>
+                                <p className="text-sm font-bold text-slate-400">Please provide accurate information for patient booking.</p>
+                            </div>
+                            <button onClick={resetForm} className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+                                <X size={24} />
+                            </button>
                         </div>
-                        <button onClick={resetForm} className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
-                            <X size={24} />
-                        </button>
+
+                        <form onSubmit={handleSaveChamber} className="space-y-8">
+                            {/* BASIC INFO */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                        <Hospital size={14} className="text-medical-500" /> Hospital / Clinic Name
+                                    </label>
+                                    <input
+                                        required
+                                        type="text"
+                                        value={formData.hospitalName}
+                                        onChange={(e) => setFormData({ ...formData, hospitalName: e.target.value })}
+                                        placeholder="e.g., Evercare Hospital, Dhaka"
+                                        className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                    />
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                        <MapPin size={14} className="text-medical-500" /> Full Address
+                                    </label>
+                                    <input
+                                        required
+                                        type="text"
+                                        value={formData.address}
+                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                        placeholder="e.g., Plot 81, Block E, Bashundhara"
+                                        className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                    />
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                        <CreditCard size={14} className="text-medical-500" /> Normal Consultation Fee (৳)
+                                    </label>
+                                    <input
+                                        required
+                                        type="number"
+                                        value={formData.feeNormal}
+                                        onChange={(e) => setFormData({ ...formData, feeNormal: parseInt(e.target.value) })}
+                                        className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                        <CreditCard size={14} className="text-medical-500" /> Report / Follow-up Fee (৳)
+                                    </label>
+                                    <input
+                                        required
+                                        type="number"
+                                        value={formData.feeReport}
+                                        onChange={(e) => setFormData({ ...formData, feeReport: parseInt(e.target.value) })}
+                                        className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* WEEKLY SCHEDULE */}
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 ml-1">Weekly Schedule</h3>
+
+                                <div className="space-y-3">
+                                    {DAYS.map(day => (
+                                        <div key={day} className={`flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-2xl transition-all ${scheduleState[day].active ? 'bg-teal-50/50 border border-teal-100' : 'bg-slate-50 border border-transparent'}`}>
+                                            <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={scheduleState[day].active}
+                                                    onChange={(e) => setScheduleState({
+                                                        ...scheduleState,
+                                                        [day]: { ...scheduleState[day], active: e.target.checked }
+                                                    })}
+                                                    className="w-5 h-5 rounded-lg border-slate-200 text-teal-600 focus:ring-teal-500"
+                                                />
+                                                <span className={`text-sm font-black ${scheduleState[day].active ? 'text-teal-700' : 'text-slate-500'}`}>{DAY_LABELS[day]}</span>
+                                            </label>
+
+                                            {scheduleState[day].active && (
+                                                <div className="flex-1 grid grid-cols-3 gap-3 animate-fade-in">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Start</label>
+                                                        <input
+                                                            type="time"
+                                                            value={scheduleState[day].startTime}
+                                                            onChange={(e) => setScheduleState({
+                                                                ...scheduleState,
+                                                                [day]: { ...scheduleState[day], startTime: e.target.value }
+                                                            })}
+                                                            className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">End</label>
+                                                        <input
+                                                            type="time"
+                                                            value={scheduleState[day].endTime}
+                                                            onChange={(e) => setScheduleState({
+                                                                ...scheduleState,
+                                                                [day]: { ...scheduleState[day], endTime: e.target.value }
+                                                            })}
+                                                            className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Limit</label>
+                                                        <input
+                                                            type="number"
+                                                            value={scheduleState[day].dailyLimit}
+                                                            onChange={(e) => setScheduleState({
+                                                                ...scheduleState,
+                                                                [day]: { ...scheduleState[day], dailyLimit: parseInt(e.target.value) || 0 }
+                                                            })}
+                                                            className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row gap-4">
+                                <Button type="submit" className="bg-medical-600 hover:bg-medical-500 text-white flex-1 h-16 rounded-[20px] font-black text-sm shadow-xl shadow-medical-100 uppercase tracking-widest gap-2">
+                                    <Save size={20} /> {editingChamberId ? 'Update Configuration' : 'Save & Active Chamber'}
+                                </Button>
+                                <Button type="button" variant="outline" onClick={resetForm} className="h-16 px-10 rounded-[20px] font-black text-sm border-slate-200 text-slate-500 hover:bg-slate-50">
+                                    Cancel
+                                </Button>
+                            </div>
+                        </form>
                     </div>
-
-                    <form onSubmit={handleSaveChamber} className="space-y-8">
-                        {/* BASIC INFO */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                    <Hospital size={14} className="text-medical-500" /> Hospital / Clinic Name
-                                </label>
-                                <input
-                                    required
-                                    type="text"
-                                    value={formData.hospitalName}
-                                    onChange={(e) => setFormData({ ...formData, hospitalName: e.target.value })}
-                                    placeholder="e.g., Evercare Hospital, Dhaka"
-                                    className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
-                                />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                    <MapPin size={14} className="text-medical-500" /> Full Address
-                                </label>
-                                <input
-                                    required
-                                    type="text"
-                                    value={formData.address}
-                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                    placeholder="e.g., Plot 81, Block E, Bashundhara"
-                                    className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
-                                />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                    <CreditCard size={14} className="text-medical-500" /> Normal Consultation Fee (৳)
-                                </label>
-                                <input
-                                    required
-                                    type="number"
-                                    value={formData.feeNormal}
-                                    onChange={(e) => setFormData({ ...formData, feeNormal: parseInt(e.target.value) })}
-                                    className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
-                                />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                    <CreditCard size={14} className="text-medical-500" /> Report / Follow-up Fee (৳)
-                                </label>
-                                <input
-                                    required
-                                    type="number"
-                                    value={formData.feeReport}
-                                    onChange={(e) => setFormData({ ...formData, feeReport: parseInt(e.target.value) })}
-                                    className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        {/* WEEKLY SCHEDULE */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 ml-1">Weekly Schedule</h3>
-
-                            <div className="space-y-3">
-                                {DAYS.map(day => (
-                                    <div key={day} className={`flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-2xl transition-all ${scheduleState[day].active ? 'bg-teal-50/50 border border-teal-100' : 'bg-slate-50 border border-transparent'}`}>
-                                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
-                                            <input
-                                                type="checkbox"
-                                                checked={scheduleState[day].active}
-                                                onChange={(e) => setScheduleState({
-                                                    ...scheduleState,
-                                                    [day]: { ...scheduleState[day], active: e.target.checked }
-                                                })}
-                                                className="w-5 h-5 rounded-lg border-slate-200 text-teal-600 focus:ring-teal-500"
-                                            />
-                                            <span className={`text-sm font-black ${scheduleState[day].active ? 'text-teal-700' : 'text-slate-500'}`}>{DAY_LABELS[day]}</span>
-                                        </label>
-
-                                        {scheduleState[day].active && (
-                                            <div className="flex-1 grid grid-cols-3 gap-3 animate-fade-in">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Start</label>
-                                                    <input
-                                                        type="time"
-                                                        value={scheduleState[day].startTime}
-                                                        onChange={(e) => setScheduleState({
-                                                            ...scheduleState,
-                                                            [day]: { ...scheduleState[day], startTime: e.target.value }
-                                                        })}
-                                                        className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">End</label>
-                                                    <input
-                                                        type="time"
-                                                        value={scheduleState[day].endTime}
-                                                        onChange={(e) => setScheduleState({
-                                                            ...scheduleState,
-                                                            [day]: { ...scheduleState[day], endTime: e.target.value }
-                                                        })}
-                                                        className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Limit</label>
-                                                    <input
-                                                        type="number"
-                                                        value={scheduleState[day].dailyLimit}
-                                                        onChange={(e) => setScheduleState({
-                                                            ...scheduleState,
-                                                            [day]: { ...scheduleState[day], dailyLimit: parseInt(e.target.value) || 0 }
-                                                        })}
-                                                        className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row gap-4">
-                            <Button type="submit" className="bg-medical-600 hover:bg-medical-500 text-white flex-1 h-16 rounded-[20px] font-black text-sm shadow-xl shadow-medical-100 uppercase tracking-widest gap-2">
-                                <Save size={20} /> {editingChamberId ? 'Update Configuration' : 'Save & Active Chamber'}
-                            </Button>
-                            <Button type="button" variant="outline" onClick={resetForm} className="h-16 px-10 rounded-[20px] font-black text-sm border-slate-200 text-slate-500 hover:bg-slate-50">
-                                Cancel
-                            </Button>
-                        </div>
-                    </form>
                 </div>
             )}
         </div>

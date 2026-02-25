@@ -152,121 +152,151 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
       setSelectedSpecialty(specialty === selectedSpecialty ? 'All' : specialty);
    };
 
+   // 1. Refined browseList (Master List)
    const browseList = useMemo(() => {
       const filtered = doctors.filter(doc => {
-         const matchesSearch = searchTerm === '' ||
-            doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            doc.specialty.toLowerCase().includes(searchTerm.toLowerCase());
-         const matchesSpecialty = selectedSpecialty === 'All' || doc.specialty.toLowerCase().includes(selectedSpecialty.toLowerCase());
-         return matchesSearch && matchesSpecialty;
+         const term = searchTerm.toLowerCase();
+         // Search in Name, Specialty, and ALL Chamber names
+         const matchesName = doc.name.toLowerCase().includes(term);
+         const matchesSpecialty = doc.specialty.toLowerCase().includes(term);
+         const matchesHospitals = (doc.chambers || []).some(c => c.name.toLowerCase().includes(term));
+
+         const matchesSearch = searchTerm === '' || matchesName || matchesSpecialty || matchesHospitals;
+
+         const matchesSelectedSpecialty = selectedSpecialty === 'All' || doc.specialty.toLowerCase().includes(selectedSpecialty.toLowerCase());
+
+         return matchesSearch && matchesSelectedSpecialty;
       });
 
       // Prioritize Real Doctors (!isDemo) over Demo Doctors (isDemo)
-      // Secondary sort by rating (descending)
       return [...filtered].sort((a, b) => {
-         // Sort by Demo status: Real doctors first (isDemo: false/undefined)
          const aDemo = !!a.isDemo;
          const bDemo = !!b.isDemo;
-
          if (!aDemo && bDemo) return -1;
          if (aDemo && !bDemo) return 1;
-
-         // Within same group, sort by rating
          return (b.rating || 0) - (a.rating || 0);
       });
    }, [doctors, searchTerm, selectedSpecialty]);
 
    return (
-      <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-24" style={{ fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif' }}>
-         {/* HERO SECTION */}
-         <div className="max-w-4xl mx-auto pt-6 pb-16 md:pt-16 md:pb-28 px-4 md:px-0">
-            <div className="relative overflow-hidden rounded-[28px] md:rounded-[32px] bg-slate-900 shadow-[0_40px_80px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.05)] border border-white/5"
-               style={{
-                  background: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 50%), linear-gradient(135deg, #0F172A, #1E293B)'
-               }}>
-               {/* Background elements */}
-               <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-                  <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500 rounded-full blur-[100px] animate-blob"></div>
-                  <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500 rounded-full blur-[100px] animate-blob animation-delay-2000"></div>
-               </div>
+      <div className="min-h-screen bg-white font-sans text-slate-900 pb-24" style={{ fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif' }}>
+         <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            {/* HERO SECTION - REFINED SHARPNESS */}
+            <div className="pt-8 pb-12 md:pt-16 md:pb-20">
+               <div className="relative rounded-[24px] bg-slate-900 border border-slate-800 shadow-2xl"
+                  style={{
+                     background: 'radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.1), transparent 50%), #0F172A'
+                  }}>
 
-               <div className="relative z-10 px-8 py-16 md:px-16 md:py-24 max-w-4xl">
-                  <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-300 px-4 py-1.5 rounded-full text-[12px] font-semibold uppercase tracking-wider mb-8 border border-blue-500/20 backdrop-blur-sm">
-                     <ShieldCheck size={14} />
-                     <span>BMDC Verified Doctors Only</span>
-                  </div>
-
-                  <h1 className="text-[clamp(32px,9vw,56px)] font-black tracking-[-0.04em] text-white leading-[1.05] mb-6 break-words">
-                     Healthcare, <br />
-                     <span className="bg-gradient-to-br from-[#5B8CFF] to-[#2ED6A1] bg-clip-text text-transparent">Simplified.</span>
-                  </h1>
-
-                  <p className="text-[14px] md:text-[16px] text-slate-300 font-medium mb-10 max-w-[280px] md:max-w-[80%] leading-relaxed opacity-90">
-                     Book top specialists instantly, track your live serial status, and manage your health records in one premium platform.
-                  </p>
-
-                  {/* Search Bar - Luxury Glassmorphism */}
-                  <div ref={searchContainerRef} className="relative group/search max-w-2xl">
-                     <div className="backdrop-blur-xl bg-white/10 p-2 flex items-center gap-3 shadow-2xl rounded-3xl border border-white/10 focus-within:ring-4 focus-within:ring-blue-500/20 transition-all">
-                        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-3 md:p-4 rounded-2xl shadow-lg shadow-blue-500/30">
-                           <Search size={24} />
-                        </div>
-                        <input
-                           ref={searchInputRef}
-                           className="flex-1 py-2 text-lg outline-none text-white placeholder:text-slate-400 font-medium bg-transparent"
-                           placeholder="Doctor or Specialty..."
-                           value={searchTerm}
-                           onChange={(e) => { setSearchTerm(e.target.value); setShowDropdown(true); }}
-                           onFocus={() => setShowDropdown(true)}
-                        />
-                        {searchTerm && (
-                           <button onClick={() => { setSearchTerm(''); setShowDropdown(false); }} className="p-2 text-slate-300 hover:text-white transition-colors">
-                              <X size={20} />
-                           </button>
-                        )}
+                  <div className="relative z-10 px-6 py-12 md:px-12 md:py-20 lg:pr-32">
+                     <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-blue-500/20">
+                        <ShieldCheck size={12} />
+                        <span>BMDC Verified Doctors</span>
                      </div>
 
-                     {showDropdown && searchTerm && browseList.length > 0 && (
-                        <div className="absolute top-[calc(100%+12px)] left-0 w-full bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden z-50">
-                           <div className="divide-y divide-slate-100/50">
-                              {browseList.slice(0, 5).map(doc => (
-                                 <div key={doc.id} onClick={() => { onSelectDoctor?.(doc); setShowDropdown(false); }} className="p-4 hover:bg-slate-50 cursor-pointer flex gap-4 items-center group transition-colors">
-                                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0">
-                                       {doc.imageUrl && <img src={doc.imageUrl} className="w-full h-full object-cover" alt={doc.name} />}
-                                    </div>
-                                    <div className="flex-1">
-                                       <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">{doc.name}</h4>
-                                       <p className="text-[12px] text-slate-500 font-medium uppercase tracking-wider">{doc.specialty}</p>
-                                    </div>
-                                 </div>
-                              ))}
+                     <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-[1.1] mb-6">
+                        Healthcare, <br />
+                        <span className="text-blue-500">Simplified.</span>
+                     </h1>
+
+                     <p className="text-sm md:text-base text-slate-400 font-medium mb-10 max-w-lg leading-relaxed">
+                        Book top specialists instantly, track your live serial status, and manage your health records in one premium platform.
+                     </p>
+
+                     {/* Search Bar - Disciplined Integration */}
+                     <div ref={searchContainerRef} className="relative max-w-xl group">
+                        <div className="bg-white/5 backdrop-blur-md flex items-center gap-2 md:gap-3 p-1.5 rounded-[18px] border border-white/10 focus-within:border-blue-500/50 focus-within:bg-white/10 transition-all duration-300">
+                           <div className="bg-blue-600 text-white p-2.5 md:p-3 rounded-[14px] shadow-lg shadow-blue-500/20 shrink-0">
+                              <Search size={18} className="md:w-5 md:h-5" />
                            </div>
+                           <input
+                              ref={searchInputRef}
+                              className="flex-1 min-w-0 py-2 text-sm md:text-base outline-none text-white placeholder:text-slate-500 font-bold bg-transparent"
+                              placeholder="Search Doctor..."
+                              value={searchTerm}
+                              onChange={(e) => { setSearchTerm(e.target.value); setShowDropdown(true); }}
+                              onFocus={() => setShowDropdown(true)}
+                           />
+                           {searchTerm && (
+                              <button onClick={() => { setSearchTerm(''); setShowDropdown(false); }} className="p-2 text-slate-400 hover:text-white transition-colors mr-2">
+                                 <X size={18} />
+                              </button>
+                           )}
                         </div>
-                     )}
+
+                        {showDropdown && searchTerm && browseList.length > 0 && (
+                           <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="divide-y divide-slate-50">
+                                 {browseList.slice(0, 5).map(doc => (
+                                    <div key={doc.id} onClick={() => { onSelectDoctor?.(doc); setShowDropdown(false); }} className="p-4 hover:bg-slate-50 cursor-pointer flex gap-4 items-center group transition-colors">
+                                       <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                                          {doc.imageUrl && <img src={doc.imageUrl} className="w-full h-full object-cover" alt={doc.name} />}
+                                       </div>
+                                       <div className="flex-1">
+                                          <h4 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors tracking-tight">{doc.name}</h4>
+                                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{doc.specialty}</p>
+                                       </div>
+                                       <div className="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">View Profile</div>
+                                    </div>
+                                 ))}
+                              </div>
+                           </div>
+                        )}
+                     </div>
                   </div>
                </div>
             </div>
-         </div>
 
-         <div className="max-w-4xl mx-auto px-4">
-            {/* STATS STRIP */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 -mt-8 md:-mt-12 mb-16 md:mb-20 relative z-20">
-               {[
-                  { icon: Users, label: "Specialists", value: "1.7k+", color: "bg-blue-600/10 text-blue-600" },
-                  { icon: ShieldCheck, label: "BMDC Verified", value: "100%", color: "bg-emerald-600/10 text-emerald-600" },
-                  { icon: Clock, label: "Live Queue", value: "24/7", color: "bg-indigo-600/10 text-indigo-600" },
-                  { icon: Heart, label: "Happy Patients", value: "99%", color: "bg-rose-600/10 text-rose-600" }
-               ].map((stat, i) => (
-                  <div key={i} className="bg-white p-4 md:p-6 rounded-[24px] shadow-[0_12px_30px_rgba(0,0,0,0.06)] border border-slate-100 flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)]">
-                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-[12px] md:rounded-[14px] ${stat.color} flex items-center justify-center shrink-0 shadow-sm font-bold`}>
-                        <stat.icon size={20} className="md:w-6 md:h-6" />
+            {/* NEW HIGH-IMPACT ATTENTION SECTION */}
+            <div className="py-12 md:py-20 flex flex-col md:flex-row gap-12 items-center">
+               <div className="flex-1 space-y-4">
+                  <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+                     Your Time. Your Health. <br />
+                     <span className="text-blue-600">Fully Controlled.</span>
+                  </h2>
+                  <p className="text-slate-500 font-medium leading-relaxed max-w-md">
+                     DocOclock brings transparency to clinical visits. Track your live queue status from anywhere and access verified healthcare instantly.
+                  </p>
+               </div>
+               <div className="flex-1 w-full max-w-md bg-slate-50/50 rounded-[24px] border border-slate-100 p-8 space-y-8">
+                  {[
+                     { icon: Activity, title: "Live Queue Tracking", desc: "Know exactly when to enter the chamber." },
+                     { icon: ShieldCheck, title: "BMDC Verified", desc: "Every doctor on our platform is verified." },
+                     { icon: Pill, title: "Digital Prescription", desc: "Archive and access your Rxs anytime." }
+                  ].map((feat, i) => (
+                     <div key={i} className="flex gap-5 items-start">
+                        <div className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100 text-blue-600 shrink-0">
+                           <feat.icon size={20} />
+                        </div>
+                        <div>
+                           <h4 className="text-[15px] font-black text-slate-900 mb-1">{feat.title}</h4>
+                           <p className="text-[13px] text-slate-500 font-medium leading-normal">{feat.desc}</p>
+                        </div>
                      </div>
-                     <div className="min-w-0">
-                        <p className="text-[9px] md:text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] md:tracking-[1px] truncate whitespace-nowrap">{stat.label}</p>
-                        <h4 className="text-[18px] md:text-[22px] font-black text-slate-900 leading-none mt-1">{stat.value}</h4>
-                     </div>
+                  ))}
+               </div>
+            </div>
+
+            {/* TRUST METRICS SECTION - STRUCTURED & PREMIUM */}
+            <div className="mb-12">
+               <div className="bg-slate-50/50 rounded-[24px] border border-slate-100 p-8 md:p-10">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
+                     {[
+                        { icon: Users, label: "Specialists", value: "1.7K+", color: "text-blue-600", bg: "bg-blue-100/50" },
+                        { icon: ShieldCheck, label: "Verified", value: "100%", color: "text-emerald-600", bg: "bg-emerald-100/50" },
+                        { icon: Clock, label: "Live Queue", value: "24/7", color: "text-indigo-600", bg: "bg-indigo-100/50" },
+                        { icon: Heart, label: "Success Rate", value: "99%", color: "text-rose-600", bg: "bg-rose-100/50" }
+                     ].map((stat, i) => (
+                        <div key={i} className="flex flex-col items-center text-center group">
+                           <div className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-300`}>
+                              <stat.icon size={22} />
+                           </div>
+                           <h4 className="text-2xl md:text-3xl font-black text-slate-900 leading-none mb-2 tracking-tight">{stat.value}</h4>
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">{stat.label}</p>
+                        </div>
+                     ))}
                   </div>
-               ))}
+               </div>
             </div>
 
             {/* UPCOMING APPOINTMENT (IF ANY) */}
@@ -276,11 +306,11 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                      <h2 className="text-[24px] font-bold tracking-[-0.3px] text-slate-900 leading-tight">Your Schedule</h2>
                      <p className="text-[14px] text-slate-500 font-medium mt-1 opacity-60">Your confirmed medical visits</p>
                   </div>
-                  <div className="bg-white rounded-[28px] shadow-lg border border-slate-100 overflow-hidden ring-1 ring-slate-900/5">
+                  <div className="bg-white rounded-[20px] shadow-sm border border-slate-100 overflow-hidden ring-1 ring-slate-900/5">
                      <div className="flex flex-col md:flex-row">
-                        <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-8 md:w-48 flex flex-col items-center justify-center text-white text-center">
-                           <span className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-80 mb-2">Serial Now</span>
-                           <span className="text-6xl font-bold tracking-tighter leading-none">{activeAppointment.serialNumber}</span>
+                        <div className="bg-slate-900 p-8 md:w-48 flex flex-col items-center justify-center text-white text-center">
+                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 mb-2">Serial Now</span>
+                           <span className="text-6xl font-black tracking-tighter leading-none">{activeAppointment.serialNumber}</span>
                            <div className="mt-4 flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm ring-1 ring-white/10">
                               {activeAppointment.isArrived ? <Activity size={12} className="animate-pulse" /> : <Clock size={12} />}
                               <span>{activeAppointment.isArrived ? 'Live' : 'Expected'}</span>
@@ -321,24 +351,23 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                selectedSpecialty={selectedSpecialty}
             />
 
-            {/* DOCTOR PARTNERSHIP Section */}
+            {/* DOCTOR PARTNERSHIP Section - Refined */}
             {!isPatient && (
-               <section className="py-12 mb-12">
-                  <div className="bg-slate-900 rounded-[32px] p-8 md:p-20 relative overflow-hidden shadow-2xl border border-white/5"
-                     style={{ background: 'radial-gradient(circle at top right, rgba(59,130,246,0.15), transparent 60%), #0F172A' }}>
-                     <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[80%] bg-blue-600/20 rounded-full blur-[100px] animate-pulse"></div>
+               <section className="py-12 mb-12 animate-in fade-in duration-1000">
+                  <div className="bg-slate-900 rounded-[24px] p-8 md:p-16 relative overflow-hidden shadow-2xl border border-slate-800"
+                     style={{ background: 'radial-gradient(circle at top right, rgba(59,130,246,0.1), transparent 50%), #0F172A' }}>
                      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
-                        <div className="inline-flex items-center gap-2 bg-white/5 text-blue-300 px-4 py-1.5 rounded-full text-[12px] font-bold uppercase tracking-wider mb-8 border border-white/10 backdrop-blur-sm">
+                        <div className="inline-flex items-center gap-2 bg-white/5 text-blue-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-8 border border-white/10 backdrop-blur-sm">
                            <BriefcaseMedical size={14} />
                            <span>Doctor Partnership</span>
                         </div>
-                        <h2 className="text-4xl md:text-5xl font-bold text-white leading-[1.1] mb-6 tracking-tight">Are you a Doctor?</h2>
-                        <p className="text-[16px] text-slate-400 font-medium mb-12 leading-relaxed opacity-80">
+                        <h2 className="text-3xl md:text-5xl font-black text-white leading-[1.1] mb-6 tracking-tight">Are you a Doctor?</h2>
+                        <p className="text-[15px] text-slate-400 font-medium mb-12 leading-relaxed opacity-80 max-w-md">
                            Join DocOclock to modernize your practice, manage patient queues, and issue professional digital prescriptions effortlessly.
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-5 w-full justify-center">
-                           <Button onClick={() => onNavigate('/for-doctors')} className="h-14 px-12 rounded-2xl bg-blue-600 text-white font-bold text-lg shadow-xl shadow-blue-500/30 hover:bg-blue-500 transition-all active:scale-95">Join DocOclock</Button>
-                           <Button variant="outline" onClick={() => onNavigate('/doctor-login')} className="h-14 px-12 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-bold text-lg backdrop-blur-sm transition-all active:scale-95">Partner Login</Button>
+                        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+                           <Button onClick={() => onNavigate('/for-doctors')} className="h-14 px-12 rounded-2xl bg-blue-600 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95">Join Now</Button>
+                           <Button variant="outline" onClick={() => onNavigate('/doctor-login')} className="h-14 px-12 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-black text-sm uppercase tracking-widest backdrop-blur-sm transition-all active:scale-95">Dashboard</Button>
                         </div>
                      </div>
                   </div>

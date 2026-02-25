@@ -5,8 +5,7 @@ import {
    Download, Search, Calendar, Stethoscope, Building2,
    Eye, ShieldCheck, X, Printer, Share2, User, FileDigit
 } from 'lucide-react';
-import { PatientStorage, fetchPrescriptions, fetchDoctorChambers } from '../../storage';
-import { Prescription, Appointment, Doctor, UserRole } from '../../types';
+import { PatientStorage, fetchPrescriptions } from '../../storage';
 import { supabase } from '../../supabase';
 
 interface PrescriptionsProps {
@@ -21,7 +20,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
    const patient = useMemo(() => PatientStorage.get(), []);
    const currentPatientId = patient?.id;
 
-   // 3. Join logic for display names (since Prescription only stores IDs)
+   // 3. Join logic for display names
    const [enrichedPrescriptions, setEnrichedPrescriptions] = useState<any[]>([]);
    const [isLoading, setIsLoading] = useState(true);
 
@@ -36,11 +35,9 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
                return;
             }
 
-            // 1. Get unique IDs to batch fetch
             const doctorIds = [...new Set(rxList.map(rx => rx.doctorId))].filter(Boolean);
             const hospitalIds = [...new Set(rxList.map(rx => rx.hospitalId))].filter(Boolean);
 
-            // 2. Parallel batch fetch for doctors and chambers
             const [doctorsResponse, chambersResponse] = await Promise.all([
                doctorIds.length > 0
                   ? supabase.from('profiles').select('*').in('id', doctorIds)
@@ -53,7 +50,6 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
             const allDoctors = doctorsResponse.data || [];
             const allChambers = chambersResponse.data || [];
 
-            // 3. Merging logic
             const results = rxList.map((rx: any) => {
                const doctor = allDoctors.find((d: any) => String(d.id) === String(rx.doctorId));
                const hospital = allChambers.find((c: any) => String(c.id) === String(rx.hospitalId));
@@ -77,18 +73,38 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
       enrich();
    }, [currentPatientId]);
 
+   // Body scroll lock & Layout Hiding
+   useEffect(() => {
+      if (selectedRx) {
+         console.log('[DEBUG] Prescription Opened:', selectedRx); // Diagnostic Log
+         document.body.style.overflow = 'hidden';
+         // Use requestAnimationFrame to ensure the attribute is applied after any render cycles
+         requestAnimationFrame(() => {
+            document.body.setAttribute('data-modal-open', 'true');
+         });
+      } else {
+         document.body.style.overflow = 'unset';
+         document.body.removeAttribute('data-modal-open');
+      }
+      return () => {
+         document.body.style.overflow = 'unset';
+         document.body.removeAttribute('data-modal-open');
+      };
+   }, [selectedRx]);
+
    const filteredRx = enrichedPrescriptions.filter((rx: any) =>
       rx.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       rx.hospitalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      rx.diagnosis.toLowerCase().includes(searchQuery.toLowerCase())
+      (rx.diagnosis || '').toLowerCase().includes(searchQuery.toLowerCase())
    );
 
    const PrescriptionFlashCard = ({ rx }: { rx: any }) => (
       <div className="flex flex-col h-full bg-white relative font-sans">
-         <div className="p-6 md:p-8 border-b-2 border-blue-600 bg-white">
+         {/* Premium Custom Header Matching Doctor View EXACTLY */}
+         <div className="p-6 md:p-8" style={{ backgroundColor: '#3b82f610', borderBottom: '2px solid #3b82f6' }}>
             <div className="flex justify-between items-start gap-4">
                <div className="flex gap-4">
-                  <div className="w-14 h-14 md:w-16 md:h-16 bg-blue-50 p-2 rounded-xl border border-blue-100 flex items-center justify-center shrink-0">
+                  <div className="w-14 h-14 md:w-16 md:h-16 bg-white p-2 rounded-2xl border border-blue-100 flex items-center justify-center shrink-0 shadow-sm">
                      <Stethoscope size={28} className="text-blue-600" />
                   </div>
                   <div className="max-w-[200px] md:max-w-xs">
@@ -103,37 +119,70 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
             </div>
          </div>
 
-         <div className="px-6 md:px-8 py-3 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center gap-x-8 gap-y-2 text-[10px] md:text-xs font-black uppercase tracking-widest">
-            <div className="flex items-center gap-2"><span className="text-blue-600">Patient:</span> <span className="text-slate-600">{patient?.name}</span></div>
-            <div className="flex items-center gap-2"><span className="text-blue-600">Date:</span> <span className="text-slate-600">{rx.displayDate}</span></div>
-            <div className="ml-auto text-blue-600 flex items-center gap-2">ID: <span className="text-slate-600">#{rx.id}</span></div>
+         {/* Meta Data Row Matching Doctor View */}
+         <div className="px-6 md:px-8 py-4 bg-white border-b border-slate-100 flex flex-wrap gap-x-8 gap-y-2 text-[10px] md:text-xs font-black uppercase tracking-widest">
+            <div className="flex items-center gap-1.5"><span className="text-blue-600">Patient:</span> <span className="text-slate-600">{patient?.name}</span></div>
+            <div className="flex items-center gap-1.5"><span className="text-blue-600">Date:</span> <span className="text-slate-600">{rx.displayDate}</span></div>
+            <div className="ml-auto text-blue-600">ID: <span className="text-slate-600">#{rx.id.slice(-8).toUpperCase()}</span></div>
          </div>
 
-         <div className="flex-1 flex flex-col p-6 md:p-8 overflow-hidden">
-            <div className="mb-8">
-               <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Clinical Diagnosis</h4>
-               <p className="text-sm font-bold text-slate-700 bg-blue-50/50 p-4 rounded-xl border border-blue-100">{rx.diagnosis || 'No diagnosis recorded'}</p>
+         <div className="flex-1 flex flex-col md:flex-row p-6 md:p-8 overflow-hidden gap-8">
+            {/* Left Column: Clinical Info */}
+            <div className="w-full md:w-1/3 md:border-r border-slate-100 md:pr-6 space-y-8">
+               <section>
+                  <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Clinical Diagnosis</h4>
+                  <p className="text-sm font-bold text-slate-700 bg-blue-50/50 p-4 rounded-xl border border-blue-100">{rx.diagnosis || 'No diagnosis recorded'}</p>
+               </section>
+
+               {rx.clinicalFindings && (
+                  <section>
+                     <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Clinical Findings</h4>
+                     <ul className="space-y-1.5 pl-4 list-disc text-xs font-bold text-slate-700 marker:text-slate-300">
+                        {rx.clinicalFindings.split('\n').filter((c: string) => c.trim()).map((c: string, i: number) => <li key={i}>{c}</li>)}
+                     </ul>
+                  </section>
+               )}
+
+               {rx.testsRecommended && (
+                  <section>
+                     <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Tests Recommended</h4>
+                     <ol className="space-y-1.5 pl-4 list-decimal text-xs font-bold text-slate-700 marker:text-slate-300">
+                        {rx.testsRecommended.split('\n').filter((t: string) => t.trim()).map((t: string, i: number) => <li key={i}>{t}</li>)}
+                     </ol>
+                  </section>
+               )}
+
+               {rx.followUpDate && (
+                  <section className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 shadow-sm">
+                     <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-2">Follow Up</h4>
+                     <p className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                        <Calendar size={14} className="text-blue-500" /> {new Date(rx.followUpDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                     </p>
+                  </section>
+               )}
             </div>
 
-            <div className="flex-1 relative">
+            {/* Right Column: Medications & Advice */}
+            <div className="flex-1 relative md:pl-2 min-h-[300px]">
                <div className="absolute top-0 right-0 opacity-[0.05] pointer-events-none select-none"><span className="text-8xl font-black italic">Rx</span></div>
-               <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-4">Medications</h4>
-               <div className="space-y-6">
+               <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-6">Medications</h4>
+               <div className="space-y-8">
                   {rx.medicines.map((med: any, i: number) => (
-                     <div key={i} className="relative group border-b border-slate-50 pb-4 last:border-0">
+                     <div key={i} className="relative group">
                         <h4 className="font-black text-slate-900 text-base md:text-lg flex items-center gap-2">
                            {i + 1}. {med.name}
                         </h4>
                         <div className="flex items-center gap-6 mt-3">
-                           <div className="bg-blue-600 text-white px-3 py-1 rounded-lg font-black tracking-widest text-xs shadow-sm shadow-blue-200">{med.dosage}</div>
+                           <div className="bg-slate-100 px-3 py-1 rounded-lg font-black tracking-widest text-slate-800 text-xs border border-slate-200">{med.dosage}</div>
                            <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">{med.beforeAfterMeal} Meal • {med.durationDays} Days</div>
                         </div>
                      </div>
                   ))}
                </div>
+
                {rx.notes && (
-                  <div className="mt-8 pt-6 border-t border-slate-100">
-                     <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-2">Instructions / Advice:</h4>
+                  <div className="mt-12 pt-8 border-t border-slate-100">
+                     <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Advice / Instructions:</h4>
                      <p className="text-sm font-bold text-slate-600 italic leading-relaxed">{rx.notes}</p>
                   </div>
                )}
@@ -141,7 +190,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
          </div>
 
          <div className="p-6 md:p-8 bg-white border-t border-slate-100 flex flex-col items-center">
-            <p className="text-[9px] text-slate-400 text-center max-w-xs mb-6 italic">Securely stored and verified by DocOclock Digital Health Registry.</p>
+            <p className="text-[9px] text-slate-400 text-center max-w-xs mb-8 italic">Securely stored and verified by DocOclock Digital Health Registry.</p>
             <div className="w-full flex justify-between items-end">
                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Recorded: {rx.displayDate}</div>
                <div className="text-center">
@@ -174,13 +223,12 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
          {isLoading ? (
             <div className="flex flex-col items-center justify-center py-32 space-y-4">
                <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
-               <p className="text-slate-400 font-bold animate-pulse">Retrieving medical records...</p>
+               <p className="text-slate-400 font-bold animate-pulse uppercase tracking-[0.2em] text-[10px]">Retrieving medical records</p>
             </div>
          ) : filteredRx.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-700">
                {filteredRx.map((rx: any) => (
                   <div key={rx.id} className="bg-white border border-slate-200/60 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group/card">
-                     {/* Section 1: Header Bar */}
                      <div className="px-6 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/40">
                         <div className="flex items-center gap-2">
                            <Calendar size={12} className="text-slate-400" />
@@ -192,9 +240,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
                         </div>
                      </div>
 
-                     {/* Section 2: Core Medical Info */}
                      <div className="p-6 grid grid-cols-2 gap-x-10 gap-y-6">
-                        {/* Left Column: Provider & Doctor */}
                         <div className="space-y-5">
                            <div>
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Provider</p>
@@ -212,7 +258,6 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
                            </div>
                         </div>
 
-                        {/* Right Column: Specialty & Diagnosis */}
                         <div className="space-y-5">
                            <div>
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Specialty</p>
@@ -228,7 +273,6 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
                         </div>
                      </div>
 
-                     {/* Section 3: Action Area */}
                      <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-4 mt-auto">
                         <button
                            onClick={() => setSelectedRx(rx)}
@@ -238,7 +282,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
                            View Record
                         </button>
                         <button
-                           className="flex-1 px-4 py-2.5 rounded-[10px] bg-gradient-to-br from-slate-800 to-slate-950 text-white text-[13px] font-bold shadow-sm hover:shadow-lg hover:shadow-indigo-900/10 transition-all flex items-center justify-center gap-2"
+                           className="flex-1 px-4 py-2.5 rounded-[10px] bg-gradient-to-br from-slate-800 to-slate-950 text-white text-[13px] font-bold shadow-sm hover:shadow-lg transition-all flex items-center justify-center gap-2"
                         >
                            <Download size={16} />
                            Download

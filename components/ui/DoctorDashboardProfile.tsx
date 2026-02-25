@@ -90,24 +90,13 @@ export const DoctorDashboardProfile: React.FC<DoctorDashboardProfileProps> = ({
                 </div>
 
                 {/* Right Action Column */}
-                <div className="flex flex-col items-center md:items-end justify-between gap-6 md:h-full md:min-w-[240px]">
-                    <div className="flex items-center gap-3 bg-slate-50/80 px-5 py-3 rounded-2xl border border-slate-100/50 backdrop-blur-sm">
-                        <MapPin size={16} className="text-blue-500" />
-                        <span className="text-sm font-bold text-slate-600 truncate max-w-[150px]">
+                <div className="flex flex-col items-center md:items-end justify-center md:min-w-[200px]">
+                    <div className="flex items-center gap-3 bg-blue-600 px-6 py-3.5 rounded-2xl shadow-xl shadow-blue-200/50 border border-blue-500/20 group-hover:scale-105 transition-transform duration-500">
+                        <MapPin size={18} className="text-white fill-white/20" />
+                        <span className="text-sm font-black text-white truncate max-w-[180px] uppercase tracking-wider">
                             {doctor.hospitalName || 'Main Chamber'}
                         </span>
                     </div>
-
-                    {onManageClick && (
-                        <button
-                            onClick={onManageClick}
-                            className="w-full md:w-auto px-8 h-14 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all hover:bg-blue-600 hover:shadow-xl hover:shadow-blue-200 active:scale-95 group/btn"
-                        >
-                            <Settings size={16} className="group-hover/btn:rotate-90 transition-transform duration-500" />
-                            Manage Settings
-                            <ChevronRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-                        </button>
-                    )}
                 </div>
             </div>
         </div>

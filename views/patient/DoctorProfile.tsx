@@ -161,45 +161,45 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
       <div className="max-w-4xl mx-auto px-6 mt-10">
         <div className="flex flex-col md:flex-row gap-10 items-center md:items-start text-center md:text-left">
           {/* Doctor Info Column */}
-          <div className="flex-1 space-y-6">
-            <div className="space-y-2">
-              <span className="text-sm font-bold text-slate-400 capitalize">{doctor.specialty}</span>
-              <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+          <div className="flex-1 space-y-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-1 w-8 bg-blue-600 rounded-full"></div>
+                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{doctor.specialty}</span>
+              </div>
+              <h1 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
                 {doctor.name}
               </h1>
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest max-w-md mx-auto md:mx-0 leading-relaxed">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider max-w-md mx-auto md:mx-0 leading-relaxed">
                 {doctor.degrees || "MBBS, MD, FCPS (Cardiology), FACC (USA)"}
               </p>
             </div>
 
-            <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="text-4xl font-black text-blue-600">৳ {chambers[0]?.feeNormal || 840}</span>
-              <span className="text-slate-400 font-bold">/session</span>
-            </div>
+            {/* Micro Stats Row - High Spacing Removed */}
 
             {/* Micro Stats Row */}
-            <div className="flex flex-wrap justify-center md:justify-start gap-4">
-              <div className="bg-slate-50 border border-slate-100 p-4 px-6 rounded-[24px] flex flex-col items-center md:items-start gap-1 w-[120px]">
-                <Briefcase size={20} className="text-blue-500 mb-1" />
-                <span className="text-sm font-black text-slate-900 leading-none">{doctor.experienceYears || 12} Years</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Experience</span>
-              </div>
-              <div className="bg-slate-50 border border-slate-100 p-4 px-6 rounded-[24px] flex flex-col items-center md:items-start gap-1 w-[120px]">
-                <Star size={20} className="text-amber-500 mb-1" />
-                <span className="text-sm font-black text-slate-900 leading-none">{doctor.rating || 4.8}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Rating</span>
-              </div>
-              <div className="bg-slate-50 border border-slate-100 p-4 px-6 rounded-[24px] flex flex-col items-center md:items-start gap-1 w-[120px]">
-                <Users size={20} className="text-indigo-500 mb-1" />
-                <span className="text-sm font-black text-slate-900 leading-none">{doctor.totalPatients || "2500"}+</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Patients</span>
-              </div>
+            <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
+              {[
+                { icon: Briefcase, color: "text-blue-500", bg: "bg-blue-50", label: "Experience", val: `${doctor.experienceYears || 12} Years` },
+                { icon: Star, color: "text-amber-500", bg: "bg-amber-50", label: "Rating", val: doctor.rating || 4.8 },
+                { icon: Users, color: "text-indigo-500", bg: "bg-indigo-50", label: "Patients", val: `${doctor.totalPatients || "2500"}+` }
+              ].map((stat, i) => (
+                <div key={i} className="bg-white border border-slate-100 p-2.5 px-4 rounded-2xl flex items-center gap-3 min-w-[110px] shadow-sm hover:border-slate-200 transition-all">
+                  <div className={`${stat.bg} ${stat.color} p-1.5 rounded-lg`}>
+                    <stat.icon size={14} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[12px] font-black text-slate-900 leading-none mb-0.5">{stat.val}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{stat.label}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Doctor Large Image Column */}
-          <div className="md:w-1/3 shrink-0 relative">
-            <div className="w-64 h-80 md:w-full md:h-[400px] bg-slate-100 rounded-[48px] overflow-hidden shadow-2xl skew-y-0 md:-skew-y-3 hover:skew-y-0 transition-all duration-700">
+          {/* Doctor Image Column - More compact */}
+          <div className="md:w-[280px] shrink-0 relative mt-4 md:mt-0">
+            <div className="w-56 h-72 md:w-full md:h-[320px] bg-slate-100 rounded-[32px] overflow-hidden shadow-xl transition-all duration-700">
               <img
                 src={doctor.imageUrl || `https://picsum.photos/400/600?random=${doctor.id}`}
                 className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000"
@@ -219,8 +219,8 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
           </div>
         </div>
 
-        {/* TAB NAVIGATION */}
-        <div className="mt-20 flex gap-1 border-b border-slate-50 overflow-x-auto no-scrollbar py-2">
+        {/* TAB NAVIGATION - Compact margins */}
+        <div className="mt-12 flex gap-1 border-b border-slate-50 overflow-x-auto no-scrollbar py-2">
           {['About', 'Availability', 'Experience', 'Education', 'Reviews'].map((tab) => (
             <button
               key={tab}
@@ -236,8 +236,8 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
           ))}
         </div>
 
-        {/* TAB CONTENT Area */}
-        <div className="mt-10 min-h-[400px]">
+        {/* TAB CONTENT Area - Compact margins */}
+        <div className="mt-6 min-h-[300px]">
           {activeTab === 'About' && (
             <div className="space-y-12 animate-fade-in-up">
               <div className="space-y-4">
@@ -247,23 +247,22 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
                 </p>
               </div>
 
-              {/* Key Metrics Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Key Metrics Grid - Removed Session Fee */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
-                  { icon: Heart, label: "Session Fee", val: `৳ ${chambers[0]?.feeNormal || 840}` },
-                  { icon: Award, label: "Follow-Up Fee", val: `৳ ${Math.floor((chambers[0]?.feeNormal || 840) * 0.6)}`, sub: "Within 30 days" },
-                  { icon: Clock, label: "Avg. Session", val: "12-15 Minutes" },
-                  { icon: Users, label: "Attended Patients", val: `${doctor.totalPatients || "2.5k"}+ Cases` }
+                  { icon: Award, label: "Follow-Up Charge", val: `৳ ${Math.floor((chambers[0]?.feeNormal || 840) * 0.6)}`, sub: "Within 30 days" },
+                  { icon: Clock, label: "Avg. Duration", val: "12-15 Minutes" },
+                  { icon: Users, label: "Total Cases", val: `${doctor.totalPatients || "2.5k"}+ Treated` }
                 ].map((stat, i) => (
-                  <div key={i} className="bg-slate-50/50 border border-slate-100/50 p-6 px-8 rounded-[32px] flex items-center gap-6 group hover:bg-white hover:border-blue-100 transition-all">
-                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-700 shadow-sm group-hover:text-blue-600 group-hover:scale-110 transition-all duration-500">
-                      <stat.icon size={24} />
+                  <div key={i} className="bg-slate-50/40 border border-slate-100/50 p-4 px-6 rounded-3xl flex items-center gap-4 group hover:bg-white hover:border-blue-100 transition-all">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-700 shadow-sm group-hover:text-blue-600 transition-all">
+                      <stat.icon size={18} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
                       <div className="flex items-center gap-2">
-                        <span className="text-xl font-black text-slate-900">{stat.val}</span>
-                        {stat.sub && <span className="text-[10px] font-bold text-slate-400">({stat.sub})</span>}
+                        <span className="text-sm font-black text-slate-900">{stat.val}</span>
+                        {stat.sub && <span className="text-[9px] font-bold text-slate-400">({stat.sub})</span>}
                       </div>
                     </div>
                   </div>
@@ -413,22 +412,22 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor, onBack, on
                         </div>
                       )}
 
-                      <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 space-y-3">
-                        <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400 uppercase">Consultation Fee</span><span className="font-black text-slate-900">৳ {(selectedChamber as any).feeNormal}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400 uppercase">Discount Code</span><span className="text-emerald-600 font-bold">- ৳ 200</span></div>
-                        <div className="border-t border-slate-200 pt-3 flex justify-between items-center"><span className="text-sm font-black text-slate-900">Amount to Pay</span><span className="text-2xl font-black text-blue-600">৳ {(selectedChamber as any).feeNormal - 200}</span></div>
+                      <div className="bg-slate-50 rounded-[2.5rem] p-5 sm:p-6 border border-slate-100 space-y-4">
+                        <div className="flex justify-between items-center"><span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Consultation Fee</span><span className="font-black text-slate-900">৳ {(selectedChamber as any).feeNormal}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Discount Code</span><span className="text-emerald-600 font-bold whitespace-nowrap">- ৳ 200</span></div>
+                        <div className="border-t border-slate-200 pt-4 flex justify-between items-center"><span className="text-xs sm:text-sm font-black text-slate-900">Amount to Pay</span><span className="text-xl sm:text-2xl font-black text-blue-600">৳ {(selectedChamber as any).feeNormal - 200}</span></div>
                       </div>
 
                       {bookingError && (
                         <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 text-rose-600 flex items-center gap-3 animate-shake">
-                          <AlertCircle size={20} />
-                          <p className="text-sm font-bold uppercase tracking-widest">{getBookingErrorMessage(bookingError)}</p>
+                          <AlertCircle size={20} className="shrink-0" />
+                          <p className="text-[10px] sm:text-sm font-black uppercase tracking-widest">{getBookingErrorMessage(bookingError)}</p>
                         </div>
                       )}
 
-                      <div className="flex gap-4">
-                        <Button fullWidth variant="outline" className="h-14 rounded-2xl font-black uppercase text-xs tracking-widest" onClick={() => setIsBookingModalOpen(false)}>Cancel</Button>
-                        <Button fullWidth className="h-14 rounded-2xl font-black uppercase text-xs tracking-widest bg-blue-600 text-white" onClick={handleConfirmBooking} disabled={isBooking}>
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2">
+                        <Button fullWidth variant="outline" className="h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest order-2 sm:order-1" onClick={() => setIsBookingModalOpen(false)}>Cancel</Button>
+                        <Button fullWidth className="h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest bg-blue-600 text-white order-1 sm:order-2" onClick={handleConfirmBooking} disabled={isBooking}>
                           {isBooking ? "Finalizing..." : "Confirm Securely"}
                         </Button>
                       </div>

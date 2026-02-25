@@ -9,8 +9,7 @@ export enum UserRole {
 
 export type Relationship = 'Self' | 'Daughter' | 'Son' | 'Spouse' | 'Parent' | 'Other';
 // Statuses updated for strict queue management
-export type AppointmentStatus = 'pending' | 'consulting' | 'completed' | 'cancelled' | 'waiting';
-export type SerialStatus = 'waiting' | 'current' | 'completed' | 'no-show';
+export type AppointmentStatus = 'waiting' | 'consulting' | 'completed' | 'cancelled' | 'late';
 export type Gender = 'Male' | 'Female' | 'Other';
 
 /**
@@ -134,8 +133,13 @@ export interface Appointment {
   category?: "normal" | "report";
   hasPrescription?: boolean;
   prescriptionId?: string;
+  patientAge?: number;
+  patientGender?: Gender;
   cancelledAt: number | null;
   completedAt: number | null;
+  arrivalTime: number | null;
+  consultationStartTime: number | null;
+  consultationEndTime: number | null;
   cancelledBy?: "patient" | "doctor";
 }
 
@@ -163,7 +167,7 @@ export interface Serial {
   patientName: string;
   gender: Gender;
   phone: string;
-  status: SerialStatus;
+  status: AppointmentStatus;
   paymentStatus: 'Paid' | 'Unpaid';
   estimatedTime: string;
   age?: number;
@@ -194,6 +198,9 @@ export interface Prescription {
   hospitalId: string;
   date: string;
   diagnosis: string;
+  clinicalFindings?: string;
+  testsRecommended?: string;
+  followUpDate?: string;
   notes: string;
   medicines: {
     name: string;
@@ -209,6 +216,8 @@ export interface MedicineAlert {
   id: string;
   patientId: string;
   appointmentId: string;
+  doctorId?: string;
+  hospitalId?: string;
   medicineName: string;
   dosage: string;
   startDate: string;

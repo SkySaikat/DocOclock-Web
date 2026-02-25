@@ -16,11 +16,13 @@ import { DoctorDashboard } from './views/doctor/Dashboard';
 import { DoctorAnalytics } from './views/doctor/Analytics';
 import { PrescriptionEditor } from './views/doctor/PrescriptionEditor';
 import { SerialManager } from './views/doctor/SerialManager';
-import { ManualBooking } from './views/doctor/ManualBooking';
+import { PatientManualRegistry } from './views/doctor/PatientManualRegistry';
 import { DoctorPracticeSettings } from './views/doctor/DoctorPracticeSettings';
+import { DoctorMore } from './views/doctor/DoctorMore';
+import { DoctorProfileEditor } from './views/doctor/DoctorProfileEditor';
 import { UserRole, Doctor, Patient } from './types';
 
-import { Activity, ShieldAlert, Lock, User } from 'lucide-react';
+import { Activity, ShieldAlert, Lock, User, ArrowRight } from 'lucide-react';
 import { PatientStorage, DoctorStorage } from './storage';
 
 import { useAuth } from './AuthContext';
@@ -139,8 +141,10 @@ const App: React.FC = () => {
         case '/doctor/dashboard': return <DoctorDashboard onNavigate={navigate} />;
         case '/doctor/analytics': return <DoctorAnalytics />;
         case '/doctor/serial-manager': return <SerialManager onNavigate={navigate} onStartPrescription={setActiveRxPatient} />;
-        case '/doctor/manual-booking': return <ManualBooking />;
+        case '/doctor/manual-booking': return <PatientManualRegistry onNavigate={navigate} />;
         case '/doctor/practice-settings': return <DoctorPracticeSettings />;
+        case '/doctor/profile': return <DoctorMore onNavigate={navigate} onLogout={handleLogout} />;
+        case '/doctor/profile-editor': return <DoctorProfileEditor onBack={() => navigate('/doctor/profile')} />;
         case '/doctor/prescription': return (
           <PrescriptionEditor
             initialPatient={activeRxPatient}
@@ -170,36 +174,76 @@ const App: React.FC = () => {
       case '/live-serial': return isPatient ? <LiveSerial appointmentId={activeAppointmentId} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
 
       case '/doctor-login': return (
-        <div className="max-w-md mx-auto mt-6 md:mt-10 px-4 animate-fade-in-up">
-          <div className="glass-panel p-6 md:p-8 rounded-[2.5rem] text-center border-0 ring-1 ring-slate-200 shadow-2xl bg-white">
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-teal-100 rounded-3xl flex items-center justify-center text-teal-600 mx-auto mb-6 shadow-inner">
-              <Activity size={32} className="md:w-10 md:h-10" />
+        <div className="max-w-[400px] mx-auto mt-10 px-4 animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-white rounded-[24px] shadow-2xl relative overflow-hidden border border-slate-100 flex flex-col">
+            {/* Refined Header (Aligned with Patient Modal) */}
+            <div className="px-8 pt-10 pb-6 text-center">
+              <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 mx-auto mb-4 border border-teal-100/50">
+                <Activity size={24} />
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight mb-1">
+                Doctor Portal
+              </h2>
+              <p className="text-[13px] text-slate-500 font-medium leading-relaxed max-w-[280px] mx-auto">
+                Secure access to your practice dashboard.
+              </p>
             </div>
-            <h2 className="text-2xl md:text-3xl font-black mb-2 text-slate-900 tracking-tight">Doctor Portal</h2>
-            <p className="text-slate-500 font-bold mb-8 text-[13px] md:text-sm">Secure access to your practice dashboard.</p>
 
-            {loginError && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-[11px] md:text-xs font-black rounded-2xl flex gap-3 text-left shadow-sm">
-                <ShieldAlert size={16} className="shrink-0" /> <span>{loginError}</span>
-              </div>
-            )}
+            {/* Subtle Divider under header */}
+            <div className="w-full h-px bg-slate-100 mb-6" />
 
-            <form onSubmit={handleDoctorLogin} className="space-y-4">
-              <div className="relative group">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
-                <input name="bmdc" required className="w-full pl-12 p-3.5 md:p-4 rounded-2xl border border-slate-200 font-bold outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all" placeholder="BMDC Number" />
+            <div className="px-8 pb-10">
+              {loginError && (
+                <div className="mb-6 p-3.5 bg-red-50 border border-red-100 text-red-600 text-[12px] font-bold rounded-xl animate-in shake duration-500 flex items-start gap-3 shadow-sm shadow-red-50">
+                  <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5 font-black text-[9px]">!</div>
+                  <span className="leading-tight">{loginError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleDoctorLogin} className="space-y-5">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">BMDC Number</label>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={16} />
+                    <input
+                      name="bmdc"
+                      required
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-teal-500/5 focus:border-teal-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                      placeholder="BMDC-XXXXX"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Password</label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={16} />
+                    <input
+                      name="password"
+                      type="password"
+                      required
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-teal-500/5 focus:border-teal-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-teal-600 to-teal-700 text-white h-12 rounded-xl font-black text-[15px] shadow-lg shadow-teal-500/10 active:scale-[0.98] transition-all"
+                >
+                  Login to Dashboard
+                </button>
+              </form>
+
+              {/* Secondary CTA - Subtle Outlined */}
+              <div className="mt-8 pt-6 border-t border-slate-100/80 text-center">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">New to DocOclock?</p>
+                <button
+                  onClick={() => navigate('/for-doctors')}
+                  className="w-full h-11 border border-slate-200 text-slate-600 hover:text-teal-600 hover:border-teal-500 hover:bg-teal-50/30 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-[13px] group"
+                >
+                  Apply for Doctor Account <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={18} />
-                <input name="password" type="password" required className="w-full pl-12 p-3.5 md:p-4 rounded-2xl border border-slate-200 font-bold outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all" placeholder="Password" />
-              </div>
-              <button type="submit" className="w-full bg-teal-600 text-white py-3.5 md:py-4 rounded-2xl font-black hover:bg-teal-700 transition shadow-xl shadow-teal-200 text-lg active:scale-[0.98]">
-                Login to Dashboard
-              </button>
-            </form>
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <p className="text-sm font-bold text-slate-500">New to DocOclock?</p>
-              <button onClick={() => navigate('/for-doctors')} className="text-teal-600 font-black mt-2 hover:underline text-sm">Apply for Doctor Account</button>
             </div>
           </div>
         </div>
@@ -215,6 +259,7 @@ const App: React.FC = () => {
       onNavigate={navigate}
       onLoginClick={openLoginModal}
       hideMobileBottomNav={currentPath === '/patient/profile'}
+      currentPath={currentPath}
     >
       {renderView()}
       {isLoginModalOpen && (

@@ -71,6 +71,8 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
    const [queueSessionStatus, setQueueSessionStatus] = useState<QueueSessionStatus>('NOT_STARTED');
    const [sessionMeta, setSessionMeta] = useState<DoctorSessionMeta>(DEFAULT_SESSION_META);
    const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+   const [reservedSlotsCount, setReservedSlotsCount] = useState(0);
+   const [isSavingReserved, setIsSavingReserved] = useState(false);
    const [isLoadingQueue, setIsLoadingQueue] = useState(true);
 
    const [refreshCount, setRefreshCount] = useState(0);
@@ -95,6 +97,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
             setAllAppointments(apps);
             setDoctorStatus(session.isDoctorArrived ? 'arrived' : 'not-arrived');
             setQueueSessionStatus(session.sessionStatus);
+            setReservedSlotsCount(session.reservedSlotsCount);
             setSessionMeta(session.meta);
          } catch (error) {
             console.error('Error loading queue data from Supabase:', error);
@@ -115,8 +118,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
       const filtered = allAppointments.filter(a =>
          String(a.doctorId) === String(currentDoctorId) &&
          String(a.hospitalId) === String(activeHospitalId) &&
-         a.date === today &&
-         a.status !== 'cancelled'
+         a.date === today
       );
 
       // Part 9: Safe debug guard
@@ -132,6 +134,27 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
       return filtered;
    }, [allAppointments, currentDoctorId, activeHospitalId, today]);
+
+   const handleSaveReservedCount = async (count: number) => {
+      if (!doctor || !activeChamber) return;
+      setIsSavingReserved(true);
+      try {
+         await upsertQueueSession({
+            doctorId: doctor.id,
+            hospitalId: activeChamber.id,
+            date: today,
+            isDoctorArrived: isArrived,
+            sessionStatus: queueSessionStatus,
+            reservedSlotsCount: count,
+            meta: sessionMeta
+         });
+         setReservedSlotsCount(count);
+      } catch (error) {
+         console.error('Error saving reserved count:', error);
+      } finally {
+         setIsSavingReserved(false);
+      }
+   };
 
    const handleSaveDelay = async () => {
       if (!doctor || !activeChamber) return;
@@ -152,6 +175,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
             date: today,
             isDoctorArrived: isArrived,
             sessionStatus: queueSessionStatus,
+            reservedSlotsCount,
             meta
          });
 
@@ -164,29 +188,126 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
    };
 
    const sortedAppointments = useMemo(() => {
-      let list = [...filteredAppointments].sort((a, b) => (a.serialNumber || 0) - (b.serialNumber || 0));
-      if (filterStatus !== 'all') {
-         list = list.filter(a => a.status === filterStatus);
+      const list = [...filteredAppointments];
+
+      // Calculate max serial for the day
+      const maxPublic = activeChamber?.dailyBookingLimit || 30;
+
+      // Inject virtual reserved slots if they don't exist as appointments
+      const existingSerials = new Set(list.map(a => Number(a.serialNumber)));
+      for (let i = 1; i <= reservedSlotsCount; i++) {
+         const serial = i;
+         if (!existingSerials.has(Number(serial))) {
+            // Create a virtual reserved slot object
+            list.push({
+               id: `virtual-reserved-${serial}`,
+               serialNumber: serial,
+               status: 'waiting',
+               isReserved: true,
+               patientName: 'Reserved Slot',
+               patientPhone: 'N/A',
+               patientId: 'RESERVED',
+               doctorId: currentDoctorId!,
+               doctorName: doctor?.name || '',
+               hospitalId: activeHospitalId!,
+               hospitalName: activeChamber?.hospitalName || '',
+               chamberName: activeChamber?.hospitalName || '',
+               chamberLocation: activeChamber?.address || '',
+               date: today,
+               time: 'Reserved',
+               fee: activeChamber?.feeNormal || 0,
+               isVisibleToPatient: true,
+               category: 'normal',
+               hasPrescription: false,
+               cancelledAt: null,
+               completedAt: null,
+               arrivalTime: null,
+               consultationStartTime: null,
+               consultationEndTime: null
+            });
+         }
       }
-      return list;
-   }, [filteredAppointments, filterStatus]);
+
+      const consulting = list.filter(a => a.status === 'consulting');
+      const waitingAll = list.filter(a => a.status === 'waiting').sort((a, b) => (a.serialNumber || 0) - (b.serialNumber || 0));
+      const late = list.filter(a => a.status === 'late').sort((a, b) => (a.serialNumber || 0) - (b.serialNumber || 0));
+      const finished = list.filter(a => a.status === 'completed' || a.status === 'cancelled')
+         .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+
+      let final = [...consulting, ...waitingAll, ...late, ...finished];
+
+      const strictFilter = filterStatus as string;
+      if (strictFilter !== 'all') {
+         final = final.filter(a => a.status === strictFilter);
+      }
+      return final;
+   }, [filteredAppointments, filterStatus, reservedSlotsCount, activeChamber, currentDoctorId, doctor?.name, today, activeHospitalId]);
 
    const currentApp = useMemo(() =>
       filteredAppointments.find(a => a.status === 'consulting'),
       [filteredAppointments]
    );
 
-   const updateAppStatus = async (id: string, newStatus: AppointmentStatus) => {
-      if (newStatus === 'consulting' && !isArrived) {
-         alert("Please mark yourself as Arrived to start today’s session.");
-         return;
-      }
-
+   const updateAppStatus = async (appId: string, newStatus: AppointmentStatus) => {
       try {
-         // If starting consultation, complete the previous one
+         // Handle virtual reserved slots
+         if (appId.startsWith('virtual-reserved-')) {
+            const serial = parseInt(appId.replace('virtual-reserved-', ''));
+
+            // Guard: Check if this serial is already materialized in database
+            const alreadyExists = allAppointments.some(a => a.serialNumber === serial && a.isReserved);
+            if (alreadyExists) {
+               console.warn(`[GUARD] Serial ${serial} already exists in DB. Skipping virtual materialization.`);
+               setRefreshCount(prev => prev + 1);
+               return;
+            }
+
+            if (newStatus === 'late') {
+               // Materialize as a placeholder late patient
+               const placeholder: Appointment = {
+                  id: crypto.randomUUID(),
+                  patientId: 'RESERVED', // Keep as 'RESERVED' so it stays assignable
+                  patientName: 'Reserved Slot (Late)',
+                  patientPhone: 'N/A',
+                  doctorId: currentDoctorId!,
+                  doctorName: doctor?.name || '',
+                  hospitalId: activeHospitalId!,
+                  hospitalName: activeChamber?.hospitalName || '',
+                  chamberName: activeChamber?.hospitalName || '',
+                  chamberLocation: activeChamber?.address || '',
+                  date: today,
+                  time: 'Late',
+                  status: 'late',
+                  serialNumber: serial,
+                  isReserved: true,
+                  fee: activeChamber?.feeNormal || 0,
+                  isVisibleToPatient: true,
+                  category: 'normal',
+                  hasPrescription: false,
+                  cancelledAt: null,
+                  completedAt: null,
+                  arrivalTime: Date.now(),
+                  consultationStartTime: null,
+                  consultationEndTime: null
+               };
+               await upsertAppointment(placeholder);
+               setRefreshCount(prev => prev + 1);
+               return;
+            }
+         }
+
+         const app = allAppointments.find(a => a.id === appId);
+         if (!app) return;
+
+         if (newStatus === 'consulting' && !isArrived) {
+            alert("Please mark yourself as Arrived to start today’s session.");
+            return;
+         }
+
+         // Single Consulting Rule: If starting consultation, complete the previous one
          if (newStatus === 'consulting') {
             const currentConsulting = allAppointments.find(a => a.status === 'consulting');
-            if (currentConsulting) {
+            if (currentConsulting && currentConsulting.id !== appId) {
                await upsertAppointment({
                   ...currentConsulting,
                   status: 'completed',
@@ -195,18 +316,14 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
             }
          }
 
-         const targetApp = allAppointments.find(a => a.id === id);
-         if (targetApp) {
-            await upsertAppointment({
-               ...targetApp,
-               status: newStatus,
-               completedAt: newStatus === 'completed' ? Date.now() : targetApp.completedAt
-            });
-         }
+         await upsertAppointment({
+            ...app,
+            status: newStatus,
+         });
 
-         setRefreshCount(prev => prev + 1);
+         setTimeout(() => setRefreshCount(prev => prev + 1), 500);
       } catch (error) {
-         console.error('Error updating appointment status in Supabase:', error);
+         console.error('Error updating status:', error);
       }
    };
 
@@ -225,6 +342,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   date: today,
                   isDoctorArrived: true,
                   sessionStatus: 'RUNNING',
+                  reservedSlotsCount,
                   meta: sessionMeta
                });
                setQueueSessionStatus('RUNNING');
@@ -235,19 +353,29 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
             await updateAppStatus(currentApp.id, 'completed');
          }
 
-         const nextWaiting = [...filteredAppointments]
-            .filter(a => a.status === 'waiting' && a.isVisibleToPatient !== false && !a.isReserved)
+         // Prioritize Waitlist over Late list
+         const nextWaiting = filteredAppointments
+            .filter(a => a.status === 'waiting' && !a.isReserved)
             .sort((a, b) => a.serialNumber - b.serialNumber)[0];
 
          if (nextWaiting) {
             await updateAppStatus(nextWaiting.id, 'consulting');
+         } else {
+            // If no normal waiting, check late list
+            const nextLate = filteredAppointments
+               .filter(a => a.status === 'late' && !a.isReserved)
+               .sort((a, b) => a.serialNumber - b.serialNumber)[0];
+
+            if (nextLate) {
+               await updateAppStatus(nextLate.id, 'consulting');
+            }
          }
       } catch (error) {
-         console.error('Error handling next patient in Supabase:', error);
+         console.error('Error handling next patient:', error);
       }
    };
 
-   const selectedApp = filteredAppointments.find(a => a.id === selectedAppId);
+   const selectedApp = allAppointments.find(a => a.id === selectedAppId);
 
    if (!doctor || isLoadingQueue) {
       return (
@@ -267,7 +395,6 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50/50 bg-white">
                <div className="flex items-baseline gap-2.5">
                   <h1 className="text-base font-black text-slate-900 tracking-tighter leading-none">Today's Queue</h1>
-                  <span className="px-2 py-0.5 bg-blue-50/50 text-[8px] font-bold text-blue-600 rounded-md uppercase tracking-widest border border-blue-100/30">Popular</span>
                </div>
                <div className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50 border border-slate-200/40 rounded-lg shrink-0">
                   <Calendar size={12} className="text-slate-400" />
@@ -297,6 +424,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                  date: today,
                                  isDoctorArrived: true,
                                  sessionStatus: queueSessionStatus,
+                                 reservedSlotsCount,
                                  meta
                               });
                               setDoctorStatus('arrived');
@@ -316,6 +444,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                  date: today,
                                  isDoctorArrived: false,
                                  sessionStatus: queueSessionStatus,
+                                 reservedSlotsCount,
                                  meta: sessionMeta
                               });
                               setDoctorStatus('not-arrived');
@@ -404,6 +533,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                     date: today,
                                     isDoctorArrived: true,
                                     sessionStatus: queueSessionStatus,
+                                    reservedSlotsCount,
                                     meta
                                  });
                                  setSessionMeta(meta);
@@ -473,14 +603,14 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 gap-4">
                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Timeline</h3>
-                     <div className="flex flex-wrap gap-2">
-                        {['all', 'waiting', 'consulting', 'completed', 'cancelled'].map((status) => (
+                     <div className="flex overflow-x-auto pb-2 -mb-2 no-scrollbar gap-2 flex-nowrap">
+                        {['all', 'waiting', 'late', 'completed', 'cancelled'].map((status) => (
                            <button
                               key={status}
                               onClick={() => setFilterStatus(status as any)}
-                              className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${filterStatus === status
-                                 ? 'bg-slate-900 text-white border-slate-900 shadow-lg'
-                                 : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'
+                              className={`px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filterStatus === status
+                                 ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                                 : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'
                                  }`}
                            >
                               {status}
@@ -497,42 +627,176 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            <div
                               key={app.id}
                               onClick={() => setSelectedAppId(app.id)}
-                              className={`group p-5 rounded-[2rem] flex items-center justify-between cursor-pointer transition-all border-2
-                        ${isCurrent ? 'bg-blue-50/50 border-blue-500 ring-4 ring-blue-500/5' : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-xl hover:-translate-y-1'}
-                      `}
+                              className={`group p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all border
+                                  ${isCurrent ? 'bg-teal-50/50 border-teal-500/50 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}
+                               `}
                            >
-                              <div className="flex items-center gap-6">
-                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm transition-all
-                            ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600'}
-                          `}>
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 min-w-0">
+                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 transition-all
+                                     ${isCurrent ? 'bg-teal-600 text-white shadow-lg' :
+                                       app.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                                          'bg-slate-100 text-slate-500'}
+                                  `}>
                                     {app.serialNumber}
                                  </div>
-                                 <div className="min-w-0">
-                                    <h4 className={`font-black text-lg tracking-tight truncate transition-colors ${app.isReserved ? 'text-slate-400 italic' : 'text-slate-900 group-hover:text-blue-600'}`}>
+
+                                 <div className="min-w-0 flex flex-col justify-center flex-1">
+                                    <h4 className={`font-black text-base tracking-tight truncate ${app.status === 'cancelled' ? 'text-slate-300 line-through' : (app.isReserved ? 'text-slate-400 italic' : 'text-slate-900')}`}>
                                        {app.isReserved ? 'Reserved Slot' : app.patientName}
                                     </h4>
-                                    <p className="text-xs text-slate-500 font-bold flex items-center gap-2 mt-0.5">
+                                    <div className="text-[10px] text-slate-400 font-bold flex items-center gap-2 mt-0.5">
                                        {app.isReserved ? (
-                                          <span className="text-blue-500">Doctor Only Slot</span>
+                                          <span className="text-teal-500/60 uppercase tracking-widest text-[8px]">Restricted Action</span>
                                        ) : (
                                           <>
-                                             <span className="flex items-center gap-1"><Phone size={12} /> {app.patientPhone}</span>
-                                             <span className="text-slate-200">|</span>
-                                             <span>Today • {app.time}</span>
+                                             <span className="flex items-center gap-1"><Phone size={10} className="text-slate-300" /> {app.patientPhone}</span>
+                                             <span className="hidden sm:inline w-0.5 h-0.5 rounded-full bg-slate-300" />
+                                             <span className={`uppercase tracking-tighter ${app.status === 'late' ? 'text-amber-600' : ''}`}>{app.status}</span>
                                           </>
                                        )}
-                                    </p>
+                                    </div>
+
+                                    {/* MOBILE-ONLY ACTION ROW */}
+                                    <div className="flex sm:hidden items-center gap-2 mt-3">
+                                       {app.isReserved && app.patientId === 'RESERVED' && (
+                                          <>
+                                             {app.status === 'waiting' && (
+                                                <button onClick={(e) => { e.stopPropagation(); setAssignData({ name: '', phone: '', appId: app.id }); setShowAssignModal(true); }} className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-black text-[8px] uppercase tracking-widest">ASSIGN</button>
+                                             )}
+                                             <button onClick={(e) => { e.stopPropagation(); handleSaveReservedCount(Math.max(0, reservedSlotsCount - 1)); if (!app.id.startsWith('virtual-reserved-')) updateAppStatus(app.id, 'cancelled'); }} className="p-1.5 bg-slate-50 text-slate-400 border border-slate-100 rounded-lg"><Plus size={14} className="rotate-45" /></button>
+                                          </>
+                                       )}
+                                       {!app.isReserved && ['waiting', 'late'].includes(app.status) && (
+                                          <>
+                                             <button onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'consulting'); }} className="p-1.5 bg-teal-600 text-white rounded-lg"><Activity size={14} /></button>
+                                             <button onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'cancelled'); }} className="p-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg"><X size={14} /></button>
+                                          </>
+                                       )}
+                                       {app.status === 'consulting' && (
+                                          <button onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'completed'); }} className="px-3 py-1 bg-teal-600 text-white rounded-lg font-black text-[9px] uppercase">COMPLETE</button>
+                                       )}
+                                    </div>
                                  </div>
                               </div>
-                              <div className="flex items-center gap-4">
-                                 <span className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-xl tracking-widest border ${app.status === 'waiting' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                                    app.status === 'completed' ? 'bg-green-50 text-green-700 border-green-100' :
-                                       app.status === 'consulting' ? 'bg-blue-600 text-white border-blue-600 animate-pulse' :
-                                          app.status === 'cancelled' ? 'bg-red-50 text-red-500 border-red-100' :
-                                             'bg-slate-50 text-slate-400 border-slate-100'
-                                    }`}>{app.status === 'consulting' ? 'Serving' : app.status}</span>
-                                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
-                                    <ChevronRight size={24} />
+
+                              {/* DESKTOP-ONLY ACTION ROW */}
+                              <div className="hidden sm:flex items-center gap-2 shrink-0">
+                                 {app.isReserved && app.patientId === 'RESERVED' && (
+                                    <>
+                                       {app.status === 'waiting' && (
+                                          <button
+                                             onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAssignData({ name: '', phone: '', appId: app.id });
+                                                setShowAssignModal(true);
+                                             }}
+                                             className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-black transition-colors shadow-sm"
+                                          >
+                                             ASSIGN
+                                          </button>
+                                       )}
+                                       {app.status === 'late' && (
+                                          <button
+                                             onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAssignData({ name: '', phone: '', appId: app.id });
+                                                setShowAssignModal(true);
+                                             }}
+                                             className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-black transition-colors shadow-sm"
+                                          >
+                                             ASSIGN
+                                          </button>
+                                       )}
+                                       {app.status === 'waiting' && (
+                                          <button
+                                             onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'late'); }}
+                                             className="p-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors"
+                                             title="Push to Late"
+                                          >
+                                             <Clock size={16} />
+                                          </button>
+                                       )}
+                                       <button
+                                          onClick={(e) => {
+                                             e.stopPropagation();
+                                             // Always decrement count when releasing a slot (whether virtual or materialized)
+                                             handleSaveReservedCount(Math.max(0, reservedSlotsCount - 1));
+
+                                             if (!app.id.startsWith('virtual-reserved-')) {
+                                                // If materialized, also cancel the record
+                                                updateAppStatus(app.id, 'cancelled');
+                                             }
+                                          }}
+                                          className="p-2 bg-slate-50 text-slate-400 border border-slate-100 rounded-lg hover:bg-slate-100 transition-colors"
+                                          title="Release to Public"
+                                       >
+                                          <Plus size={16} className="rotate-45" />
+                                       </button>
+                                    </>
+                                 )}
+
+                                 {!app.isReserved && app.status === 'waiting' && (
+                                    <>
+                                       <button
+                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'consulting'); }}
+                                          className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
+                                          title="Start Consultation"
+                                       >
+                                          <Activity size={16} />
+                                       </button>
+                                       <button
+                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'late'); }}
+                                          className="p-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors"
+                                          title="Mark Late"
+                                       >
+                                          <Clock size={16} />
+                                       </button>
+                                       <button
+                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'cancelled'); }}
+                                          className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-colors"
+                                          title="Cancel"
+                                       >
+                                          <X size={16} />
+                                       </button>
+                                    </>
+                                 )}
+
+                                 {!app.isReserved && app.status === 'late' && (
+                                    <>
+                                       <button
+                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'consulting'); }}
+                                          className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
+                                          title="Start Consultation"
+                                       >
+                                          <Activity size={16} />
+                                       </button>
+                                       <button
+                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'cancelled'); }}
+                                          className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-colors"
+                                          title="Cancel"
+                                       >
+                                          <X size={16} />
+                                       </button>
+                                    </>
+                                 )}
+
+                                 {app.status === 'consulting' && (
+                                    <button
+                                       onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'completed'); }}
+                                       className="px-3 py-1.5 bg-teal-600 text-white rounded-lg font-black text-[10px] uppercase tracking-wider hover:bg-teal-700 transition-colors shadow-sm"
+                                    >
+                                       COMPLETE
+                                    </button>
+                                 )}
+
+                                 {['completed', 'cancelled'].includes(app.status) && (
+                                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300">
+                                       <History size={16} />
+                                    </div>
+                                 )}
+
+                                 <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-100 transition-all ml-2">
+                                    <ChevronRight size={16} />
                                  </div>
                               </div>
                            </div>
@@ -580,17 +844,6 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   </div>
                </GlassCard>
 
-               {activeChamber && (
-                  <div className="p-6 bg-blue-50 border border-blue-100 rounded-[2rem] flex items-center gap-4">
-                     <div className="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center shrink-0">
-                        <Activity size={24} />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Active Hospital Today</p>
-                        <h4 className="font-black text-blue-900">{activeChamber.hospitalName}</h4>
-                     </div>
-                  </div>
-               )}
             </div>
          </div>
 
@@ -621,21 +874,70 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                         <section className="space-y-4">
                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">Action Center</h3>
                            <div className="space-y-3">
-                              {selectedApp.status !== 'completed' && (
+                              {selectedApp.status === 'consulting' && (
                                  <Button
                                     fullWidth
-                                    className="h-16 text-lg font-black rounded-2xl bg-green-600 shadow-xl shadow-green-100 flex items-center gap-3"
+                                    className="h-16 text-lg font-black rounded-2xl bg-teal-600 shadow-xl shadow-teal-100 flex items-center gap-3 !text-white"
                                     onClick={() => {
                                        updateAppStatus(selectedApp.id, 'completed');
                                        setSelectedAppId(null);
                                     }}
                                  >
-                                    <CheckCircle size={24} /> Mark as Completed
+                                    <CheckCircle size={24} /> Complete Consultation
                                  </Button>
                               )}
+
+                              {(selectedApp.status === 'waiting' || selectedApp.status === 'late') && (
+                                 <Button
+                                    fullWidth
+                                    className="h-16 text-lg font-black rounded-2xl bg-teal-600 shadow-xl shadow-teal-100 flex items-center gap-3 !text-white"
+                                    onClick={() => {
+                                       updateAppStatus(selectedApp.id, 'consulting');
+                                       setSelectedAppId(null);
+                                    }}
+                                 >
+                                    <Activity size={24} /> Start Consultation
+                                 </Button>
+                              )}
+
+                              {selectedApp.status === 'waiting' && (
+                                 <Button
+                                    fullWidth
+                                    variant="outline"
+                                    className="h-14 text-sm font-black rounded-xl border-amber-200 text-amber-600 hover:bg-amber-50 flex items-center gap-2"
+                                    onClick={() => {
+                                       updateAppStatus(selectedApp.id, 'late');
+                                       setSelectedAppId(null);
+                                    }}
+                                 >
+                                    <Clock size={18} /> Mark as Late
+                                 </Button>
+                              )}
+
+                              {(selectedApp.status === 'waiting' || selectedApp.status === 'late') && (
+                                 <Button
+                                    fullWidth
+                                    variant="outline"
+                                    className="h-14 text-sm font-black rounded-xl border-red-200 text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                    onClick={() => {
+                                       updateAppStatus(selectedApp.id, 'cancelled');
+                                       setSelectedAppId(null);
+                                    }}
+                                 >
+                                    <X size={18} /> Cancel Appointment
+                                 </Button>
+                              )}
+
+                              {!['waiting', 'late', 'consulting'].includes(selectedApp.status) && (
+                                 <div className="bg-slate-50 p-6 rounded-2xl text-center">
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Consultation {selectedApp.status}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-1 italic">No further actions available for this record.</p>
+                                 </div>
+                              )}
+
                               <Button
                                  fullWidth
-                                 className="h-16 text-lg font-black rounded-2xl bg-blue-600 shadow-xl shadow-blue-100 flex items-center gap-3"
+                                 className="h-16 text-lg font-black rounded-2xl bg-slate-900 shadow-xl shadow-slate-100 flex items-center gap-3 !text-white"
                                  onClick={() => {
                                     if (selectedApp.isReserved) {
                                        setAssignData({ name: '', phone: '', appId: selectedApp.id });
@@ -654,7 +956,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                     onNavigate('/doctor/prescription');
                                  }}
                               >
-                                 <FileText size={24} /> {selectedApp.isReserved ? 'Assign Patient' : 'Generate Prescription'}
+                                 <FileText size={24} /> {selectedApp.isReserved ? 'Assign Patient' : 'Open Prescription'}
                               </Button>
                            </div>
                         </section>
@@ -715,7 +1017,39 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            className="h-14 rounded-2xl font-black bg-blue-600 shadow-xl shadow-blue-100 disabled:opacity-50 disabled:shadow-none"
                            onClick={async () => {
                               if (assignData.appId && assignData.name && assignData.phone) {
-                                 const slot = allAppointments.find(a => a.id === assignData.appId);
+                                 let slot = allAppointments.find(a => a.id === assignData.appId);
+
+                                 // Handle virtual slot
+                                 if (!slot && assignData.appId.startsWith('virtual-reserved-')) {
+                                    const serial = parseInt(assignData.appId.replace('virtual-reserved-', ''));
+                                    slot = {
+                                       id: crypto.randomUUID(),
+                                       serialNumber: serial,
+                                       status: 'waiting',
+                                       isReserved: true,
+                                       patientName: 'Reserved Slot',
+                                       patientPhone: 'N/A',
+                                       patientId: 'RESERVED',
+                                       doctorId: currentDoctorId!,
+                                       doctorName: doctor?.name || '',
+                                       hospitalId: activeHospitalId!,
+                                       hospitalName: activeChamber?.hospitalName || '',
+                                       chamberName: activeChamber?.hospitalName || '',
+                                       chamberLocation: activeChamber?.address || '',
+                                       date: today,
+                                       time: 'Reserved',
+                                       fee: activeChamber?.feeNormal || 0,
+                                       isVisibleToPatient: true,
+                                       category: 'normal',
+                                       hasPrescription: false,
+                                       cancelledAt: null,
+                                       completedAt: null,
+                                       arrivalTime: Date.now(),
+                                       consultationStartTime: null,
+                                       consultationEndTime: null
+                                    } as Appointment;
+                                 }
+
                                  if (slot) {
                                     await upsertAppointment({
                                        ...slot,

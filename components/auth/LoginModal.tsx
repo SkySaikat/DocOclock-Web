@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { Button } from '../ui/Button';
-import { X, Phone, KeyRound, ArrowRight, User, Hash } from 'lucide-react';
+import { X, Phone, KeyRound, ArrowRight, User, Hash, ShieldCheck } from 'lucide-react';
 import { UserRole, Gender } from '../../types';
 import { useAuth } from '../../AuthContext';
 
@@ -78,170 +78,206 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <GlassCard className="w-full max-w-md p-0 overflow-hidden relative border-0 shadow-2xl">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10 p-2 bg-white/20 rounded-full hover:bg-white/40 transition-colors">
-          <X size={24} />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="w-full max-w-[400px] max-h-[calc(100vh-2rem)] bg-white rounded-[24px] shadow-2xl relative border border-slate-100 flex flex-col animate-in zoom-in-95 duration-300">
+
+        {/* Close Button - Always Accessible */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 z-50 p-2 bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-100 transition-all hover:scale-110 active:scale-95"
+        >
+          <X size={20} />
         </button>
 
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 md:p-10 text-white text-center">
-          <h2 className="text-xl md:text-3xl font-black mb-2 tracking-tight leading-tight">{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-          <p className="opacity-80 text-[12px] md:text-base font-bold leading-relaxed max-w-[240px] md:max-w-none mx-auto">
-            {mode === 'login' ? 'Login to book appointments and track serials.' : 'Join DocOclock to manage your family health.'}
-          </p>
-        </div>
-
-        <div className="p-6 md:p-10">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-[13px] font-bold rounded-2xl animate-shake flex items-start gap-3 shadow-sm shadow-red-50">
-              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5 font-black text-[10px]">!</div>
-              <span className="leading-tight">{error}</span>
+        {/* Scrollable Content Container */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* Refined Header */}
+          <div className="px-8 pt-10 pb-6 text-center">
+            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mx-auto mb-4 border border-blue-100/50">
+              <ShieldCheck size={24} />
             </div>
-          )}
+            <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight mb-1">
+              {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+            </h2>
+            <p className="text-[13px] text-slate-500 font-medium leading-relaxed max-w-[280px] mx-auto">
+              {mode === 'login' ? 'Login to book appointments and track your live queue.' : 'Join DocOclock to manage your health records.'}
+            </p>
+          </div>
 
-          {mode === 'login' ? (
-            step === 'phone' ? (
-              <form onSubmit={handleNextStep} className="space-y-6">
-                <div>
-                  <label className="block text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2 px-1">Mobile Number</label>
-                  <div className="relative group">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
-                    <input
-                      type="tel"
-                      placeholder="017xxxxxxxx"
-                      className="w-full pl-12 pr-4 py-3.5 md:py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-lg transition-all"
-                      value={loginPhone}
-                      onChange={(e) => setLoginPhone(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-                </div>
-                <Button type="submit" fullWidth disabled={isLoading || loginPhone.length < 11} className="h-14 text-lg font-black rounded-2xl shadow-xl shadow-blue-100">
-                  {isLoading ? 'Checking Registry...' : 'Continue'}
-                </Button>
-                <div className="text-center">
-                  <button type="button" onClick={() => { setMode('signup'); setError(null); }} className="text-sm font-bold text-blue-600 hover:underline">
-                    Don't have an account? Sign Up
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleLogin} className="space-y-6 animate-fade-in">
-                <div>
-                  <label className="block text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2 px-1">Enter Password</label>
-                  <div className="relative group">
-                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      className="w-full pl-12 pr-4 py-3.5 md:py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-lg transition-all"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-                  <p className="text-xs text-slate-500 mt-4 font-bold ml-1">
-                    Number: <span className="text-blue-600 font-black">{loginPhone}</span>. <button type="button" onClick={() => setStep('phone')} className="text-blue-600 underline ml-1">Change?</button>
-                  </p>
-                </div>
-                <Button type="submit" fullWidth disabled={isLoading || !password} className="h-14 text-lg font-black rounded-2xl shadow-xl shadow-blue-100">
-                  {isLoading ? 'Verifying...' : 'Login'}
-                </Button>
-              </form>
-            )
-          ) : (
-            <form onSubmit={handleSignup} className="space-y-5 animate-fade-in">
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input
-                    required
-                    placeholder="Enter Name"
-                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold transition-all"
-                    value={signupData.name}
-                    onChange={e => setSignupData({ ...signupData, name: e.target.value })}
-                  />
-                </div>
+          <div className="px-8 pb-10">
+            {error && (
+              <div className="mb-6 p-3.5 bg-red-50 border border-red-100 text-red-600 text-[12px] font-bold rounded-xl animate-in shake duration-500 flex items-start gap-3 shadow-sm shadow-red-50">
+                <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5 font-black text-[9px]">!</div>
+                <span className="leading-tight">{error}</span>
               </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Age</label>
-                  <div className="relative">
-                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            )}
+
+            {mode === 'login' ? (
+              // ... existing login logic unaffected but now scrollable
+              step === 'phone' ? (
+                <form onSubmit={handleNextStep} className="space-y-5">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Mobile Number</label>
+                    <div className="relative group">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                      <input
+                        type="tel"
+                        placeholder="017xxxxxxxx"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                        value={loginPhone}
+                        onChange={(e) => setLoginPhone(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    fullWidth
+                    disabled={isLoading || loginPhone.length < 11}
+                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all"
+                  >
+                    {isLoading ? 'Checking...' : 'Continue'}
+                  </Button>
+                  <div className="text-center">
+                    <button type="button" onClick={() => { setMode('signup'); setError(null); }} className="text-[13px] font-bold text-slate-400 hover:text-blue-600 transition-colors">
+                      Don't have an account? <span className="text-blue-600">Sign Up</span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleLogin} className="space-y-5 animate-in slide-in-from-right duration-300">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Password</label>
+                    <div className="relative group">
+                      <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-3 font-bold flex items-center gap-1">
+                      No: <span className="text-blue-600 font-black tracking-tight">{loginPhone}</span> • <button type="button" onClick={() => setStep('phone')} className="text-blue-600 hover:underline">Change</button>
+                    </p>
+                  </div>
+                  <Button
+                    type="submit"
+                    fullWidth
+                    disabled={isLoading || !password}
+                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all"
+                  >
+                    {isLoading ? 'Verifying...' : 'Login Now'}
+                  </Button>
+                </form>
+              )
+            ) : (
+              <form onSubmit={handleSignup} className="space-y-4 animate-in slide-in-from-right duration-300">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Full Name</label>
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                      <input
+                        required
+                        placeholder="Enter Name"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                        value={signupData.name}
+                        onChange={e => setSignupData({ ...signupData, name: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Age</label>
+                    <div className="relative group">
+                      <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                      <input
+                        required
+                        type="number"
+                        placeholder="Age"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                        value={signupData.age}
+                        onChange={e => setSignupData({ ...signupData, age: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Gender</label>
+                    <select
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base cursor-pointer appearance-none transition-all"
+                      value={signupData.gender}
+                      onChange={e => setSignupData({ ...signupData, gender: e.target.value as Gender })}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Mobile Number</label>
+                  <div className="relative group">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                     <input
                       required
-                      type="number"
-                      placeholder="Age"
-                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold transition-all"
-                      value={signupData.age}
-                      onChange={e => setSignupData({ ...signupData, age: e.target.value })}
+                      type="tel"
+                      placeholder="017xxxxxxxx"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                      value={signupData.phone}
+                      onChange={e => setSignupData({ ...signupData, phone: e.target.value })}
                     />
                   </div>
                 </div>
-                <div className="flex-1">
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Gender</label>
-                  <select
-                    className="w-full px-4 py-[14px] bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold h-full cursor-pointer appearance-none"
-                    value={signupData.gender}
-                    onChange={e => setSignupData({ ...signupData, gender: e.target.value as Gender })}
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Password</label>
+                  <div className="relative group">
+                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                    <input
+                      required
+                      type="password"
+                      placeholder="••••••••"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                      value={signupData.password}
+                      onChange={e => setSignupData({ ...signupData, password: e.target.value })}
+                    />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Mobile Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input
-                    required
-                    type="tel"
-                    placeholder="017xxxxxxxx"
-                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold transition-all"
-                    value={signupData.phone}
-                    onChange={e => setSignupData({ ...signupData, phone: e.target.value })}
-                  />
+                <Button
+                  type="submit"
+                  fullWidth
+                  disabled={isLoading}
+                  className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all mt-2"
+                >
+                  {isLoading ? 'Creating...' : 'Create Account'}
+                </Button>
+                <div className="text-center space-y-3">
+                  <button type="button" onClick={() => { setMode('login'); setError(null); }} className="text-[13px] font-bold text-slate-400 hover:text-blue-600 transition-colors">
+                    Already have an account? <span className="text-blue-600">Login</span>
+                  </button>
+                  <div className="pt-2">
+                    <button type="button" onClick={onClose} className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-colors">
+                      Cancel & Go Back
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Password</label>
-                <div className="relative">
-                  <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input
-                    required
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold transition-all"
-                    value={signupData.password}
-                    onChange={e => setSignupData({ ...signupData, password: e.target.value })}
-                  />
-                </div>
-              </div>
-              <Button type="submit" fullWidth disabled={isLoading} className="h-14 text-lg font-black rounded-2xl shadow-xl shadow-blue-100 mt-2">
-                {isLoading ? 'Saving to Registry...' : 'Sign Up'}
-              </Button>
-              <div className="text-center mt-2">
-                <button type="button" onClick={() => { setMode('login'); setError(null); }} className="text-sm font-bold text-blue-600 hover:underline">
-                  Already have an account? Login
-                </button>
-              </div>
-            </form>
-          )}
+              </form>
+            )}
 
-          <div className="mt-8 pt-8 border-t border-slate-100 text-center">
-            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Are you a healthcare provider?</p>
-            <button
-              onClick={onDoctorLoginClick}
-              className="px-6 py-3 bg-slate-50 hover:bg-teal-50 text-teal-600 font-black rounded-xl transition-all flex items-center justify-center gap-2 mx-auto text-sm border border-slate-100 hover:border-teal-100"
-            >
-              Doctor Portal Login <ArrowRight size={16} />
-            </button>
+            {/* Section Divider - Better Hierarchy for Doctor Portal */}
+            <div className="mt-8 pt-6 border-t border-slate-100/80 text-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Are you a healthcare provider?</p>
+              <button
+                onClick={onDoctorLoginClick}
+                className="w-full h-11 border border-slate-200 text-slate-600 hover:text-teal-600 hover:border-teal-500 hover:bg-teal-50/30 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-[13px] group"
+              >
+                Doctor Portal Login <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
           </div>
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
 };

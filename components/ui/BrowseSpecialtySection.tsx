@@ -14,18 +14,18 @@ export const BrowseSpecialtySection: React.FC<BrowseSpecialtySectionProps> = ({
     selectedSpecialty
 }) => {
     return (
-        <section className="py-8 md:py-10 border-t border-slate-100/50 mt-8">
-            <div className="flex justify-between items-center mb-6 md:mb-8">
-                <div className="space-y-0.5">
-                    <h2 className="text-[24px] md:text-[28px] font-black tracking-[-0.03em] text-slate-900 leading-tight">Find Doctors by Department</h2>
-                    <p className="text-[13px] md:text-[14px] text-slate-500 font-medium opacity-70">Select from 36+ clinical areas to find a doctor</p>
+        <section className="py-6 border-t border-slate-100">
+            <div className="flex justify-between items-center mb-5">
+                <div>
+                    <h2 className="text-[20px] font-black tracking-tight text-slate-900 leading-none">Find by Department</h2>
+                    <p className="text-[12px] text-slate-500 font-medium mt-1">Select from 36+ specialized clinical areas</p>
                 </div>
-                <button className="text-[12px] md:text-[13px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-widest border-b-2 border-blue-600/20 pb-0.5 mt-[-10px]">
+                <button className="text-[10px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-widest border-b-2 border-blue-600/10 pb-0.5">
                     View All
                 </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <div className="grid grid-cols-3 gap-3 md:gap-3">
                 {categories.map((cat) => (
                     <SpecialtyCard
                         key={cat.name}

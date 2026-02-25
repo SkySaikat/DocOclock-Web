@@ -170,6 +170,9 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       hospitalId: selectedChamberId || initialPatient.hospitalId,
       date: new Date().toISOString().split('T')[0],
       diagnosis: Array.isArray(diagnosis) ? diagnosis.join(', ') : diagnosis,
+      clinicalFindings: complaints.filter(c => c.trim()).join('\n'),
+      testsRecommended: tests.filter(t => t.trim()).join('\n'),
+      followUpDate: followUpDate || undefined,
       notes: advice,
       medicines: selectedMeds.map(m => ({
         name: m.medicine.brandName,
@@ -400,23 +403,24 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center" style={{ opacity: currentTemplate.watermarkOpacity }}>
             <img src={currentTemplate.logoUrl} className="w-1/2 grayscale" alt="Watermark" />
           </div>
-          <div className="p-6 md:p-8 border-b-2 flex justify-between items-start" style={{ backgroundColor: `${currentTemplate.themeColor}10`, borderColor: currentTemplate.themeColor }}>
+          <div className="p-6 md:p-8 border-b-2 flex flex-col md:flex-row justify-between items-start md:items-start gap-4 md:gap-0" style={{ backgroundColor: `${currentTemplate.themeColor}10`, borderColor: currentTemplate.themeColor }}>
             <div className="flex items-start gap-4">
-              <img src={currentTemplate.logoUrl} className="w-12 h-12 md:w-16 md:h-16 object-contain" />
+              <img src={currentTemplate.logoUrl} className="w-12 h-12 md:w-16 md:h-16 object-contain shrink-0" alt="Logo" />
               <div>
-                <h1 className="text-lg md:text-2xl font-serif font-bold leading-tight" style={{ color: currentTemplate.themeColor }}>{currentTemplate.hospitalName}</h1>
-                <p className="text-[10px] text-slate-500 mt-1 max-w-[200px]">{currentTemplate.address}</p>
+                <h1 className="text-base md:text-2xl font-serif font-bold leading-tight" style={{ color: currentTemplate.themeColor }}>{currentTemplate.hospitalName}</h1>
+                <p className="text-[9px] md:text-[10px] text-slate-500 mt-1 max-w-[240px] leading-relaxed">{currentTemplate.address}</p>
               </div>
             </div>
-            <div className="text-right">
-              <h2 className="text-sm md:text-xl font-bold text-slate-900">{doctor?.name}</h2>
-              <p className="text-sm md:text-sm text-blue-600 font-bold uppercase tracking-widest">{doctor?.specialty}</p>
+            <div className="text-left md:text-right border-l-2 md:border-l-0 md:border-r-0 border-slate-200/50 pl-4 md:pl-0">
+              <h2 className="text-sm md:text-xl font-bold text-slate-900 leading-tight">{doctor?.name}</h2>
+              <p className="text-[10px] md:text-sm text-blue-600 font-bold uppercase tracking-widest mt-0.5">{doctor?.specialty}</p>
+              <p className="text-[9px] text-slate-400 font-medium mt-1 uppercase tracking-tighter">{doctor?.degrees}</p>
             </div>
           </div>
-          <div className="px-6 md:px-8 py-3 flex flex-wrap gap-x-8 gap-y-2 text-[10px] md:text-xs font-black uppercase tracking-widest border-b border-slate-100 bg-slate-50/50">
-            <div className="flex items-center gap-1"><span className="text-blue-600">Name:</span> <span className="text-slate-600">{patientName || '__________'}</span></div>
-            <div className="flex items-center gap-1"><span className="text-blue-600">Age/Sex:</span> <span className="text-slate-600">{age || '____'} / {gender.charAt(0)}</span></div>
-            <div className="ml-auto text-blue-600">ID: <span className="text-slate-600">#PRES-LIVE</span></div>
+          <div className="px-6 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center gap-x-8 gap-y-2 text-[10px] md:text-xs font-black uppercase tracking-widest border-b border-slate-100 bg-slate-50/50">
+            <div className="flex items-center gap-1 min-w-0"><span className="text-blue-600 shrink-0">Name:</span> <span className="text-slate-600 truncate">{patientName || '__________'}</span></div>
+            <div className="flex items-center gap-1"><span className="text-blue-600 shrink-0">Age/Sex:</span> <span className="text-slate-600">{age || '____'} / {gender.charAt(0)}</span></div>
+            <div className="sm:ml-auto text-blue-600 flex items-center gap-1">ID: <span className="text-slate-600">#PRES-LIVE</span></div>
           </div>
           <div className="flex-1 flex flex-col md:flex-row p-6 md:p-8 overflow-y-auto custom-scrollbar">
             <div className="w-full md:w-1/3 md:border-r border-slate-100 md:pr-6 space-y-10">
@@ -466,23 +470,23 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       </div>
 
       {/* MOBILE & DESKTOP FLOATING ACTION DOCK - sit above nav */}
-      <div className="fixed bottom-[100px] md:bottom-8 left-0 right-0 md:left-auto md:right-8 z-[70] px-4 md:px-0">
-        <div className="max-w-4xl mx-auto bg-white/80 backdrop-blur-xl p-3 md:p-0 rounded-[2.5rem] md:rounded-none shadow-[0_20px_50px_rgba(0,0,0,0.15)] md:shadow-none border border-slate-200 md:border-0 flex flex-row gap-3">
+      <div className="fixed bottom-[calc(90px+env(safe-area-inset-bottom))] md:bottom-8 left-0 right-0 md:left-auto md:right-8 z-[70] px-4 md:px-0">
+        <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-xl p-3 md:p-0 rounded-[2.5rem] md:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:shadow-2xl border border-white/60 flex flex-row gap-3">
           <Button
             variant="outline"
-            className="flex-1 md:w-40 h-14 md:h-16 rounded-2xl bg-white shadow-lg gap-2 font-black border-2 border-slate-200 text-slate-600"
+            className="flex-1 md:w-40 h-14 md:h-16 rounded-2xl md:rounded-3xl bg-white shadow-lg gap-2 font-black border-2 border-slate-100 text-slate-600"
             onClick={() => alert('Draft saved successfully!')}
           >
             <Save size={20} /> <span className="hidden sm:inline">Save Draft</span><span className="sm:hidden">Draft</span>
           </Button>
           <Button
-            className="flex-[2] md:w-64 h-14 md:h-16 rounded-2xl shadow-2xl gap-3 font-black text-lg bg-teal-600 hover:bg-teal-700 text-white"
+            className="flex-[2] md:w-64 h-14 md:h-16 rounded-2xl md:rounded-3xl shadow-2xl gap-3 font-black text-lg bg-teal-600 hover:bg-teal-700 text-white border-0"
             onClick={handleFinishPrescription}
           >
             <Send size={20} /> <span className="inline">Send Rx</span>
           </Button>
           <Button
-            className="flex-1 md:w-20 h-14 md:h-16 rounded-2xl shadow-2xl gap-3 font-black text-lg bg-blue-600 text-white"
+            className="flex-1 md:w-20 h-14 md:h-16 rounded-2xl md:rounded-3xl shadow-2xl gap-3 font-black text-lg bg-blue-600 text-white border-0"
             onClick={() => window.print()}
           >
             <Printer size={20} />

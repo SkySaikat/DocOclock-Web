@@ -1,5 +1,5 @@
 
-import { Patient, Doctor, Appointment, Prescription, MedicineAlert, UserRole } from './types';
+import { Patient, Doctor, Appointment, Prescription, MedicineAlert, UserRole, AppointmentStatus } from './types';
 
 export interface DoctorPracticeSettings {
   dailyBookingLimit: number;
@@ -23,6 +23,7 @@ export interface PracticeChamber {
   scheduleDays?: number[]; // [0, 1, 3] etc
   feeNormal: number;
   feeReport: number;
+  dailyBookingLimit: number;
 }
 
 
@@ -139,49 +140,81 @@ export const getCurrentSession = () => {
   return PatientStorage.get() || DoctorStorage.get();
 };
 
-// --- Medicine Alerts (Local Storage Bridge for now) ---
+// --- Medicine Alerts (Sync with Supabase Prescriptions) ---
+
+/**
+ * Tracks "taken" status locally for medical instances.
+ * Map: { [alertId: string]: boolean }
+ */
+const getMedicineTakenMap = (): Record<string, boolean> => {
+  if (!isBrowser) return {};
+  const raw = localStorage.getItem('dococlock_medicine_taken_map');
+  return raw ? JSON.parse(raw) : {};
+};
+
+const saveMedicineTakenMap = (map: Record<string, boolean>) => {
+  if (!isBrowser) return;
+  localStorage.setItem('dococlock_medicine_taken_map', JSON.stringify(map));
+};
+
+export const fetchMedicineAlerts = async (patientId: string): Promise<MedicineAlert[]> => {
+  if (!patientId) return [];
+
+  try {
+    // 1. Fetch prescriptions with medicines
+    const prescriptions = await fetchPrescriptions(patientId);
+    if (!prescriptions || prescriptions.length === 0) return [];
+
+    // 2. Get completion map
+    const takenMap = getMedicineTakenMap();
+
+    // 3. Flatten and transform to MedicineAlerts
+    const alerts: MedicineAlert[] = [];
+
+    prescriptions.forEach(rx => {
+      rx.medicines.forEach((med, idx) => {
+        // Create a unique stable ID based on Prescription ID + Medicine Index
+        // This is necessary because prescription_medicines IDs might not be intuitive or available at this layer easily
+        const alertId = `${rx.id}-med-${idx}`;
+
+        alerts.push({
+          id: alertId,
+          patientId: patientId,
+          appointmentId: rx.appointmentId,
+          doctorId: rx.doctorId,
+          hospitalId: rx.hospitalId,
+          medicineName: med.name,
+          dosage: med.dosage,
+          startDate: med.startDate,
+          durationDays: med.durationDays,
+          completed: !!takenMap[alertId]
+        });
+      });
+    });
+
+    return alerts;
+  } catch (err) {
+    console.error('[CRITICAL] fetchMedicineAlerts: Sync failed.', err);
+    return [];
+  }
+};
+
+/**
+ * Legacy support for components importing old name
+ */
 export const getMedicineAlerts = (): MedicineAlert[] => {
-  if (!isBrowser) return [];
-  const raw = localStorage.getItem(KEYS.MEDICINE_ALERTS);
-  return raw ? JSON.parse(raw) : [];
+  console.warn('getMedicineAlerts is deprecated. Use fetchMedicineAlerts(patientId) instead.');
+  return [];
 };
 
 export const toggleMedicineAlert = (alertId: string) => {
   if (!isBrowser) return;
-  const alerts = getMedicineAlerts();
-  const index = alerts.findIndex(a => a.id === alertId);
-  if (index !== -1) {
-    alerts[index].completed = !alerts[index].completed;
-    localStorage.setItem(KEYS.MEDICINE_ALERTS, JSON.stringify(alerts));
-  }
+  const takenMap = getMedicineTakenMap();
+  takenMap[alertId] = !takenMap[alertId];
+  saveMedicineTakenMap(takenMap);
 };
 
 // --- (REMOVED: registerPatient, registerDoctor, authenticateDoctor are now in AuthContext.tsx) ---
-
-// --- Doctor Policy Helpers ---
-export interface DoctorPolicy {
-  reservedSlotsEnabled: boolean;
-  reservedSlotCount: number;
-}
-
-export const getDoctorPolicy = (doctorId: string): DoctorPolicy => {
-  if (!isBrowser) return { reservedSlotsEnabled: false, reservedSlotCount: 0 };
-  const key = `doctor_booking_policy_${doctorId}`;
-  const raw = localStorage.getItem(key);
-  try {
-    return raw ? JSON.parse(raw) : { reservedSlotsEnabled: false, reservedSlotCount: 0 };
-  } catch {
-    return { reservedSlotsEnabled: false, reservedSlotCount: 0 };
-  }
-};
-
-export const saveDoctorPolicy = (doctorId: string, policy: DoctorPolicy): void => {
-  if (!isBrowser) return;
-  const key = `doctor_booking_policy_${doctorId}`;
-  localStorage.setItem(key, JSON.stringify(policy));
-};
-
-
 
 // --- Unified Session Meta Helpers ---
 export type SessionStatus = 'IDLE' | 'DELAYED' | 'BREAK' | 'ACTIVE';
@@ -226,9 +259,32 @@ export const bookAppointment = async (
     const activeApps = appointments.filter(a => a.status !== 'cancelled');
     console.log(`[DEBUG] bookAppointment: Found ${activeApps.length} active appointments for this slot.`);
 
-    const policy = getDoctorPolicy(doctorId);
-    const baseOffset = policy.reservedSlotsEnabled ? policy.reservedSlotCount : 0;
-    const nextSerial = baseOffset + activeApps.length + 1;
+    // 1. Fetch Queue Session for Capacity Guard (New Reservation System)
+    const session = await fetchQueueSession(doctorId, hospitalId, date);
+    const reservedCount = session.reservedSlotsCount;
+
+    // 2. Fetch Chamber for Max Capacity
+    const chambers = await fetchDoctorChambers(doctorId);
+    const chamber = chambers.find(c => c.id === hospitalId);
+    const maxCapacity = chamber?.dailyBookingLimit || 30;
+    const availableCapacity = maxCapacity - reservedCount;
+
+    if (activeApps.length >= availableCapacity) {
+      throw new Error(`Booking limit reached. ${reservedCount} slots are reserved for manual registry.`);
+    }
+
+    // Gap-filling logic: Public pool range starts AFTER the reserved slots [reservedCount + 1, maxCapacity]
+    const takenSerials = new Set(activeApps.map(a => Number(a.serialNumber)));
+    let nextSerial = reservedCount + 1;
+    while (takenSerials.has(nextSerial) && nextSerial <= maxCapacity) {
+      nextSerial++;
+    }
+
+    // Safety check: Ensure we haven't exceeded total capacity
+    if (nextSerial > maxCapacity) {
+      throw new Error(`Booking limit reached (${maxCapacity} slots). No available serials found in the public pool.`);
+    }
+
     console.log(`[DEBUG] bookAppointment: Calculated serial: ${nextSerial}`);
 
     const newApp: Appointment = {
@@ -251,7 +307,10 @@ export const bookAppointment = async (
       isVisibleToPatient: true,
       category: 'normal',
       cancelledAt: null,
-      completedAt: null
+      completedAt: null,
+      arrivalTime: null,
+      consultationStartTime: null,
+      consultationEndTime: null
     };
 
     console.log('[DEBUG] bookAppointment: Upserting appointment...', newApp.id);
@@ -389,9 +448,10 @@ export async function fetchDoctorChambers(doctorId: string): Promise<PracticeCha
         hospitalName: c.hospital_name,
         address: c.address,
         feeNormal: c.consultation_fee,
-        feeReport: Math.floor(c.consultation_fee * 0.6), // Derived for now
+        feeReport: c.fee_report || Math.floor(c.consultation_fee * 0.6),
         schedule,
-        scheduleDays: schedule.map(s => s.day)
+        scheduleDays: schedule.map(s => s.day),
+        dailyBookingLimit: c.daily_booking_limit || 30
       };
     });
   } catch (error) {
@@ -409,7 +469,9 @@ export async function saveChamberWithSchedules(doctorId: string, chamber: Practi
       doctor_id: doctorId,
       hospital_name: chamber.hospitalName,
       address: chamber.address,
-      consultation_fee: chamber.feeNormal
+      consultation_fee: chamber.feeNormal,
+      fee_report: chamber.feeReport,
+      daily_booking_limit: chamber.dailyBookingLimit
     };
 
     let chamberId = chamber.id;
@@ -481,18 +543,13 @@ export async function fetchDoctors(): Promise<Doctor[]> {
 
     const { data: doctorsData, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, chambers!doctor_id(*)')
       .eq('role', 'DOCTOR');
 
     if (error) {
-      console.error('[CRITICAL] fetchDoctors: Supabase Query Error:', error.message, error.details, error.hint);
+      console.error('[CRITICAL] fetchDoctors: Supabase Query Error:', error.message);
       throw error;
     }
-
-
-    // Now fetch chambers separately if needed or handle the join if schema supports it
-    // For now, let's just get the profiles and add empty chambers to satisfy the interface
-    // to isolate if the complex join is causing the CORS issue.
 
     console.log(`[DEBUG] fetchDoctors: Success. Received ${doctorsData?.length || 0} profiles.`);
 
@@ -502,7 +559,12 @@ export async function fetchDoctors(): Promise<Doctor[]> {
       name: d.full_name,
       imageUrl: d.image_url,
       image: d.image_url,
-      chambers: [] // Simplified for CORS debugging
+      chambers: (d.chambers || []).map((c: any) => ({
+        id: c.id,
+        name: c.hospital_name,
+        address: c.address,
+        fee: c.consultation_fee
+      }))
     }));
   } catch (err: any) {
     console.error('[CRITICAL] fetchDoctors: Fetch failed.', err);
@@ -524,15 +586,26 @@ export function addDoctorChamber() { }
 
 // --- Supabase Appointments ---
 
-export async function fetchAppointments(filters?: { doctorId?: string; hospitalId?: string; date?: string; patientId?: string }): Promise<Appointment[]> {
+export async function fetchAppointments(filters?: { id?: string; doctorId?: string; hospitalId?: string; date?: string; patientId?: string }): Promise<Appointment[]> {
   try {
     console.log('[DEBUG] fetchAppointments: Fetching with supabase-js client...', filters);
     let query = supabase.from('appointments').select('*');
 
+    if (filters?.id) query = query.eq('id', filters.id);
     if (filters?.doctorId) query = query.eq('doctor_id', filters.doctorId);
     if (filters?.hospitalId) query = query.eq('hospital_id', filters.hospitalId);
     if (filters?.date) query = query.eq('appointment_date', filters.date);
-    if (filters?.patientId) query = query.eq('patient_id', filters.patientId);
+
+    if (filters?.patientId) {
+      if (filters.patientId.includes('-')) {
+        // Broad match for family members if patientId looks like a phone/prefix
+        const phone = filters.patientId.split('-')[1] || filters.patientId;
+        query = query.or(`patient_id.eq.${filters.patientId},patient_id.ilike.family-${phone}%`);
+      } else {
+        // Phone number case
+        query = query.or(`patient_id.eq.${filters.patientId},patient_id.ilike.family-${filters.patientId}%`);
+      }
+    }
 
     const { data, error } = await query.order('serial_number', { ascending: true });
 
@@ -564,6 +637,9 @@ export async function fetchAppointments(filters?: { doctorId?: string; hospitalI
       prescription_id: row.prescription_id,
       cancelledAt: row.cancelled_at ? new Date(row.cancelled_at).getTime() : null,
       completedAt: row.completed_at ? new Date(row.completed_at).getTime() : null,
+      arrivalTime: row.arrival_time ? new Date(row.arrival_time).getTime() : null,
+      consultationStartTime: row.consultation_start_time ? new Date(row.consultation_start_time).getTime() : null,
+      consultationEndTime: row.consultation_end_time ? new Date(row.consultation_end_time).getTime() : null,
       cancelledBy: row.cancelled_by
     }));
   } catch (err) {
@@ -578,6 +654,44 @@ export const fetchDoctorAppointmentsByHospital = (doctorId: string, hospitalId: 
   hospitalId ? fetchAppointments({ doctorId, hospitalId }) : Promise.resolve([]);
 
 export async function upsertAppointment(app: Appointment): Promise<void> {
+  // 1. Fetch current version to validate transitions and serial immutability
+  const { data: current, error: fetchError } = await supabase
+    .from('appointments')
+    .select('*')
+    .eq('id', app.id)
+    .maybeSingle();
+
+  if (fetchError) throw fetchError;
+
+  // Enforce serial immutability if appointment already exists
+  if (current && current.serial_number !== app.serialNumber) {
+    console.warn(`[SECURITY] Serial number immutability violation for ${app.id}. Reverting to ${current.serial_number}.`);
+    app.serialNumber = current.serial_number;
+  }
+
+  // Validate status transition
+  const v = (s: string | null) => s as AppointmentStatus || 'waiting';
+  const from = v(current?.status);
+  const to = v(app.status);
+
+  const allowedTransitions: Record<AppointmentStatus, AppointmentStatus[]> = {
+    'waiting': ['consulting', 'cancelled', 'late'],
+    'late': ['consulting', 'cancelled'],
+    'consulting': ['completed'],
+    'completed': [],
+    'cancelled': []
+  };
+
+  if (current && from !== to && !allowedTransitions[from].includes(to)) {
+    throw new Error(`Invalid queue transition: ${from} -> ${to}`);
+  }
+
+  // Tracking timestamps logic
+  if (from !== to) {
+    if (to === 'consulting') app.consultationStartTime = Date.now();
+    if (to === 'completed') app.consultationEndTime = Date.now();
+  }
+
   const row = {
     id: app.id,
     patient_id: app.patientId,
@@ -593,19 +707,21 @@ export async function upsertAppointment(app: Appointment): Promise<void> {
     appointment_date: app.date,
     appointment_time: app.time,
     status: app.status,
-    serial_number: app.serialNumber,
+    serial_number: app.serialNumber, // Immutable after block above
     is_reserved: app.isReserved,
     is_visible_to_patient: app.isVisibleToPatient,
     category: app.category,
     has_prescription: app.hasPrescription,
     prescription_id: app.prescriptionId,
-    cancelled_at: app.cancelledAt ? new Date(app.cancelledAt).toISOString() : null,
-
-    completed_at: app.completedAt ? new Date(app.completedAt).toISOString() : null,
+    cancelled_at: app.cancelledAt ? new Date(app.cancelledAt).toISOString() : (app.status === 'cancelled' ? new Date().toISOString() : null),
+    completed_at: app.completedAt ? new Date(app.completedAt).toISOString() : (app.status === 'completed' ? new Date().toISOString() : null),
+    arrival_time: app.arrivalTime ? new Date(app.arrivalTime).toISOString() : null,
+    consultation_start_time: app.consultationStartTime ? new Date(app.consultationStartTime).toISOString() : null,
+    consultation_end_time: app.consultationEndTime ? new Date(app.consultationEndTime).toISOString() : null,
     cancelled_by: app.cancelledBy
   };
 
-  console.log('[DEBUG] upsertAppointment: Saving to Supabase...', app.id);
+  console.log('[DEBUG] upsertAppointment: Saving to Supabase...', app.id, `(${from} -> ${to})`);
   const { error } = await supabase.from('appointments').upsert([row]);
   if (error) {
     console.error('[CRITICAL] upsertAppointment: Supabase Upsert Error:', error.message);
@@ -645,7 +761,10 @@ export async function bookManualAppointment(
     status: 'waiting',
     serialNumber,
     cancelledAt: null,
-    completedAt: null
+    completedAt: null,
+    arrivalTime: null,
+    consultationStartTime: null,
+    consultationEndTime: null
   };
 
   await upsertAppointment(app);
@@ -679,6 +798,9 @@ export async function fetchPrescriptions(patientId?: string, doctorId?: string):
       hospitalId: row.hospital_id,
       date: row.date,
       diagnosis: row.diagnosis,
+      clinicalFindings: row.clinical_findings,
+      testsRecommended: row.tests_recommended,
+      followUpDate: row.follow_up_date,
       notes: row.notes,
       medicines: (row.medicines || []).map((m: any) => ({
         name: m.name,
@@ -708,6 +830,9 @@ export async function savePrescriptionToSupabase(rx: Prescription): Promise<void
       hospital_id: rx.hospitalId,
       date: rx.date,
       diagnosis: rx.diagnosis,
+      clinical_findings: rx.clinicalFindings,
+      tests_recommended: rx.testsRecommended,
+      follow_up_date: rx.followUpDate,
       notes: rx.notes,
       created_at: new Date(rx.createdAt).toISOString()
     }]);
@@ -752,6 +877,7 @@ export interface QueueSession {
   date: string;
   isDoctorArrived: boolean;
   sessionStatus: QueueSessionStatus;
+  reservedSlotsCount: number;
   meta: DoctorSessionMeta;
 }
 
@@ -778,6 +904,7 @@ export async function fetchQueueSession(doctorId: string, hospitalId: string, da
         date,
         isDoctorArrived: false,
         sessionStatus: 'NOT_STARTED',
+        reservedSlotsCount: 0,
         meta: DEFAULT_SESSION_META
       };
     }
@@ -788,6 +915,7 @@ export async function fetchQueueSession(doctorId: string, hospitalId: string, da
       date: data.session_date,
       isDoctorArrived: data.is_doctor_arrived,
       sessionStatus: data.session_status,
+      reservedSlotsCount: data.reserved_slots_count || 0,
       meta: {
         status: data.meta_status,
         delayMinutes: data.delay_minutes,
@@ -803,6 +931,7 @@ export async function fetchQueueSession(doctorId: string, hospitalId: string, da
       date,
       isDoctorArrived: false,
       sessionStatus: 'NOT_STARTED',
+      reservedSlotsCount: 0,
       meta: DEFAULT_SESSION_META
     };
   }
@@ -817,6 +946,7 @@ export async function upsertQueueSession(session: QueueSession): Promise<void> {
       session_date: session.date,
       is_doctor_arrived: session.isDoctorArrived,
       session_status: session.sessionStatus,
+      reserved_slots_count: session.reservedSlotsCount,
       meta_status: session.meta.status,
       delay_minutes: session.meta.delayMinutes,
       delay_started_at: session.meta.delayStartedAt,
