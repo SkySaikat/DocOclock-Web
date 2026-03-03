@@ -5,8 +5,9 @@ import {
    Download, Search, Calendar, Stethoscope, Building2,
    Eye, ShieldCheck, X, Printer, Share2, User, FileDigit
 } from 'lucide-react';
-import { PatientStorage, fetchPrescriptions } from '../../storage';
+import { PatientStorage, fetchPrescriptions, downloadPrescriptionPDF } from '../../storage';
 import { supabase } from '../../supabase';
+
 
 interface PrescriptionsProps {
    onNavigate: (path: string) => void;
@@ -15,6 +16,20 @@ interface PrescriptionsProps {
 export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
    const [selectedRx, setSelectedRx] = useState<any | null>(null);
    const [searchQuery, setSearchQuery] = useState('');
+   const [downloadingRxId, setDownloadingRxId] = useState<string | null>(null);
+
+   const handleDownload = async (rxId: string) => {
+      try {
+         setDownloadingRxId(rxId);
+         await downloadPrescriptionPDF(rxId);
+      } catch (error) {
+         console.error('Download failed:', error);
+         alert('Failed to download prescription. Please try again.');
+      } finally {
+         setDownloadingRxId(null);
+      }
+   };
+
 
    // 1. Get Current Patient
    const patient = useMemo(() => PatientStorage.get(), []);
@@ -282,10 +297,19 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
                            View Record
                         </button>
                         <button
-                           className="flex-1 px-4 py-2.5 rounded-[10px] bg-gradient-to-br from-slate-800 to-slate-950 text-white text-[13px] font-bold shadow-sm hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                           onClick={() => handleDownload(rx.id)}
+                           disabled={downloadingRxId === rx.id}
+                           className={`flex-1 px-4 py-2.5 rounded-[10px] text-[13px] font-bold shadow-sm transition-all flex items-center justify-center gap-2 ${downloadingRxId === rx.id
+                                 ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                                 : 'bg-gradient-to-br from-slate-800 to-slate-950 text-white hover:shadow-lg'
+                              }`}
                         >
-                           <Download size={16} />
-                           Download
+                           {downloadingRxId === rx.id ? (
+                              <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-600 rounded-full animate-spin"></div>
+                           ) : (
+                              <Download size={16} />
+                           )}
+                           {downloadingRxId === rx.id ? 'Generating...' : 'Download'}
                         </button>
                      </div>
                   </div>

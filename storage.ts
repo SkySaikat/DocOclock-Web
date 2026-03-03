@@ -868,6 +868,48 @@ export async function savePrescriptionToSupabase(rx: Prescription): Promise<void
   }
 }
 
+export async function downloadPrescriptionPDF(prescriptionId: string): Promise<void> {
+  try {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token || '';
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prescription`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ prescriptionId })
+    });
+
+    if (!response.ok) {
+      console.error('[CRITICAL] downloadPrescriptionPDF: Function HTTP Error:', response.status);
+      throw new Error(`Edge Function returned a non-2xx status code: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `prescription_${prescriptionId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    if (link.parentNode) {
+      link.parentNode.removeChild(link);
+    }
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+  } catch (err: any) {
+    console.error('[CRITICAL] downloadPrescriptionPDF: Download failed.', err);
+    throw err;
+  }
+}
+
+
 
 // --- Supabase Queue Sessions ---
 
