@@ -5,7 +5,11 @@
 export enum UserRole {
   PATIENT = 'PATIENT',
   DOCTOR = 'DOCTOR',
+  HOSPITAL_ADMIN = 'HOSPITAL_ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
 }
+
+export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
 
 export type Relationship = 'Self' | 'Daughter' | 'Son' | 'Spouse' | 'Parent' | 'Other';
 // Statuses updated for strict queue management

@@ -100,15 +100,31 @@ function saveToStorage<T>(key: string, data: T[]): void {
 }
 
 // --- Role-Separated Session Storage ---
+const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
 export const PatientStorage = {
   get: () => {
     if (!isBrowser) return null;
     const raw = localStorage.getItem(KEYS.PATIENT_SESSION);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      if (data.sessionExpiresAt && Date.now() > data.sessionExpiresAt) {
+        PatientStorage.clear();
+        // [P7] Notify user of session expiration
+        window.dispatchEvent(new CustomEvent('session-expired'));
+        return null;
+      }
+      return data;
+    } catch {
+      PatientStorage.clear();
+      return null;
+    }
   },
   set: (data: any) => {
     if (!isBrowser) return;
-    localStorage.setItem(KEYS.PATIENT_SESSION, JSON.stringify({ ...data, role: 'patient' }));
+    const sessionData = { ...data, role: 'PATIENT', sessionExpiresAt: Date.now() + SESSION_DURATION };
+    localStorage.setItem(KEYS.PATIENT_SESSION, JSON.stringify(sessionData));
   },
   clear: () => {
     if (!isBrowser) return;
@@ -120,15 +136,57 @@ export const DoctorStorage = {
   get: () => {
     if (!isBrowser) return null;
     const raw = localStorage.getItem(KEYS.DOCTOR_SESSION);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      if (data.sessionExpiresAt && Date.now() > data.sessionExpiresAt) {
+        DoctorStorage.clear();
+        window.dispatchEvent(new CustomEvent('session-expired'));
+        return null;
+      }
+      return data;
+    } catch {
+      DoctorStorage.clear();
+      return null;
+    }
   },
   set: (data: any) => {
     if (!isBrowser) return;
-    localStorage.setItem(KEYS.DOCTOR_SESSION, JSON.stringify({ ...data, role: 'doctor' }));
+    const sessionData = { ...data, role: 'DOCTOR', sessionExpiresAt: Date.now() + SESSION_DURATION };
+    localStorage.setItem(KEYS.DOCTOR_SESSION, JSON.stringify(sessionData));
   },
   clear: () => {
     if (!isBrowser) return;
     localStorage.removeItem(KEYS.DOCTOR_SESSION);
+  },
+};
+
+export const AdminStorage = {
+  get: () => {
+    if (!isBrowser) return null;
+    const raw = localStorage.getItem('demo_admin_session');
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      if (data.sessionExpiresAt && Date.now() > data.sessionExpiresAt) {
+        AdminStorage.clear();
+        window.dispatchEvent(new CustomEvent('session-expired'));
+        return null;
+      }
+      return data;
+    } catch {
+      AdminStorage.clear();
+      return null;
+    }
+  },
+  set: (data: any) => {
+    if (!isBrowser) return;
+    const sessionData = { ...data, role: data.role || 'SUPER_ADMIN', sessionExpiresAt: Date.now() + SESSION_DURATION };
+    localStorage.setItem('demo_admin_session', JSON.stringify(sessionData));
+  },
+  clear: () => {
+    if (!isBrowser) return;
+    localStorage.removeItem('demo_admin_session');
   },
 };
 
@@ -544,7 +602,8 @@ export async function fetchDoctors(): Promise<Doctor[]> {
     const { data: doctorsData, error } = await supabase
       .from('profiles')
       .select('*, chambers!doctor_id(*)')
-      .eq('role', 'DOCTOR');
+      .eq('role', 'DOCTOR')
+      .eq('registration_status', 'approved');
 
     if (error) {
       console.error('[CRITICAL] fetchDoctors: Supabase Query Error:', error.message);

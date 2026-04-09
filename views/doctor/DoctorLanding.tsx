@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { ShieldCheck, Stethoscope, TrendingUp, Users, ArrowRight, CheckCircle, Quote, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, Stethoscope, TrendingUp, Users, ArrowRight, CheckCircle, ArrowLeft, ShieldAlert, Mail, Loader2, Check, Clock } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { UserRole } from '../../types';
+import { useEmailOTP } from '../../hooks/useEmailOTP';
 
 
 interface DoctorLandingProps {
   onNavigate: (path: string) => void;
 }
 
-type Step = 'landing' | 'criteria' | 'registration' | 'success';
+type Step = 'landing' | 'criteria' | 'email_verify' | 'otp_verify' | 'registration' | 'success';
 
 export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
   const [step, setStep] = useState<Step>('landing');
@@ -26,13 +27,50 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
   });
   const [error, setError] = useState<string | null>(null);
   const { signup } = useAuth();
+  const { otpState, sendOTP, verifyOTP, resetOTP, isVerified } = useEmailOTP();
+  const [otpCode, setOtpCode] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // ── Email OTP handlers ──
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.email || !formData.email.includes('@')) {
+      setError('Please enter a valid email.');
+      return;
+    }
+    setError(null);
+    setIsLoading(true);
+    const sent = await sendOTP(formData.email);
+    if (sent) {
+      setStep('otp_verify');
+    } else {
+      setError(otpState.error || 'Failed to send verification code.');
+    }
+    setIsLoading(false);
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+    const verified = await verifyOTP(otpCode);
+    if (verified) {
+      setStep('registration');
+    } else {
+      setError(otpState.error || 'Invalid or expired code.');
+    }
+    setIsLoading(false);
+  };
+
   const handleRegistrationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isVerified) {
+      setError('Please verify your email first.');
+      return;
+    }
     setIsLoading(true);
     setError(null);
 
@@ -43,6 +81,8 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
     }, UserRole.DOCTOR);
 
     if (result.success) {
+      setStep('success');
+    } else if (result.error === 'PENDING_APPROVAL') {
       setStep('success');
     } else {
       setError(result.error || 'Registration failed. Please try again.');
@@ -117,6 +157,7 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
               "Valid BMDC Registration Number required.",
               "Minimum MBBS qualification.",
               "Digital-first approach to patient care.",
+              "Email verification required for all registrations.",
             ].map((req, i) => (
               <div key={i} className="flex gap-3 items-start p-3 rounded-xl bg-slate-50">
                 <CheckCircle className="text-teal-600 shrink-0 mt-0.5" size={20} />
@@ -126,22 +167,132 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
           </div>
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setStep('landing')} fullWidth>Cancel</Button>
-            <Button onClick={() => setStep('registration')} fullWidth className="bg-teal-600 hover:bg-teal-700">I Understand</Button>
+            <Button onClick={() => setStep('email_verify')} fullWidth className="bg-teal-600 hover:bg-teal-700">I Understand</Button>
           </div>
         </GlassCard>
       </div>
     );
   }
 
-  // --- STEP 3: REGISTRATION ---
+  // --- STEP 3: EMAIL VERIFICATION ---
+  if (step === 'email_verify') {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center py-10 animate-fade-in">
+        <GlassCard className="max-w-md w-full p-10 border-t-4 border-teal-600">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900">Verify Your Email</h2>
+            <p className="text-slate-500 mt-2 text-sm">We'll send a 6-digit code to your email address.</p>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-black rounded-2xl flex gap-3">
+              <ShieldAlert size={16} className="shrink-0" /> <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSendOTP} className="space-y-5">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Email Address</label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="doctor@example.com"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <Button type="submit" fullWidth disabled={isLoading || !formData.email.includes('@')} className="bg-teal-600 hover:bg-teal-700 h-12 font-black">
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Sending...</span>
+              ) : 'Send Verification Code'}
+            </Button>
+            <button type="button" onClick={() => setStep('criteria')} className="w-full text-center text-sm text-slate-400 hover:text-slate-600 font-bold">
+              ← Go Back
+            </button>
+          </form>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // --- STEP 4: OTP INPUT ---
+  if (step === 'otp_verify') {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center py-10 animate-fade-in">
+        <GlassCard className="max-w-md w-full p-10 border-t-4 border-teal-600">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ShieldCheck size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900">Enter OTP Code</h2>
+            <p className="text-slate-500 mt-2 text-sm">Code sent to <span className="font-bold text-slate-700">{formData.email}</span></p>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-black rounded-2xl flex gap-3">
+              <ShieldAlert size={16} className="shrink-0" /> <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleVerifyOTP} className="space-y-5">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">6-Digit Code</label>
+              <input
+                required
+                type="text"
+                maxLength={6}
+                placeholder="000000"
+                className="w-full text-center text-3xl font-black tracking-[16px] py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all placeholder:text-slate-200 placeholder:tracking-[16px]"
+                value={otpCode}
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                autoFocus
+              />
+              <div className="flex justify-between mt-3">
+                <button type="button" onClick={() => { setStep('email_verify'); setError(null); setOtpCode(''); }} className="text-xs font-bold text-slate-400 hover:text-slate-600">
+                  Change Email
+                </button>
+                <button type="button" onClick={() => { sendOTP(formData.email); setError(null); }} className="text-xs font-bold text-blue-600 hover:underline">
+                  Resend Code
+                </button>
+              </div>
+            </div>
+            <Button type="submit" fullWidth disabled={isLoading || otpCode.length !== 6} className="bg-teal-600 hover:bg-teal-700 h-12 font-black">
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Verifying...</span>
+              ) : 'Verify Code'}
+            </Button>
+          </form>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // --- STEP 5: REGISTRATION FORM ---
   if (step === 'registration') {
     return (
       <div className="max-w-2xl mx-auto py-10 animate-fade-in">
-        <button onClick={() => setStep('criteria')} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 font-bold">
+        <button onClick={() => setStep('email_verify')} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 font-bold">
           <ArrowLeft size={20} /> Back
         </button>
         <GlassCard className="p-8 md:p-10 border-t-4 border-teal-600">
-          <h2 className="text-2xl font-black text-slate-900 mb-6">Doctor Registration</h2>
+          <h2 className="text-2xl font-black text-slate-900 mb-2">Doctor Registration</h2>
+
+          {/* Verified badge */}
+          <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl mb-6">
+            <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+              <Check size={14} className="text-white" />
+            </div>
+            <span className="text-xs font-bold text-emerald-700">{formData.email} — Email Verified ✓</span>
+          </div>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-black rounded-2xl flex gap-3 text-left animate-shake">
@@ -170,19 +321,13 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Primary Specialty</label>
                 <select name="specialty" value={formData.specialty} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none">
-                  <option>General Medicine</option><option>Cardiology</option><option>Neurology</option><option>Pediatrics</option>
+                  <option>General Medicine</option><option>Cardiology</option><option>Neurology</option><option>Pediatrics</option><option>Orthopedics</option><option>Dermatology</option><option>ENT</option><option>Gynecology</option>
                 </select>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Phone</label>
-                <input name="phone" type="tel" required placeholder="017..." value={formData.phone} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Email</label>
-                <input name="email" type="email" required placeholder="doctor@example.com" value={formData.email} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
-              </div>
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Phone</label>
+              <input name="phone" type="tel" required placeholder="017..." value={formData.phone} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
             </div>
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Password</label>
@@ -197,17 +342,25 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
     );
   }
 
-  // --- STEP 4: SUCCESS ---
+  // --- STEP 6: SUCCESS (Pending Approval) ---
   if (step === 'success') {
     return (
       <div className="min-h-[70vh] flex items-center justify-center py-10 animate-fade-in">
         <GlassCard className="max-w-md w-full p-10 text-center">
-          <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle size={48} />
+          <div className="w-24 h-24 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-amber-100">
+            <Clock size={48} />
           </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-4">Registration Complete!</h2>
-          <p className="text-slate-500 mb-8 font-bold">Your doctor account is ready. You can now log in to manage your queue.</p>
-          <Button onClick={() => onNavigate('/doctor-login')} fullWidth className="bg-teal-600 h-14 font-black">Go to Login</Button>
+          <h2 className="text-3xl font-black text-slate-900 mb-4">Registration Submitted!</h2>
+          <p className="text-slate-500 mb-3 font-bold">Your account has been created and is now <span className="text-amber-600 font-black">pending approval</span> by a Super Admin.</p>
+          <p className="text-slate-400 text-sm mb-8">You'll be able to log in once your account is approved. This typically takes 24-48 hours.</p>
+
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs text-left space-y-2 mb-8">
+            <div className="flex justify-between"><span className="text-slate-400 font-bold">Email:</span><span className="font-black text-slate-700">{formData.email}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400 font-bold">BMDC:</span><span className="font-black text-slate-700">{formData.bmdcNumber}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400 font-bold">Status:</span><span className="font-black text-amber-600">Pending Review</span></div>
+          </div>
+
+          <Button onClick={() => onNavigate('/')} fullWidth className="bg-slate-900 h-14 font-black">Back to Home</Button>
         </GlassCard>
       </div>
     );

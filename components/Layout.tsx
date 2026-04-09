@@ -60,6 +60,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
   const isPublic = !userRole;
   const isPatient = userRole === UserRole.PATIENT;
   const isDoctor = userRole === UserRole.DOCTOR;
+  const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
+  const isHospitalAdmin = userRole === UserRole.HOSPITAL_ADMIN;
+
+  if (isSuperAdmin || isHospitalAdmin) {
+    return <div className="min-h-screen relative font-sans text-slate-800 bg-slate-50 py-10">{children}</div>;
+  }
 
   return (
     <div className="min-h-screen relative font-sans text-slate-800 bg-medical-50">
@@ -313,7 +319,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
             {/* Drawer Footer */}
             <div className="p-6 border-t border-slate-50 text-center">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">© 2024 DocOclock v2.0</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">© {new Date().getFullYear()} DocOclock v2.0</p>
             </div>
           </div>
         </div>
@@ -359,12 +365,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
               { path: '/patient/medicine-tracker', icon: Pill, label: 'Meds' },
               { path: '/patient/prescriptions', icon: FileText, label: 'Rx' }
             ].map((item) => {
-              const isActive = (currentPath || window.location.pathname) === item.path || (item.path === '/patient/home' && ((currentPath || window.location.pathname) === '/' || (currentPath || window.location.pathname) === '/index.html'));
+              const isActive = (currentPath || '/') === item.path || (item.path === '/patient/home' && ((currentPath || '/') === '/' || (currentPath || '/') === '/index.html'));
               return (
                 <button
                   key={item.path}
                   onClick={() => onNavigate(item.path)}
-                  className="relative flex-1 flex flex-col items-center justify-center h-full transition-all duration-300 group"
+                  className="relative flex-1 flex flex-col items-center justify-center min-h-[48px] min-w-[48px] transition-all duration-300 group"
                 >
                   <div className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all duration-500 ${isActive ? 'bg-blue-50/60 shadow-sm shadow-blue-500/5 text-blue-600' : 'text-slate-400'}`}>
                     <item.icon

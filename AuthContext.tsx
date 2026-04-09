@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import bcrypt from 'bcryptjs';
 import { UserRole, Patient, Doctor } from './types';
-import { PatientStorage, DoctorStorage } from './storage';
+import { PatientStorage, DoctorStorage, AdminStorage } from './storage';
 
 interface AuthContextType {
     user: any | null;
@@ -24,10 +24,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         const checkConnection = async () => {
+            if (!import.meta.env.DEV) return; // Only run diagnostics in development
             try {
-                // Check for multiple critical columns to ensure schema is correct
-                const { data, error, status } = await supabase.from('profiles').select('id, full_name, role, password, age').limit(1).maybeSingle();
-                console.log('Supabase Connection Check (profiles schema):', { data, error, status });
+                const { error, status } = await supabase.from('profiles').select('id, full_name, role').limit(1).maybeSingle();
                 if (error && (status === 404 || error.message.includes('column'))) {
                     console.error('CRITICAL: Table "profiles" is missing columns or does not exist. Error:', error.message);
                 }
@@ -39,8 +38,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const restoreSession = () => {
             const patientSession = PatientStorage.get();
             const doctorSession = DoctorStorage.get();
+            const adminSession = AdminStorage.get();
 
-            if (doctorSession) {
+            if (adminSession) {
+                if (adminSession.role === 'SUPER_ADMIN') {
+                    console.log('Restoring Super Admin Session:', adminSession.id);
+                    setProfile(adminSession);
+                    setUserRole(UserRole.SUPER_ADMIN);
+                } else if (adminSession.role === 'HOSPITAL_ADMIN') {
+                    console.log('Restoring Hospital Admin Session:', adminSession.id);
+                    setProfile(adminSession);
+                    setUserRole(UserRole.HOSPITAL_ADMIN);
+                }
+            } else if (doctorSession) {
                 console.log('Restoring Doctor Session:', doctorSession.id);
                 setProfile(doctorSession);
                 setUserRole(UserRole.DOCTOR);
@@ -59,23 +69,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const login = async (identifier: string, password: string, role: UserRole): Promise<{ success: boolean; error?: string }> => {
         try {
             setLoading(true);
+
+            // 1. Check Rate Limit Lockout
+            const { data: isLocked, error: lockErr } = await supabase.rpc('check_is_locked', { p_identifier: identifier });
+            if (isLocked) {
+                return { success: false, error: 'Account temporarily locked due to multiple failed attempts. Try again in 15 minutes.' };
+            }
+
             const table = 'profiles';
-            const column = role === UserRole.PATIENT ? 'phone' : 'bmdc_number';
+            const column = role === UserRole.PATIENT ? 'phone' : ((role === UserRole.SUPER_ADMIN || role === UserRole.HOSPITAL_ADMIN) ? 'email' : 'bmdc_number');
 
             console.log(`Attempting login on table: ${table}, column: ${column}, identifier: ${identifier}`);
             const { data, error, status, statusText } = await supabase
                 .from(table)
-                .select('*')
+                .select('id, full_name, role, password, phone, email, bmdc_number, age, gender, specialty, degrees, image_url, experience_years, total_patients, rating, about, registration_status, city, relationship')
                 .eq(column, identifier)
                 .eq('role', role)
                 .single();
 
             if (error || !data) {
-                console.error('Supabase Login Error:', { error, status, statusText });
+                if (import.meta.env.DEV) console.error('Supabase Login Error:', { error, status, statusText });
+                // Record failed attempt for non-existent users
+                await supabase.rpc('record_login_attempt', { p_identifier: identifier, p_success: false });
                 return { success: false, error: `User not found or connection error (${status}).` };
             }
 
+            // [M4] Block unapproved doctors
+            if (role === UserRole.DOCTOR && data.registration_status !== 'approved') {
+                return { success: false, error: 'Your account is pending approval by the administration.' };
+            }
+
             const isValid = await bcrypt.compare(password, data.password || '');
+            
+            // Record the outcome of the password check
+            await supabase.rpc('record_login_attempt', { p_identifier: identifier, p_success: isValid });
+
             if (!isValid) {
                 return { success: false, error: 'Invalid password.' };
             }
@@ -91,12 +119,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 image: rawSessionData.image_url
             };
 
-            console.log('Login Successful for:', sessionData.name);
+            if (import.meta.env.DEV) console.log('Login Successful for:', sessionData.name);
             setProfile(sessionData);
             setUserRole(role);
 
             if (role === UserRole.PATIENT) {
                 PatientStorage.set(sessionData);
+            } else if (role === UserRole.SUPER_ADMIN || role === UserRole.HOSPITAL_ADMIN) {
+                AdminStorage.set({ ...sessionData, role: role });
             } else {
                 DoctorStorage.set(sessionData);
             }
@@ -113,6 +143,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signup = async (formData: any, role: UserRole): Promise<{ success: boolean; error?: string }> => {
         try {
             setLoading(true);
+
+            // [C5] Block signup for admin roles — only PATIENT and DOCTOR are allowed
+            if (role !== UserRole.PATIENT && role !== UserRole.DOCTOR) {
+                return { success: false, error: 'Invalid signup role.' };
+            }
+
             const table = 'profiles';
             const identifierColumn = role === UserRole.PATIENT ? 'phone' : 'bmdc_number';
             const identifierValue = role === UserRole.PATIENT ? formData.phone : formData.bmdcNumber;
@@ -152,6 +188,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 insertData.age = parseInt(formData.age);
                 insertData.gender = formData.gender;
                 insertData.relationship = 'Self';
+                insertData.registration_status = 'approved'; // Patients are auto-approved
+                if (formData.email) insertData.email = formData.email;
             } else {
                 insertData.bmdc_number = formData.bmdcNumber;
                 insertData.specialty = formData.specialty;
@@ -161,6 +199,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 insertData.total_patients = 0;
                 insertData.rating = 5.0;
                 insertData.about = 'Passionate healthcare provider.';
+                insertData.registration_status = 'pending'; // Doctors require Super Admin approval
+                if (formData.email) insertData.email = formData.email;
             }
 
             console.log(`Attempting insert into table: ${table}`, insertData);
@@ -175,7 +215,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 throw error;
             }
 
-            // Auto login after signup
+            // For doctors: Don't auto-login since they need admin approval
+            if (role === UserRole.DOCTOR) {
+                return { success: true, error: 'PENDING_APPROVAL' };
+            }
+
+            // Auto login after signup (patients only)
             const { password: _, ...rawSessionData } = data;
 
             // Map DB fields to App fields
@@ -187,24 +232,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 chambers: rawSessionData.chambers || []
             };
 
-            console.log('Signup Successful, session data:', sessionData);
+            if (import.meta.env.DEV) console.log('Signup Successful, session data:', sessionData);
             setProfile(sessionData);
             setUserRole(role);
 
-            if (role === UserRole.PATIENT) {
-                PatientStorage.set(sessionData);
-            } else {
-                DoctorStorage.set(sessionData);
-                // Initialize default practice settings
-                const practiceKey = `doctor_practice_settings_${sessionData.id}`;
-                if (typeof window !== 'undefined' && !localStorage.getItem(practiceKey)) {
-                    localStorage.setItem(practiceKey, JSON.stringify({
-                        dailyBookingLimit: 40,
-                        reportFreeDays: 7,
-                        chambers: []
-                    }));
-                }
-            }
+            PatientStorage.set(sessionData);
 
             return { success: true };
         } catch (err: any) {
@@ -222,6 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserRole(undefined);
         PatientStorage.clear();
         DoctorStorage.clear();
+        AdminStorage.clear();
     };
 
     return (

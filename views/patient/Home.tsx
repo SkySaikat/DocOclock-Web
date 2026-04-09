@@ -14,6 +14,7 @@ import { fetchAppointments, PatientStorage, fetchQueueSession, fetchDoctors } fr
 import { getLocalISODate } from '../../utils/date';
 import { BrowseSpecialtySection } from '../../components/ui/BrowseSpecialtySection';
 import { RecommendedDoctorsSection } from '../../components/ui/RecommendedDoctorsSection';
+import { FindDoctorsNearMe } from '../../components/patient/FindDoctorsNearMe';
 import { supabase } from '../../supabase';
 
 interface HomeProps {
@@ -336,6 +337,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                   </div>
                </div>
             )}
+
+            {/* LOCATION-BASED DISCOVERY */}
+            <FindDoctorsNearMe onSelectDoctor={onSelectDoctor} />
 
             {/* MODULAR SECTIONS */}
             <RecommendedDoctorsSection

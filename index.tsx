@@ -3,12 +3,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-console.log('[DIAGNOSTIC] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-console.log('[DIAGNOSTIC] Supabase Key length:', import.meta.env.VITE_SUPABASE_ANON_KEY?.length);
-
-
-
 import { AuthProvider } from './AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/ToastProvider';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -18,8 +15,12 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

@@ -11,6 +11,7 @@ import { Prescriptions } from './views/patient/Prescriptions';
 import { Consultations } from './views/patient/Consultations';
 import { MedicineTracker } from './views/patient/MedicineTracker';
 import { LoginModal } from './components/auth/LoginModal';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 import { DoctorDashboard } from './views/doctor/Dashboard';
 import { DoctorAnalytics } from './views/doctor/Analytics';
@@ -20,22 +21,53 @@ import { PatientManualRegistry } from './views/doctor/PatientManualRegistry';
 import { DoctorPracticeSettings } from './views/doctor/DoctorPracticeSettings';
 import { DoctorMore } from './views/doctor/DoctorMore';
 import { DoctorProfileEditor } from './views/doctor/DoctorProfileEditor';
+import { AdminLogin } from './views/admin/AdminLogin';
+import { SuperAdminDashboard } from './views/admin/SuperAdminDashboard';
+import { HospitalAdminDashboard } from './views/hospital-admin/HospitalAdminDashboard';
 import { UserRole, Doctor, Patient } from './types';
 
 import { Activity, ShieldAlert, Lock, User, ArrowRight } from 'lucide-react';
 import { PatientStorage, DoctorStorage } from './storage';
 
 import { useAuth } from './AuthContext';
+import { useToast } from './components/ToastProvider';
 
 const App: React.FC = () => {
   const { profile, userRole: authRole, loading: authLoading, logout: authLogout, login: authLogin } = useAuth();
-  const [currentPath, setCurrentPath] = useState('/');
+  // Initialize from the actual browser URL so direct navigation (e.g. /admin-login) works
+  const getInitialPath = () => {
+    const path = window.location.pathname;
+    // Capacitor/index.html fallback
+    return (!path || path === '/index.html') ? '/' : path;
+  };
+  const [currentPath, setCurrentPath] = useState(getInitialPath);
   const [userRole, setUserRole] = useState<UserRole | undefined>(undefined);
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null);
   const [focusSearchTrigger, setFocusSearchTrigger] = useState<number>(0);
+  const { showToast } = useToast();
 
+  // [P7] Listen for session expiration events from storage
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      showToast('Your session has expired. Please log in again.', 'warning', 6000);
+      authLogout();
+      setCurrentPath('/');
+    };
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => window.removeEventListener('session-expired', handleSessionExpired);
+  }, [showToast, authLogout]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      setCurrentPath(!path || path === '/index.html' ? '/' : path);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Auth & Modal State
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -53,7 +85,8 @@ const App: React.FC = () => {
       setSessionUser(profile);
 
       // Auto-navigation on first load if already logged in
-      if (profile && (window.location.pathname === '/' || window.location.pathname === '/index.html')) {
+      // [M7] Use currentPath state instead of window.location.pathname for Capacitor safety
+      if (profile && (currentPath === '/' || currentPath === '/index.html')) {
         if (authRole === UserRole.DOCTOR) {
           setCurrentPath('/doctor/dashboard');
         } else if (authRole === UserRole.PATIENT) {
@@ -75,6 +108,8 @@ const App: React.FC = () => {
     }
 
     setCurrentPath(path);
+    // Sync browser URL bar so the address reflects the current view
+    window.history.pushState({}, '', path);
     window.scrollTo(0, 0);
   };
 
@@ -135,25 +170,49 @@ const App: React.FC = () => {
   const renderView = () => {
     const isPatient = userRole === UserRole.PATIENT;
     const isDoctor = userRole === UserRole.DOCTOR;
+    const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
+    const isHospitalAdmin = userRole === UserRole.HOSPITAL_ADMIN;
+
+    if (isSuperAdmin) {
+      return (
+        <ProtectedRoute expectedRole={UserRole.SUPER_ADMIN}>
+          <SuperAdminDashboard onNavigate={navigate} />
+        </ProtectedRoute>
+      );
+    }
+
+    if (isHospitalAdmin) {
+      return (
+        <ProtectedRoute expectedRole={UserRole.HOSPITAL_ADMIN}>
+          <HospitalAdminDashboard onNavigate={navigate} />
+        </ProtectedRoute>
+      );
+    }
 
     if (isDoctor) {
-      switch (currentPath) {
-        case '/doctor/dashboard': return <DoctorDashboard onNavigate={navigate} />;
-        case '/doctor/analytics': return <DoctorAnalytics />;
-        case '/doctor/serial-manager': return <SerialManager onNavigate={navigate} onStartPrescription={setActiveRxPatient} />;
-        case '/doctor/manual-booking': return <PatientManualRegistry onNavigate={navigate} />;
-        case '/doctor/practice-settings': return <DoctorPracticeSettings />;
-        case '/doctor/profile': return <DoctorMore onNavigate={navigate} onLogout={handleLogout} />;
-        case '/doctor/profile-editor': return <DoctorProfileEditor onBack={() => navigate('/doctor/profile')} />;
-        case '/doctor/prescription': return (
-          <PrescriptionEditor
-            initialPatient={activeRxPatient}
-            onClearInitial={() => setActiveRxPatient(null)}
-            onSave={handleSavePrescription}
-          />
-        );
-        default: return <DoctorDashboard onNavigate={navigate} />;
-      }
+      return (
+        <ProtectedRoute expectedRole={UserRole.DOCTOR}>
+          {(() => {
+            switch (currentPath) {
+              case '/doctor/dashboard': return <DoctorDashboard onNavigate={navigate} />;
+              case '/doctor/analytics': return <DoctorAnalytics />;
+              case '/doctor/serial-manager': return <SerialManager onNavigate={navigate} onStartPrescription={setActiveRxPatient} />;
+              case '/doctor/manual-booking': return <PatientManualRegistry onNavigate={navigate} />;
+              case '/doctor/practice-settings': return <DoctorPracticeSettings />;
+              case '/doctor/profile': return <DoctorMore onNavigate={navigate} onLogout={handleLogout} />;
+              case '/doctor/profile-editor': return <DoctorProfileEditor onBack={() => navigate('/doctor/profile')} />;
+              case '/doctor/prescription': return (
+                <PrescriptionEditor
+                  initialPatient={activeRxPatient}
+                  onClearInitial={() => setActiveRxPatient(null)}
+                  onSave={handleSavePrescription}
+                />
+              );
+              default: return <DoctorDashboard onNavigate={navigate} />;
+            }
+          })()}
+        </ProtectedRoute>
+      );
     }
 
     switch (currentPath) {
@@ -172,6 +231,8 @@ const App: React.FC = () => {
       case '/patient/consultations': return isPatient ? <Consultations onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
       case '/patient/medicine-tracker': return isPatient ? <MedicineTracker /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
       case '/live-serial': return isPatient ? <LiveSerial appointmentId={activeAppointmentId} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+
+      case '/admin-login': return <AdminLogin onNavigate={navigate} />;
 
       case '/doctor-login': return (
         <div className="max-w-[400px] mx-auto mt-10 px-4 animate-in fade-in zoom-in-95 duration-300">
