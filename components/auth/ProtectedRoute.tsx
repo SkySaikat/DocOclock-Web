@@ -1,6 +1,6 @@
 import React from 'react';
-import { useRoleGuard } from '../../src/hooks/useRoleGuard';
-import { UserRole } from '../types';
+import { useRoleGuard } from '../../hooks/useRoleGuard';
+import { UserRole } from '../../types';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

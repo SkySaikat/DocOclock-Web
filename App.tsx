@@ -1,29 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Layout } from './components/Layout';
-import { DoctorLanding } from './views/doctor/DoctorLanding';
-import { DoctorProfile } from './views/patient/DoctorProfile';
-import { LiveSerial } from './views/patient/LiveSerial';
-import { Home } from './views/patient/Home';
-import { Appointments } from './views/patient/Appointments';
-import { Rewards } from './views/patient/Rewards';
-import { More } from './views/patient/More';
-import { Prescriptions } from './views/patient/Prescriptions';
-import { Consultations } from './views/patient/Consultations';
-import { MedicineTracker } from './views/patient/MedicineTracker';
 import { LoginModal } from './components/auth/LoginModal';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
-import { DoctorDashboard } from './views/doctor/Dashboard';
-import { DoctorAnalytics } from './views/doctor/Analytics';
-import { PrescriptionEditor } from './views/doctor/PrescriptionEditor';
-import { SerialManager } from './views/doctor/SerialManager';
-import { PatientManualRegistry } from './views/doctor/PatientManualRegistry';
-import { DoctorPracticeSettings } from './views/doctor/DoctorPracticeSettings';
-import { DoctorMore } from './views/doctor/DoctorMore';
-import { DoctorProfileEditor } from './views/doctor/DoctorProfileEditor';
-import { AdminLogin } from './views/admin/AdminLogin';
-import { SuperAdminDashboard } from './views/admin/SuperAdminDashboard';
-import { HospitalAdminDashboard } from './views/hospital-admin/HospitalAdminDashboard';
+// --- Lazy Loaded Views ---
+// Patient Views
+const Home = lazy(() => import('./views/patient/Home').then(m => ({ default: m.Home })));
+const DoctorProfile = lazy(() => import('./views/patient/DoctorProfile').then(m => ({ default: m.DoctorProfile })));
+const LiveSerial = lazy(() => import('./views/patient/LiveSerial').then(m => ({ default: m.LiveSerial })));
+const Appointments = lazy(() => import('./views/patient/Appointments').then(m => ({ default: m.Appointments })));
+const Rewards = lazy(() => import('./views/patient/Rewards').then(m => ({ default: m.Rewards })));
+const More = lazy(() => import('./views/patient/More').then(m => ({ default: m.More })));
+const Prescriptions = lazy(() => import('./views/patient/Prescriptions').then(m => ({ default: m.Prescriptions })));
+const Consultations = lazy(() => import('./views/patient/Consultations').then(m => ({ default: m.Consultations })));
+const MedicineTracker = lazy(() => import('./views/patient/MedicineTracker').then(m => ({ default: m.MedicineTracker })));
+
+// Doctor Views
+const DoctorLanding = lazy(() => import('./views/doctor/DoctorLanding').then(m => ({ default: m.DoctorLanding })));
+const DoctorDashboard = lazy(() => import('./views/doctor/Dashboard').then(m => ({ default: m.DoctorDashboard })));
+const DoctorAnalytics = lazy(() => import('./views/doctor/Analytics').then(m => ({ default: m.DoctorAnalytics })));
+const PrescriptionEditor = lazy(() => import('./views/doctor/PrescriptionEditor').then(m => ({ default: m.PrescriptionEditor })));
+const SerialManager = lazy(() => import('./views/doctor/SerialManager').then(m => ({ default: m.SerialManager })));
+const PatientManualRegistry = lazy(() => import('./views/doctor/PatientManualRegistry').then(m => ({ default: m.PatientManualRegistry })));
+const DoctorPracticeSettings = lazy(() => import('./views/doctor/DoctorPracticeSettings').then(m => ({ default: m.DoctorPracticeSettings })));
+const DoctorMore = lazy(() => import('./views/doctor/DoctorMore').then(m => ({ default: m.DoctorMore })));
+const DoctorProfileEditor = lazy(() => import('./views/doctor/DoctorProfileEditor').then(m => ({ default: m.DoctorProfileEditor })));
+
+// Admin Views
+const AdminLogin = lazy(() => import('./views/admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
+const SuperAdminDashboard = lazy(() => import('./views/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
+const HospitalAdminDashboard = lazy(() => import('./views/hospital-admin/HospitalAdminDashboard').then(m => ({ default: m.HospitalAdminDashboard })));
 import { UserRole, Doctor, Patient } from './types';
 
 import { Activity, ShieldAlert, Lock, User, ArrowRight } from 'lucide-react';
@@ -313,6 +319,18 @@ const App: React.FC = () => {
     }
   };
 
+  const PageLoader = () => (
+    <div className="flex items-center justify-center min-h-[60vh] animate-in fade-in duration-300">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <div className="w-12 h-12 border-4 border-slate-100 rounded-full"></div>
+          <div className="w-12 h-12 border-4 border-teal-500 rounded-full border-t-transparent animate-spin absolute top-0 left-0"></div>
+        </div>
+        <div className="text-slate-400 font-bold text-sm tracking-widest uppercase">Loading View...</div>
+      </div>
+    </div>
+  );
+
   return (
     <Layout
       userRole={userRole}
@@ -322,7 +340,9 @@ const App: React.FC = () => {
       hideMobileBottomNav={currentPath === '/patient/profile'}
       currentPath={currentPath}
     >
-      {renderView()}
+      <Suspense fallback={<PageLoader />}>
+        {renderView()}
+      </Suspense>
       {isLoginModalOpen && (
         <LoginModal onClose={() => { setIsLoginModalOpen(false); setPendingAction('NONE'); }} onLoginSuccess={handleLoginSuccess} onDoctorLoginClick={() => { setIsLoginModalOpen(false); navigate('/doctor-login'); }} />
       )}

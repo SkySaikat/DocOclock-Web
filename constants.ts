@@ -64,9 +64,9 @@ export const MOCK_MEDICINES: Medicine[] = [
 ];
 
 export const MOCK_SERIALS: Serial[] = [
-  { id: 's1', tokenNumber: 1, patientId: 'pat-1', patientName: 'Rahim Uddin', gender: 'Male', phone: '01712345678', status: 'completed', paymentStatus: 'Paid', estimatedTime: 'Done' },
-  { id: 's2', tokenNumber: 2, patientId: 'pat-2', patientName: 'Nasreen Akter', gender: 'Female', phone: '01712345678', status: 'current', paymentStatus: 'Paid', estimatedTime: 'Now' },
-  { id: 's3', tokenNumber: 3, patientId: 'pat-4', patientName: 'Unknown Patient', gender: 'Male', phone: '01800000000', status: 'waiting', paymentStatus: 'Unpaid', estimatedTime: '15 mins' }
+  { id: 's1', serialNumber: 1, patientId: 'pat-1', patientName: 'Rahim Uddin', gender: 'Male', phone: '01712345678', status: 'completed', paymentStatus: 'Paid', estimatedTime: 'Done' },
+  { id: 's2', serialNumber: 2, patientId: 'pat-2', patientName: 'Nasreen Akter', gender: 'Female', phone: '01712345678', status: 'consulting', paymentStatus: 'Paid', estimatedTime: 'Now' },
+  { id: 's3', serialNumber: 3, patientId: 'pat-4', patientName: 'Unknown Patient', gender: 'Male', phone: '01800000000', status: 'waiting', paymentStatus: 'Unpaid', estimatedTime: '15 mins' }
 ];
 
 export const COMMON_DOSAGES = ['1+0+1', '1+1+1', '1+0+0', '0+0+1'];

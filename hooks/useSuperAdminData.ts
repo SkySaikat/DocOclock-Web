@@ -12,6 +12,41 @@ export const useSuperAdminData = () => {
   });
   
   const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
+  const [platformSettings, setPlatformSettings] = useState<Record<string, any>>({});
+
+  const fetchPlatformSettings = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from('system_settings').select('*');
+      if (error) throw error;
+      
+      const settingsMap: Record<string, any> = {};
+      data?.forEach(setting => {
+        settingsMap[setting.key] = setting.value;
+      });
+      setPlatformSettings(settingsMap);
+    } catch (error) {
+      console.error("Failed to fetch platform settings", error);
+    }
+  }, []);
+
+  const updatePlatformSetting = async (key: string, value: any) => {
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({ key, value });
+        
+      if (error) throw error;
+      
+      setPlatformSettings(prev => ({
+        ...prev,
+        [key]: value
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error(`Failed to update setting ${key}`, error);
+      return { success: false };
+    }
+  };
 
   const fetchStats = useCallback(async () => {
     try {
@@ -37,10 +72,11 @@ export const useSuperAdminData = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, email, phone, bmdc_number, specialty, degrees, created_at')
         .eq('role', 'DOCTOR')
         .eq('registration_status', 'pending')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
       setPendingDoctors(data || []);
@@ -84,9 +120,9 @@ export const useSuperAdminData = () => {
 
   const initializeData = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchStats(), fetchPendingDoctors()]);
+    await Promise.all([fetchStats(), fetchPendingDoctors(), fetchPlatformSettings()]);
     setLoading(false);
-  }, [fetchStats, fetchPendingDoctors]);
+  }, [fetchStats, fetchPendingDoctors, fetchPlatformSettings]);
 
   useEffect(() => {
     initializeData();
@@ -96,8 +132,10 @@ export const useSuperAdminData = () => {
     loading,
     stats,
     pendingDoctors,
+    platformSettings,
     approveDoctor,
     rejectDoctor,
+    updatePlatformSetting,
     refreshQueue: fetchPendingDoctors
   };
 };

@@ -70,11 +70,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             setLoading(true);
 
-            // 1. Check Rate Limit Lockout
-            const { data: isLocked, error: lockErr } = await supabase.rpc('check_is_locked', { p_identifier: identifier });
-            if (isLocked) {
-                return { success: false, error: 'Account temporarily locked due to multiple failed attempts. Try again in 15 minutes.' };
-            }
+            // 1. Check Rate Limit Lockout (non-blocking if function doesn't exist)
+            try {
+                const { data: isLocked } = await supabase.rpc('check_is_locked', { p_identifier: identifier });
+                if (isLocked) {
+                    return { success: false, error: 'Account temporarily locked due to multiple failed attempts. Try again in 15 minutes.' };
+                }
+            } catch { /* Rate limit function may not exist — continue */ }
 
             const table = 'profiles';
             const column = role === UserRole.PATIENT ? 'phone' : ((role === UserRole.SUPER_ADMIN || role === UserRole.HOSPITAL_ADMIN) ? 'email' : 'bmdc_number');
@@ -90,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error || !data) {
                 if (import.meta.env.DEV) console.error('Supabase Login Error:', { error, status, statusText });
                 // Record failed attempt for non-existent users
-                await supabase.rpc('record_login_attempt', { p_identifier: identifier, p_success: false });
+                try { await supabase.rpc('record_login_attempt', { p_identifier: identifier, p_success: false }); } catch (_) {}
                 return { success: false, error: `User not found or connection error (${status}).` };
             }
 
@@ -102,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const isValid = await bcrypt.compare(password, data.password || '');
             
             // Record the outcome of the password check
-            await supabase.rpc('record_login_attempt', { p_identifier: identifier, p_success: isValid });
+            try { await supabase.rpc('record_login_attempt', { p_identifier: identifier, p_success: isValid }); } catch (_) {}
 
             if (!isValid) {
                 return { success: false, error: 'Invalid password.' };

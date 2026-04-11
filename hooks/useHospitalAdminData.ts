@@ -49,13 +49,13 @@ export const useHospitalAdminData = () => {
         .from('doctor_hospitals')
         .select(`
           doctor_id,
-          profiles:doctor_id (*)
+          profiles:doctor_id (id, full_name, specialty, phone, image_url, rating)
         `)
         .eq('hospital_id', hospData.id);
         
       if (rosterErr) throw rosterErr;
       
-      const doctors = (rosterData || []).map(r => r.profiles).filter(Boolean);
+      const doctors = (rosterData || []).map(r => r.profiles).filter(Boolean) as any[];
       setRoster(doctors);
       
       const doctorIds = doctors.map(d => d.id);
@@ -106,7 +106,7 @@ export const useHospitalAdminData = () => {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, specialty, bmdc_number, image_url')
         .eq('role', 'DOCTOR')
         .eq('registration_status', 'approved')
         .or(`full_name.ilike.%${query}%,bmdc_number.ilike.%${query}%`)

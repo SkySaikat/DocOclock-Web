@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, User, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, User, CheckCircle2, Star } from 'lucide-react';
 
 interface RosterManagerProps {
   roster: any[];

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Phone, Building } from 'lucide-react';
+import { Search, MapPin, Phone, Building, User } from 'lucide-react';
 import { supabase } from '../../supabase';
 
 type TabType = 'DOCTORS' | 'PATIENTS' | 'HOSPITALS';
@@ -7,37 +7,64 @@ type TabType = 'DOCTORS' | 'PATIENTS' | 'HOSPITALS';
 export const GlobalDataView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('DOCTORS');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 20;
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
-    fetchGlobalData();
-  }, [activeTab]);
+    setPage(0);
+    setData([]);
+    setHasMore(true);
+    fetchGlobalData(0, true);
+  }, [activeTab, debouncedSearch]);
 
-  const fetchGlobalData = async () => {
+  const fetchGlobalData = async (pageIndex: number, isNewSearch = false) => {
     setLoading(true);
     let query;
 
+    const from = pageIndex * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
     if (activeTab === 'HOSPITALS') {
-      query = supabase.from('hospitals').select('*').limit(50);
+      query = supabase.from('hospitals').select('id, name, address, created_at').range(from, to).order('created_at', { ascending: false });
+      if (debouncedSearch) {
+        query = query.or(`name.ilike.%${debouncedSearch}%,address.ilike.%${debouncedSearch}%`);
+      }
     } else {
-      query = supabase.from('profiles').select('*').eq('role', activeTab).limit(50);
+      query = supabase.from('profiles').select('id, full_name, phone, contact_number, bmdc_number, registration_status, image_url, created_at').eq('role', activeTab).range(from, to).order('created_at', { ascending: false });
+      if (debouncedSearch) {
+        query = query.or(`full_name.ilike.%${debouncedSearch}%,phone.ilike.%${debouncedSearch}%,bmdc_number.ilike.%${debouncedSearch}%`);
+      }
     }
 
     const { data: result, error } = await query;
-    if (!error) {
-      setData(result || []);
+    if (!error && result) {
+      if (isNewSearch) {
+        setData(result);
+      } else {
+        setData(prev => [...prev, ...result]);
+      }
+      setHasMore(result.length === PAGE_SIZE);
     }
     setLoading(false);
   };
 
-  const filteredData = data.filter(item => {
-    const term = searchQuery.toLowerCase();
-    if (activeTab === 'HOSPITALS') {
-      return item.name?.toLowerCase().includes(term) || item.address?.toLowerCase().includes(term);
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchGlobalData(nextPage);
     }
-    return item.full_name?.toLowerCase().includes(term) || item.phone?.includes(term) || item.bmdc_number?.includes(term);
-  });
+  };
 
   return (
     <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
@@ -73,57 +100,66 @@ export const GlobalDataView: React.FC = () => {
         </div>
 
         {/* Data List */}
-        {loading ? (
-          <div className="flex items-center justify-center p-12 text-slate-400">Loading registry...</div>
-        ) : (
-          <div className="grid gap-3">
-            {filteredData.length === 0 ? (
-               <div className="p-8 text-center text-slate-400 font-bold border border-dashed border-slate-200 rounded-2xl">
-                 No {activeTab.toLowerCase()} found matching your search.
-               </div>
-            ) : (
-              filteredData.map(item => (
-                <div key={item.id} className="flex items-center gap-4 p-4 border border-slate-100 rounded-2xl hover:border-blue-100 hover:shadow-sm transition-all bg-white group">
-                  {activeTab === 'HOSPITALS' ? (
-                     <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                       <Building size={20} />
-                     </div>
-                  ) : (
-                     <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden flex items-center justify-center text-slate-400">
-                        {item.image_url ? <img src={item.image_url} alt="" className="w-full h-full object-cover" /> : <User size={20} />}
-                     </div>
-                  )}
+        <div className="grid gap-3">
+          {data.length === 0 && !loading ? (
+             <div className="p-8 text-center text-slate-400 font-bold border border-dashed border-slate-200 rounded-2xl">
+               No {activeTab.toLowerCase()} found matching your search.
+             </div>
+          ) : (
+            data.map(item => (
+              <div key={item.id} className="flex items-center gap-4 p-4 border border-slate-100 rounded-2xl hover:border-blue-100 hover:shadow-sm transition-all bg-white group">
+                {activeTab === 'HOSPITALS' ? (
+                   <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                     <Building size={20} />
+                   </div>
+                ) : (
+                   <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden flex items-center justify-center text-slate-400">
+                      {item.image_url ? <img src={item.image_url} alt="" className="w-full h-full object-cover" /> : <User size={20} />}
+                   </div>
+                )}
 
-                  <div className="flex-1">
-                    <h3 className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">
-                      {activeTab === 'HOSPITALS' ? item.name : item.full_name}
-                    </h3>
-                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500 mt-1">
-                      {activeTab === 'HOSPITALS' ? (
-                        <span className="flex items-center gap-1"><MapPin size={12}/> {item.address}</span>
-                      ) : (
-                        <>
-                          {(item.phone || item.contact_number) && <span className="flex items-center gap-1"><Phone size={12}/> {item.phone || item.contact_number}</span>}
-                          {item.bmdc_number && <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-600">BMDC: {item.bmdc_number}</span>}
-                          {item.registration_status && (
-                             <span className={`px-2 py-0.5 rounded uppercase tracking-widest text-[9px] ${
-                               item.registration_status === 'approved' ? 'bg-teal-50 text-teal-600' : 'bg-amber-50 text-amber-600'
-                             }`}>
-                               {item.registration_status}
-                             </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right text-xs font-bold text-slate-400 w-24">
-                     {new Date(item.created_at).toLocaleDateString()}
+                <div className="flex-1">
+                  <h3 className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">
+                    {activeTab === 'HOSPITALS' ? item.name : item.full_name}
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs font-bold text-slate-500 mt-1">
+                    {activeTab === 'HOSPITALS' ? (
+                      <span className="flex items-center gap-1"><MapPin size={12}/> {item.address}</span>
+                    ) : (
+                      <>
+                        {(item.phone || item.contact_number) && <span className="flex items-center gap-1"><Phone size={12}/> {item.phone || item.contact_number}</span>}
+                        {item.bmdc_number && <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-600">BMDC: {item.bmdc_number}</span>}
+                        {item.registration_status && (
+                           <span className={`px-2 py-0.5 rounded uppercase tracking-widest text-[9px] ${
+                             item.registration_status === 'approved' ? 'bg-teal-50 text-teal-600' : 'bg-amber-50 text-amber-600'
+                           }`}>
+                             {item.registration_status}
+                           </span>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        )}
+                <div className="text-right text-xs font-bold text-slate-400 w-24">
+                   {new Date(item.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))
+          )}
+
+          {loading && (
+            <div className="p-4 text-center text-slate-400 font-bold animate-pulse">Loading...</div>
+          )}
+
+          {!loading && hasMore && data.length > 0 && (
+            <button
+              onClick={handleLoadMore}
+              className="mt-4 p-3 w-full border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Load More
+            </button>
+          )}
+        </div>
       </div>
 
     </div>

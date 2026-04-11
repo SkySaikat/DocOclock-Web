@@ -7,6 +7,8 @@ interface OTPState {
   error: string | null;
 }
 
+const EMAIL_SERVER_URL = 'http://localhost:3001';
+
 export const useEmailOTP = () => {
   const [otpState, setOtpState] = useState<OTPState>({
     step: 'IDLE',
@@ -23,50 +25,52 @@ export const useEmailOTP = () => {
     setOtpState({ step: 'SENDING', email, error: null });
 
     try {
-      const { data, error } = await supabase.functions.invoke('send-otp', {
-        body: { email },
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      // Clear old OTPs for this email
+      await supabase.from('email_otps').delete().eq('email', email).eq('verified', false);
+
+      // Store OTP in database
+      const { error: insertErr } = await supabase.from('email_otps').insert({
+        email,
+        otp_code: otp,
+        expires_at: expiresAt,
+        verified: false,
       });
 
-      if (error || !data?.success) {
-        throw new Error(data?.error || error?.message || 'Failed to send OTP');
+      if (insertErr) throw new Error(insertErr.message);
+
+      // Send email via our SMTP server
+      try {
+        const res = await fetch(`${EMAIL_SERVER_URL}/api/send-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          console.warn('Email server error, OTP still stored:', data.error);
+        }
+      } catch (fetchErr) {
+        // Email server not running — show OTP in dev mode
+        console.warn('Email server not reachable. OTP stored in DB.');
+        if (import.meta.env.DEV) {
+          alert(`[DEV MODE] Your OTP is: ${otp}\n\nStart the email server with: npm run email`);
+        }
       }
 
       setOtpState({ step: 'SENT', email, error: null });
       return true;
     } catch (err: any) {
-      // Fallback: If Edge Function isn't deployed, store OTP directly in DB
-      // This allows the system to work even without the Edge Function
-      try {
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-        // Clear old OTPs for this email
-        await supabase.from('email_otps').delete().eq('email', email).eq('verified', false);
-
-        // Insert new OTP
-        const { error: insertErr } = await supabase.from('email_otps').insert({
-          email,
-          otp_code: otp,
-          expires_at: expiresAt,
-          verified: false,
-        });
-
-        if (insertErr) throw insertErr;
-
-        // Log OTP to console in dev mode (since email won't actually send)
-        console.log(`[DEV FALLBACK] OTP for ${email}: ${otp}`);
-        alert(`[DEV MODE] Your OTP is: ${otp}\n\nIn production, this will be sent to your email.`);
-
-        setOtpState({ step: 'SENT', email, error: null });
-        return true;
-      } catch (fallbackErr: any) {
-        setOtpState({
-          step: 'ERROR',
-          email,
-          error: fallbackErr.message || 'Failed to generate OTP. Please try again.',
-        });
-        return false;
-      }
+      setOtpState({
+        step: 'ERROR',
+        email,
+        error: err.message || 'Failed to generate OTP.',
+      });
+      return false;
     }
   }, []);
 

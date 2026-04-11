@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { useAuth } from '../../AuthContext';
-import { supabase } from '../../supabase';
-import { UserRole } from '../../types';
+import { useAuth } from '../AuthContext';
+import { supabase } from '../supabase';
+import { UserRole } from '../types';
 
 /**
  * useRoleGuard

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "email": "node server/emailServer.cjs",
+    "dev:all": "node -e \"const{spawn}=require('child_process');spawn('node',['server/emailServer.cjs'],{stdio:'inherit'});spawn('npx',['vite'],{stdio:'inherit'});\"",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -14,9 +16,12 @@
     "@capacitor/core": "^8.1.0",
     "@supabase/supabase-js": "^2.97.0",
     "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
+    "nodemailer": "^8.0.5",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0"

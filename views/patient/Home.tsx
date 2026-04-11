@@ -36,6 +36,22 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    const [doctors, setDoctors] = useState<Doctor[]>([]);
    const [activeAppointment, setActiveAppointment] = useState<any>(null);
    const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+   const [isLocationFeatureEnabled, setIsLocationFeatureEnabled] = useState(false);
+
+   useEffect(() => {
+      const fetchSettings = async () => {
+         try {
+            const { data, error } = await supabase.from('system_settings').select('value').eq('key', 'location_search_enabled').single();
+            if (!error && data) {
+               setIsLocationFeatureEnabled(data.value === 'true');
+            }
+         } catch (err) {
+            console.error('Failed to load system settings:', err);
+         }
+      };
+      
+      fetchSettings();
+   }, []);
 
    useEffect(() => {
       const loadDoctors = async () => {
@@ -339,7 +355,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
             )}
 
             {/* LOCATION-BASED DISCOVERY */}
-            <FindDoctorsNearMe onSelectDoctor={onSelectDoctor} />
+            {isLocationFeatureEnabled && (
+               <FindDoctorsNearMe onSelectDoctor={onSelectDoctor} />
+            )}
 
             {/* MODULAR SECTIONS */}
             <RecommendedDoctorsSection
