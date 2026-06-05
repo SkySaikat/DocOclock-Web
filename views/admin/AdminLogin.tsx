@@ -42,18 +42,24 @@ export const AdminLogin: React.FC<{ onNavigate: (path: string) => void }> = ({ o
         </div>
         
         <h2 className="text-2xl font-black text-white tracking-tight mb-4">
-          {adminType === UserRole.SUPER_ADMIN ? 'Super Admin Portal' : 'Hospital Portal'}
+          {adminType === UserRole.SUPER_ADMIN ? 'Super Admin Portal' : adminType === UserRole.BRANCH_MANAGER ? 'Branch Manager Portal' : 'Hospital Portal'}
         </h2>
 
         {/* Role Toggle */}
         <div className="flex bg-slate-800 p-1 rounded-xl mb-6 w-full">
-           <button 
+           <button
              onClick={() => setAdminType(UserRole.HOSPITAL_ADMIN)}
              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${adminType === UserRole.HOSPITAL_ADMIN ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
            >
-             Hospital Admin
+             Hospital
            </button>
-           <button 
+           <button
+             onClick={() => setAdminType(UserRole.BRANCH_MANAGER)}
+             className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${adminType === UserRole.BRANCH_MANAGER ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+           >
+             Branch Mgr
+           </button>
+           <button
              onClick={() => setAdminType(UserRole.SUPER_ADMIN)}
              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${adminType === UserRole.SUPER_ADMIN ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
            >

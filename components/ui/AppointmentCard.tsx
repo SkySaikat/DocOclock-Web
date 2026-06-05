@@ -1,14 +1,18 @@
 import React from 'react';
 import { Calendar, Clock, MapPin, Stethoscope, ChevronRight, Activity } from 'lucide-react';
 import { Button } from './Button';
-import { AppointmentStatus } from '../../types';
+import { AppointmentStatus, Appointment } from '../../types';
+import { generateGoogleCalendarLink, downloadICS } from '../../utils/calendar';
 
 interface AppointmentCardProps {
     appointment: {
+        id?: string;
         patientName: string;
         doctorName: string;
         doctorSpecialty?: string;
         hospitalName: string;
+        chamberLocation?: string;
+        category?: string;
         date: string;
         time: string;
         serialNumber?: number;
@@ -17,12 +21,14 @@ interface AppointmentCardProps {
     };
     onAction?: () => void;
     onTrack?: () => void;
+    onReview?: () => void;
 }
 
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     appointment,
     onAction,
-    onTrack
+    onTrack,
+    onReview
 }) => {
     const statusColors = {
         waiting: 'bg-amber-50 text-amber-600 border-amber-100',
@@ -76,12 +82,33 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
             {/* Footer: Actions */}
             <div className="flex items-center gap-3 pt-1 relative z-10">
                 {onTrack && appointment.status === 'waiting' && (
-                    <Button
-                        onClick={onTrack}
-                        className="flex-1 h-11 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-[9px] uppercase tracking-widest transition-all"
-                    >
-                        Track Queue
-                    </Button>
+                    <>
+                        <Button
+                            onClick={onTrack}
+                            className="flex-1 h-11 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-[9px] uppercase tracking-widest transition-all"
+                        >
+                            Track Queue
+                        </Button>
+                        <div className="flex gap-1.5 h-11">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => downloadICS(appointment as unknown as Appointment)}
+                                className="h-full w-14 rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 p-0 flex items-center justify-center shadow-sm relative group"
+                                title="Download ICS"
+                            >
+                                <Calendar size={16} />
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                onClick={() => window.open(generateGoogleCalendarLink(appointment as unknown as Appointment), '_blank')}
+                                className="h-full w-14 rounded-xl border-slate-200 text-blue-500 hover:bg-blue-50 p-0 flex items-center justify-center shadow-sm group"
+                                title="Add to Google Calendar"
+                            >
+                                {/* Simple 'G' indicating Google since we don't have specifically branded icons */}
+                                <span className="font-black font-sans text-base">G</span> 
+                            </Button>
+                        </div>
+                    </>
                 )}
 
                 {onAction && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
@@ -94,6 +121,14 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
                     </Button>
                 )}
 
+                {onReview && appointment.status === 'completed' && (
+                  <Button
+                    onClick={onReview}
+                    className="flex-1 h-11 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-[9px] uppercase tracking-widest transition-all shadow-md shadow-teal-500/10"
+                  >
+                    Share Feedback
+                  </Button>
+                )}
             </div>
         </div>
     );

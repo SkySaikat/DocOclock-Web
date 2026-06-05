@@ -1,5 +1,6 @@
 
 import { Patient, Doctor, Appointment, Prescription, MedicineAlert, UserRole, AppointmentStatus } from './types';
+import { downloadPrescriptionPDF as generatePDF, PrescriptionData } from './pdf/prescriptions';
 
 export interface DoctorPracticeSettings {
   dailyBookingLimit: number;
@@ -24,6 +25,8 @@ export interface PracticeChamber {
   feeNormal: number;
   feeReport: number;
   dailyBookingLimit: number;
+  linkedHospitalId?: string; // ID of a registered hospital from the hospitals table
+  consultationDurationMinutes?: number; // 0 = no time slots, just serial numbers
 }
 
 
@@ -190,6 +193,35 @@ export const AdminStorage = {
   },
 };
 
+export const BranchManagerStorage = {
+  get: () => {
+    if (!isBrowser) return null;
+    const raw = localStorage.getItem('demo_branch_manager_session');
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      if (data.sessionExpiresAt && Date.now() > data.sessionExpiresAt) {
+        BranchManagerStorage.clear();
+        window.dispatchEvent(new CustomEvent('session-expired'));
+        return null;
+      }
+      return data;
+    } catch {
+      BranchManagerStorage.clear();
+      return null;
+    }
+  },
+  set: (data: any) => {
+    if (!isBrowser) return;
+    const sessionData = { ...data, role: 'BRANCH_MANAGER', sessionExpiresAt: Date.now() + SESSION_DURATION };
+    localStorage.setItem('demo_branch_manager_session', JSON.stringify(sessionData));
+  },
+  clear: () => {
+    if (!isBrowser) return;
+    localStorage.removeItem('demo_branch_manager_session');
+  },
+};
+
 // Add getCurrentSession export to fix missing member error in patient views.
 /**
  * Retrieves the currently active session (either patient or doctor).
@@ -221,32 +253,54 @@ export const fetchMedicineAlerts = async (patientId: string): Promise<MedicineAl
   try {
     // 1. Fetch prescriptions with medicines
     const prescriptions = await fetchPrescriptions(patientId);
-    if (!prescriptions || prescriptions.length === 0) return [];
+    
+    // 2. Fetch manual user medicines
+    let userMeds = [];
+    try {
+      const { data, error } = await supabase.from('user_medicines').select('*').eq('patient_id', patientId);
+      if (!error && data) userMeds = data;
+    } catch (e) {
+      console.warn("User medicines table might not exist yet.", e);
+    }
 
-    // 2. Get completion map
     const takenMap = getMedicineTakenMap();
-
-    // 3. Flatten and transform to MedicineAlerts
     const alerts: MedicineAlert[] = [];
 
-    prescriptions.forEach(rx => {
-      rx.medicines.forEach((med, idx) => {
-        // Create a unique stable ID based on Prescription ID + Medicine Index
-        // This is necessary because prescription_medicines IDs might not be intuitive or available at this layer easily
-        const alertId = `${rx.id}-med-${idx}`;
-
-        alerts.push({
-          id: alertId,
-          patientId: patientId,
-          appointmentId: rx.appointmentId,
-          doctorId: rx.doctorId,
-          hospitalId: rx.hospitalId,
-          medicineName: med.name,
-          dosage: med.dosage,
-          startDate: med.startDate,
-          durationDays: med.durationDays,
-          completed: !!takenMap[alertId]
+    // Prescription medicines
+    if (prescriptions && prescriptions.length > 0) {
+      prescriptions.forEach(rx => {
+        rx.medicines.forEach((med, idx) => {
+          const alertId = `${rx.id}-med-${idx}`;
+          alerts.push({
+            id: alertId,
+            patientId: patientId,
+            appointmentId: rx.appointmentId,
+            doctorId: rx.doctorId,
+            hospitalId: rx.hospitalId,
+            medicineName: med.name,
+            dosage: med.dosage,
+            startDate: med.startDate,
+            durationDays: med.durationDays,
+            completed: !!takenMap[alertId]
+          });
         });
+      });
+    }
+
+    // Manual user medicines
+    userMeds.forEach((med: any) => {
+      const alertId = `manual-${med.id}`;
+      alerts.push({
+        id: alertId,
+        patientId: patientId,
+        appointmentId: '',
+        doctorId: 'Manual Entry',
+        hospitalId: 'N/A',
+        medicineName: med.medicine_name,
+        dosage: med.dosage,
+        startDate: med.created_at,
+        durationDays: med.duration_days,
+        completed: !!takenMap[alertId]
       });
     });
 
@@ -256,6 +310,22 @@ export const fetchMedicineAlerts = async (patientId: string): Promise<MedicineAl
     return [];
   }
 };
+
+export async function saveUserMedicine(patientId: string, medicineName: string, dosage: string, durationDays: number): Promise<void> {
+  try {
+    const { error } = await supabase.from('user_medicines').insert({
+      patient_id: patientId,
+      medicine_name: medicineName,
+      dosage,
+      duration_days: durationDays
+    });
+    if (error) throw error;
+  } catch (err) {
+    console.error('Error saving user medicine:', err);
+    throw err;
+  }
+}
+
 
 /**
  * Legacy support for components importing old name
@@ -308,7 +378,12 @@ export const bookAppointment = async (
   time: string,
   patientId: string,
   patientName: string,
-  patientPhone: string
+  patientPhone: string,
+  options?: {
+    preferredSerial?: number;  // For time-slot booking — book a specific serial
+    chiefComplaint?: string;
+    visitType?: string;
+  }
 ) => {
   console.log('[DEBUG] bookAppointment: Starting booking flow...', { doctorId, hospitalId, date, patientId });
 
@@ -331,16 +406,27 @@ export const bookAppointment = async (
       throw new Error(`Booking limit reached. ${reservedCount} slots are reserved for manual registry.`);
     }
 
-    // Gap-filling logic: Public pool range starts AFTER the reserved slots [reservedCount + 1, maxCapacity]
     const takenSerials = new Set(activeApps.map(a => Number(a.serialNumber)));
-    let nextSerial = reservedCount + 1;
-    while (takenSerials.has(nextSerial) && nextSerial <= maxCapacity) {
-      nextSerial++;
-    }
 
-    // Safety check: Ensure we haven't exceeded total capacity
-    if (nextSerial > maxCapacity) {
-      throw new Error(`Booking limit reached (${maxCapacity} slots). No available serials found in the public pool.`);
+    // If a specific time slot serial is requested, validate and use it
+    let nextSerial: number;
+    if (options?.preferredSerial && options.preferredSerial > reservedCount) {
+      if (takenSerials.has(options.preferredSerial)) {
+        throw new Error('That time slot was just taken. Please select another slot.');
+      }
+      if (options.preferredSerial > maxCapacity) {
+        throw new Error('Invalid time slot selected.');
+      }
+      nextSerial = options.preferredSerial;
+    } else {
+      // Gap-filling logic: Public pool range starts AFTER the reserved slots [reservedCount + 1, maxCapacity]
+      nextSerial = reservedCount + 1;
+      while (takenSerials.has(nextSerial) && nextSerial <= maxCapacity) {
+        nextSerial++;
+      }
+      if (nextSerial > maxCapacity) {
+        throw new Error(`Booking limit reached (${maxCapacity} slots). No available serials found in the public pool.`);
+      }
     }
 
     console.log(`[DEBUG] bookAppointment: Calculated serial: ${nextSerial}`);
@@ -368,8 +454,10 @@ export const bookAppointment = async (
       completedAt: null,
       arrivalTime: null,
       consultationStartTime: null,
-      consultationEndTime: null
-    };
+      consultationEndTime: null,
+      ...(options?.chiefComplaint && { chiefComplaint: options.chiefComplaint }),
+      ...(options?.visitType && { visitType: options.visitType }),
+    } as any;
 
     console.log('[DEBUG] bookAppointment: Upserting appointment...', newApp.id);
     await upsertAppointment(newApp);
@@ -509,7 +597,9 @@ export async function fetchDoctorChambers(doctorId: string): Promise<PracticeCha
         feeReport: c.fee_report || Math.floor(c.consultation_fee * 0.6),
         schedule,
         scheduleDays: schedule.map(s => s.day),
-        dailyBookingLimit: c.daily_booking_limit || 30
+        dailyBookingLimit: c.daily_booking_limit || 30,
+        linkedHospitalId: c.linked_hospital_id || undefined,
+        consultationDurationMinutes: c.consultation_duration_minutes || 0,
       };
     });
   } catch (error) {
@@ -523,17 +613,19 @@ export async function saveChamberWithSchedules(doctorId: string, chamber: Practi
 
   try {
     // 1. Upsert Chamber
-    const chamberRow = {
+    const chamberRow: Record<string, any> = {
       doctor_id: doctorId,
       hospital_name: chamber.hospitalName,
       address: chamber.address,
       consultation_fee: chamber.feeNormal,
       fee_report: chamber.feeReport,
-      daily_booking_limit: chamber.dailyBookingLimit
+      daily_booking_limit: chamber.dailyBookingLimit,
+      linked_hospital_id: chamber.linkedHospitalId || null,
+      consultation_duration_minutes: chamber.consultationDurationMinutes || 0,
     };
 
     let chamberId = chamber.id;
-    const isNew = !chamberId || chamberId.length < 15; // Simple check for Date.now() vs UUID
+    const isNew = !chamberId || chamberId.length < 15;
 
     if (isNew) {
       const { data, error } = await supabase
@@ -549,6 +641,15 @@ export async function saveChamberWithSchedules(doctorId: string, chamber: Practi
         .update(chamberRow)
         .eq('id', chamberId);
       if (error) throw error;
+    }
+
+    // 1b. If linked to a registered hospital, upsert doctor_hospitals so the
+    //     hospital admin can see this doctor in their roster.
+    if (chamber.linkedHospitalId) {
+      await supabase.from('doctor_hospitals').upsert(
+        [{ doctor_id: doctorId, hospital_id: chamber.linkedHospitalId, is_active: true }],
+        { onConflict: 'doctor_id,hospital_id' }
+      );
     }
 
     // 2. Clear existing schedules and re-insert
@@ -777,7 +878,9 @@ export async function upsertAppointment(app: Appointment): Promise<void> {
     arrival_time: app.arrivalTime ? new Date(app.arrivalTime).toISOString() : null,
     consultation_start_time: app.consultationStartTime ? new Date(app.consultationStartTime).toISOString() : null,
     consultation_end_time: app.consultationEndTime ? new Date(app.consultationEndTime).toISOString() : null,
-    cancelled_by: app.cancelledBy
+    cancelled_by: app.cancelledBy,
+    ...((app as any).chiefComplaint != null && { chief_complaint: (app as any).chiefComplaint }),
+    ...((app as any).visitType != null && { visit_type: (app as any).visitType }),
   };
 
   console.log('[DEBUG] upsertAppointment: Saving to Supabase...', app.id, `(${from} -> ${to})`);
@@ -877,6 +980,53 @@ export async function fetchPrescriptions(patientId?: string, doctorId?: string):
 }
 
 
+export async function createPharmacyOrder(
+  rx: Prescription,
+  patientName: string,
+  patientPhone: string,
+  doctorName: string,
+  diagnosis: string
+): Promise<string> {
+  const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const orderNumber = `PH-${ts}-${rand}`;
+
+  // Try to find a pharmacy store linked to this doctor; fall back to the demo store
+  const { data: stores } = await supabase
+    .from('pharmacy_stores')
+    .select('id')
+    .eq('doctor_id', rx.doctorId)
+    .limit(1);
+  const storeId = stores?.[0]?.id || 'aaaaaaaa-0000-0000-0000-000000000001';
+
+  const items = rx.medicines.map(m => ({
+    medicine_name: m.name,
+    dosage: m.dosage,
+    duration_days: m.durationDays,
+    instruction: m.beforeAfterMeal === 'before' ? 'Before meal' : 'After meal',
+    available: true,
+    price: 0,
+  }));
+
+  const { error } = await supabase.from('pharmacy_orders').insert([{
+    order_number: orderNumber,
+    prescription_id: rx.id,
+    store_id: storeId,
+    patient_name: patientName,
+    patient_phone: patientPhone || '',
+    patient_id: rx.patientId,
+    doctor_id: rx.doctorId,
+    doctor_name: doctorName,
+    diagnosis,
+    items,
+    status: 'pending',
+    total_amount: 0,
+  }]);
+
+  if (error) throw error;
+  return orderNumber;
+}
+
 export async function savePrescriptionToSupabase(rx: Prescription): Promise<void> {
   try {
     console.log('[DEBUG] savePrescriptionToSupabase: Saving prescription and medicines...', rx.id);
@@ -929,39 +1079,65 @@ export async function savePrescriptionToSupabase(rx: Prescription): Promise<void
 
 export async function downloadPrescriptionPDF(prescriptionId: string): Promise<void> {
   try {
-    const session = await supabase.auth.getSession();
-    const token = session.data.session?.access_token || '';
+    // 1. Fetch the prescription (with linked appointment for patient name)
+    const { data: rx, error: rxError } = await supabase
+      .from('prescriptions')
+      .select('*, appointments(patient_name, patient_age, patient_gender, patient_phone)')
+      .eq('id', prescriptionId)
+      .single();
 
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prescription`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ prescriptionId })
-    });
-
-    if (!response.ok) {
-      console.error('[CRITICAL] downloadPrescriptionPDF: Function HTTP Error:', response.status);
-      throw new Error(`Edge Function returned a non-2xx status code: ${response.status}`);
+    if (rxError || !rx) {
+      throw new Error(`Prescription not found: ${rxError?.message}`);
     }
 
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
+    // 2. Fetch medicines for this prescription
+    const { data: meds } = await supabase
+      .from('prescription_medicines')
+      .select('*')
+      .eq('prescription_id', prescriptionId);
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `prescription_${prescriptionId}.pdf`);
-    document.body.appendChild(link);
-    link.click();
+    // 3. Fetch doctor profile
+    const { data: doctor } = rx.doctor_id
+      ? await supabase.from('profiles').select('full_name, degrees, specialty, bmdc_number, phone').eq('id', rx.doctor_id).single()
+      : { data: null };
 
-    // Cleanup
-    if (link.parentNode) {
-      link.parentNode.removeChild(link);
-    }
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 100);
+    // 4. Fetch chamber (hospital) info
+    const { data: chamber } = rx.hospital_id
+      ? await supabase.from('chambers').select('hospital_name, address').eq('id', rx.hospital_id).single()
+      : { data: null };
+
+    // 5. Resolve patient info (from linked appointment or fallback)
+    const appt: any = (rx as any).appointments;
+    const patientName   = appt?.patient_name   || 'Patient';
+    const patientAge    = appt?.patient_age    ? String(appt.patient_age) : '';
+    const patientGender = appt?.patient_gender || '';
+
+    // 6. Build PrescriptionData object
+    const pdfData: PrescriptionData = {
+      doctorName:      doctor?.full_name    || 'Dr.',
+      doctorDegrees:   doctor?.degrees      || '',
+      doctorSpecialty: doctor?.specialty    || '',
+      doctorBmdc:      doctor?.bmdc_number  || '',
+      doctorPhone:     doctor?.phone,
+      hospitalName:    chamber?.hospital_name || '',
+      hospitalAddress: chamber?.address      || '',
+      patientName,
+      patientAge,
+      patientGender,
+      date:            rx.date ? new Date(rx.date).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'),
+      diagnosis:       rx.diagnosis   || '',
+      advice:          rx.notes       || '',
+      followUpDate:    rx.follow_up_date || undefined,
+      medicines: (meds || []).map((m: any) => ({
+        name:         m.name,
+        dosage:       m.dosage,
+        duration:     `${m.duration_days} Days`,
+        instructions: m.before_after_meal === 'before' ? 'Before meal' : 'After meal',
+      })),
+    };
+
+    // 7. Generate and download the PDF using the local jsPDF library
+    generatePDF(pdfData, 'modern', `Rx_${patientName.replace(/\s+/g, '_')}_${rx.date}`);
   } catch (err: any) {
     console.error('[CRITICAL] downloadPrescriptionPDF: Download failed.', err);
     throw err;
@@ -1063,5 +1239,158 @@ export async function upsertQueueSession(session: QueueSession): Promise<void> {
   } catch (err: any) {
     console.error('[CRITICAL] upsertQueueSession: Save failed.', err);
     throw err;
+  }
+}
+
+// --- Platform Utilities ---
+export async function fetchMedicineCatalog(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase.from('medicines').select('*').order('name');
+    if (error) throw error;
+    return (data || []).map((m: any) => ({
+      id:          m.id,
+      brandName:   m.name,
+      genericName: m.generic_name || '',
+      type:        m.category     || 'General',
+      strength:    m.strength     || '',
+      company:     m.manufacturer || '',
+      route:       m.form         || 'Tablet',
+    }));
+  } catch (err) {
+    console.warn('Medicine catalog failed to fetch:', err);
+    return [];
+  }
+}
+
+export async function addMedicineToCatalog(medicine: {
+  name: string;
+  generic_name?: string;
+  category: string;
+  form: string;
+  strength?: string;
+  manufacturer?: string;
+  added_by_doctor_id?: string;
+  is_verified?: boolean;
+}): Promise<any> {
+  const { data, error } = await supabase
+    .from('medicines')
+    .insert([{ ...medicine, is_verified: medicine.is_verified ?? true }])
+    .select()
+    .single();
+  if (error) throw error;
+  // Bust the session cache so MedicineManager and other doctors see it immediately
+  if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('medicine_catalog');
+  return {
+    id:          data.id,
+    brandName:   data.name,
+    genericName: data.generic_name || '',
+    type:        data.category     || 'General',
+    strength:    data.strength     || '',
+    company:     data.manufacturer || '',
+    route:       data.form         || 'Tablet',
+  };
+}
+
+// --- Chamber Requests ---
+
+export async function submitChamberRequest(
+  doctorId: string,
+  hospitalId: string,
+  proposedFee: number,
+  branchId?: string,
+  sectorId?: string
+): Promise<string> {
+  const { data, error } = await supabase
+    .from('chamber_requests')
+    .insert([{
+      doctor_id: doctorId,
+      hospital_id: hospitalId,
+      branch_id: branchId || null,
+      sector_id: sectorId || null,
+      proposed_fee: proposedFee,
+      status: 'pending',
+    }])
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function fetchChamberRequests(doctorId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('chamber_requests')
+    .select(`
+      *,
+      hospital:hospital_id (id, name, address),
+      branch:branch_id (id, name, address),
+      sector:sector_id (id, name)
+    `)
+    .eq('doctor_id', doctorId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+// --- Doctor Reviews ---
+
+export async function submitDoctorReview(
+  doctorId: string,
+  patientId: string,
+  patientName: string,
+  rating: number,
+  comment: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('doctor_reviews')
+    .upsert([{
+      doctor_id: doctorId,
+      patient_id: patientId,
+      patient_name: patientName,
+      rating,
+      comment,
+      created_at: new Date().toISOString(),
+    }], { onConflict: 'doctor_id,patient_id' });
+  if (error) throw error;
+
+  // Update doctor's average rating
+  const { data: reviews } = await supabase
+    .from('doctor_reviews')
+    .select('rating')
+    .eq('doctor_id', doctorId);
+  if (reviews && reviews.length > 0) {
+    const avg = reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length;
+    await supabase.from('profiles').update({ rating: Math.round(avg * 10) / 10 }).eq('id', doctorId);
+  }
+}
+
+export async function fetchDoctorReviews(doctorId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('doctor_reviews')
+    .select('*')
+    .eq('doctor_id', doctorId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) return [];
+  return data || [];
+}
+
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export async function createNotification(data: {
+  recipient_id: string;
+  title: string;
+  body?: string;
+  type?: string;
+  link?: string;
+  metadata?: Record<string, any>;
+}): Promise<void> {
+  try {
+    await supabase.from('notifications').insert([{
+      ...data,
+      type: data.type || 'system',
+    }]);
+  } catch {
+    // Non-blocking — notification failure should never break the main flow
   }
 }

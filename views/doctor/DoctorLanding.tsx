@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { ShieldCheck, Stethoscope, TrendingUp, Users, ArrowRight, CheckCircle, ArrowLeft, ShieldAlert, Mail, Loader2, Check, Clock } from 'lucide-react';
+import { ShieldCheck, Stethoscope, TrendingUp, Users, ArrowRight, CheckCircle, ArrowLeft, ShieldAlert, Mail, Loader2, Check, Clock, Camera, Upload, IdCard } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { UserRole } from '../../types';
 import { useEmailOTP } from '../../hooks/useEmailOTP';
+import { supabase } from '../../supabase';
 
 
 interface DoctorLandingProps {
@@ -24,11 +25,38 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
     phone: '',
     email: '',
     password: '',
+    idPhotoUrl: '',
   });
+  const [idPhotoPreview, setIdPhotoPreview] = useState<string>('');
+  const [uploadingId, setUploadingId] = useState(false);
+  const idPhotoRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const { signup } = useAuth();
   const { otpState, sendOTP, verifyOTP, resetOTP, isVerified } = useEmailOTP();
   const [otpCode, setOtpCode] = useState('');
+
+  const handleIdPhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    setUploadingId(true);
+    setError(null);
+    try {
+      const file = e.target.files[0];
+      const preview = URL.createObjectURL(file);
+      setIdPhotoPreview(preview);
+
+      const ext = file.name.split('.').pop();
+      const path = `doctor-id-${formData.email}-${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from('doctor-id-photos').upload(path, file);
+      if (uploadErr) throw uploadErr;
+      const { data } = supabase.storage.from('doctor-id-photos').getPublicUrl(path);
+      setFormData(prev => ({ ...prev, idPhotoUrl: data.publicUrl }));
+    } catch (err) {
+      console.error('ID photo upload error:', err);
+      setError('Failed to upload ID photo. Please try again.');
+    } finally {
+      setUploadingId(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -326,15 +354,70 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Phone</label>
-              <input name="phone" type="tel" required placeholder="017..." value={formData.phone} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Phone <span className="text-slate-300">(Optional)</span></label>
+              <input name="phone" type="tel" placeholder="017..." value={formData.phone} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
             </div>
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Password</label>
               <input name="password" type="password" required placeholder="••••••••" value={formData.password} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
             </div>
-            <Button fullWidth size="lg" disabled={isLoading} className="bg-teal-600 hover:bg-teal-700 h-14 text-lg font-black">
-              {isLoading ? 'Processing...' : 'Complete Registration'}
+
+            {/* ID Photo Upload */}
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                BMDC Card / Government ID Photo <span className="text-red-400">*</span>
+              </label>
+              <p className="text-xs text-slate-400 mb-3">Take a photo of your BMDC registration card or government-issued ID. This will be reviewed by admin.</p>
+              <input
+                ref={idPhotoRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleIdPhotoCapture}
+              />
+              {idPhotoPreview ? (
+                <div className="relative rounded-xl overflow-hidden border border-slate-200">
+                  <img src={idPhotoPreview} alt="ID preview" className="w-full h-40 object-cover" />
+                  {uploadingId && (
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                      <Loader2 size={24} className="animate-spin text-teal-600" />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => idPhotoRef.current?.click()}
+                    className="absolute bottom-2 right-2 px-3 py-1.5 bg-teal-600 text-white text-xs font-black rounded-lg"
+                  >
+                    Retake
+                  </button>
+                  {formData.idPhotoUrl && (
+                    <div className="absolute top-2 left-2 px-2 py-1 bg-green-500 text-white text-[10px] font-black rounded-lg flex items-center gap-1">
+                      <Check size={10} /> Uploaded
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => idPhotoRef.current?.click()}
+                  disabled={uploadingId}
+                  className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-teal-400 hover:text-teal-500 transition-all"
+                >
+                  {uploadingId ? (
+                    <Loader2 size={24} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Camera size={28} />
+                      <span className="text-xs font-black uppercase tracking-wider">Take Photo / Upload</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            <Button fullWidth size="lg" disabled={isLoading || !formData.idPhotoUrl} className="bg-teal-600 hover:bg-teal-700 h-14 text-lg font-black disabled:opacity-50">
+              {isLoading ? 'Processing...' : !formData.idPhotoUrl ? 'Upload ID Photo to Continue' : 'Complete Registration'}
             </Button>
           </form>
         </GlassCard>

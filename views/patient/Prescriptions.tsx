@@ -3,7 +3,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import {
    Download, Search, Calendar, Stethoscope, Building2,
-   Eye, ShieldCheck, X, Printer, Share2, User, FileDigit
+   Eye, ShieldCheck, X, Printer, Share2, User, FileDigit, ChevronRight
 } from 'lucide-react';
 import { PatientStorage, fetchPrescriptions, downloadPrescriptionPDF } from '../../storage';
 import { supabase } from '../../supabase';
@@ -107,7 +107,35 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
       };
    }, [selectedRx]);
 
-   const filteredRx = enrichedPrescriptions.filter((rx: any) =>
+   const [activeFolder, setActiveFolder] = useState<string | null>(null);
+
+   // 10. Grouping Logic for "Folders"
+   const prescriptionFolders = useMemo(() => {
+      const groups: Record<string, { name: string; count: number; lastDate: string; records: any[] }> = {};
+      
+      enrichedPrescriptions.forEach(rx => {
+         const key = rx.hospitalName || 'Other Facilities';
+         if (!groups[key]) {
+            groups[key] = { name: key, count: 0, lastDate: rx.displayDate, records: [] };
+         }
+         groups[key].count++;
+         groups[key].records.push(rx);
+         // Keep the most recent date
+         if (new Date(rx.displayDate) > new Date(groups[key].lastDate)) {
+            groups[key].lastDate = rx.displayDate;
+         }
+      });
+      
+      return Object.values(groups).sort((a, b) => new Date(b.lastDate).getTime() - new Date(a.lastDate).getTime());
+   }, [enrichedPrescriptions]);
+
+   const currentFolderRecords = useMemo(() => {
+      if (!activeFolder) return [];
+      const folder = prescriptionFolders.find(f => f.name === activeFolder);
+      return folder?.records || [];
+   }, [activeFolder, prescriptionFolders]);
+
+   const filteredRx = (activeFolder ? currentFolderRecords : enrichedPrescriptions).filter((rx: any) =>
       rx.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       rx.hospitalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (rx.diagnosis || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -218,16 +246,16 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
    );
 
    return (
-      <div className="space-y-10 pb-16 animate-fade-in max-w-4xl mx-auto px-2">
+      <div className="space-y-10 pb-16 animate-fade-in max-w-4xl mx-auto px-2 min-h-screen">
          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div>
-               <h1 className="text-4xl font-black text-slate-900 tracking-tight">Prescriptions</h1>
-               <p className="text-slate-500 font-bold text-lg mt-2">Your digital health records archive.</p>
+               <h1 className="text-4xl font-black text-slate-900 tracking-tight">Health Records</h1>
+               <p className="text-slate-500 font-bold text-lg mt-2">Manage your clinical history securely.</p>
             </div>
             <div className="relative w-full md:w-auto shrink-0">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                <input
-                  placeholder="Search doctor or diagnosis..."
+                  placeholder="Search records..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full md:w-64 bg-white border border-slate-200 pl-11 pr-4 py-4 rounded-2xl outline-none font-bold text-sm shadow-sm focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
@@ -235,13 +263,65 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
             </div>
          </div>
 
+         {/* Navigation Breadcrumb */}
+         <div className="flex items-center gap-3">
+            <button 
+               onClick={() => setActiveFolder(null)}
+               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${!activeFolder ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white text-slate-400 hover:text-slate-900 border border-slate-100'}`}
+            >
+               <FileDigit size={16} /> All Folders
+            </button>
+            {activeFolder && (
+               <>
+                  <ChevronRight size={16} className="text-slate-300" />
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 text-blue-700 font-bold text-sm border border-blue-100 animate-in slide-in-from-left-2 duration-300">
+                     <Building2 size={16} /> {activeFolder}
+                  </div>
+               </>
+            )}
+         </div>
+
          {isLoading ? (
             <div className="flex flex-col items-center justify-center py-32 space-y-4">
                <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
                <p className="text-slate-400 font-bold animate-pulse uppercase tracking-[0.2em] text-[10px]">Retrieving medical records</p>
             </div>
-         ) : filteredRx.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-700">
+         ) : !activeFolder ? (
+            /* Folder View */
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+               {prescriptionFolders.map((folder) => (
+                  <button 
+                     key={folder.name}
+                     onClick={() => setActiveFolder(folder.name)}
+                     className="bg-white border border-slate-100 p-6 rounded-[24px] text-left hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden"
+                  >
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-100 transition-colors" />
+                     
+                     <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-inner relative z-10">
+                        <Building2 size={24} />
+                     </div>
+                     
+                     <div className="relative z-10">
+                        <h3 className="text-lg font-black text-slate-900 group-hover:text-blue-700 transition-colors leading-tight mb-2 line-clamp-1">
+                           {folder.name}
+                        </h3>
+                        <div className="flex justify-between items-end">
+                           <p className="text-xs font-bold text-slate-400">{folder.count} Records</p>
+                           <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{folder.lastDate}</p>
+                        </div>
+                     </div>
+                  </button>
+               ))}
+               {prescriptionFolders.length === 0 && (
+                  <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+                     <FileDigit className="mx-auto text-slate-200 mb-6" size={80} />
+                     <p className="text-slate-400 font-bold max-w-xs mx-auto">Your prescriptions will appear here once shared by your doctor.</p>
+                  </div>
+               )}
+            </div>
+         ) : (
+            /* Records inside a folder */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                {filteredRx.map((rx: any) => (
                   <div key={rx.id} className="bg-white border border-slate-200/60 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group/card">
                      <div className="px-6 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/40">
@@ -256,34 +336,27 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
                      </div>
 
                      <div className="p-6 grid grid-cols-2 gap-x-10 gap-y-6">
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                            <div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Provider</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Doctor</p>
                               <div className="flex items-center gap-2">
-                                 <Building2 size={13} className="text-slate-400 shrink-0" />
-                                 <p className="text-[14px] font-bold text-slate-900 leading-tight truncate">{rx.hospitalName}</p>
+                                 <User size={13} className="text-slate-400 shrink-0" />
+                                 <p className="text-[14px] font-black text-slate-900 leading-tight truncate">{rx.doctorName}</p>
                               </div>
                            </div>
                            <div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Doctor</p>
-                              <div className="flex items-center gap-2">
-                                 <User size={13} className="text-slate-400 shrink-0" />
-                                 <p className="text-[14px] font-medium text-slate-800 leading-tight truncate">{rx.doctorName}</p>
-                              </div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Specialty</p>
+                              <p className="text-[11px] font-black text-blue-600 uppercase tracking-[0.1em] truncate">{rx.specialty}</p>
                            </div>
                         </div>
 
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                            <div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Specialty</p>
-                              <div className="flex items-center gap-2">
-                                 <Stethoscope size={13} className="text-blue-500 shrink-0" />
-                                 <p className="text-[11px] font-black text-blue-600 uppercase tracking-[0.1em] truncate">{rx.specialty}</p>
-                              </div>
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Diagnosis</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Diagnosis</p>
                               <p className="text-[13px] font-medium text-slate-700 line-clamp-2 leading-relaxed">{rx.diagnosis || 'General Checkup'}</p>
+                           </div>
+                           <div className="flex justify-end pt-2">
+                              <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">#{rx.id.slice(-6).toUpperCase()}</span>
                            </div>
                         </div>
                      </div>
@@ -293,33 +366,19 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
                            onClick={() => setSelectedRx(rx)}
                            className="flex-1 px-4 py-2.5 rounded-[10px] border border-slate-200 text-slate-600 text-[13px] font-bold hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
                         >
-                           <Eye size={16} />
-                           View Record
+                           <Eye size={16} /> View
                         </button>
                         <button
                            onClick={() => handleDownload(rx.id)}
                            disabled={downloadingRxId === rx.id}
-                           className={`flex-1 px-4 py-2.5 rounded-[10px] text-[13px] font-bold shadow-sm transition-all flex items-center justify-center gap-2 ${downloadingRxId === rx.id
-                                 ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                                 : 'bg-gradient-to-br from-slate-800 to-slate-950 text-white hover:shadow-lg'
-                              }`}
+                           className="flex-1 px-4 py-2.5 rounded-[10px] bg-slate-900 text-white text-[13px] font-bold shadow-sm hover:bg-black transition-all flex items-center justify-center gap-2"
                         >
-                           {downloadingRxId === rx.id ? (
-                              <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-600 rounded-full animate-spin"></div>
-                           ) : (
-                              <Download size={16} />
-                           )}
-                           {downloadingRxId === rx.id ? 'Generating...' : 'Download'}
+                           {downloadingRxId === rx.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={16} />}
+                           Download
                         </button>
                      </div>
                   </div>
                ))}
-            </div>
-         ) : (
-            <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-slate-100 animate-in fade-in zoom-in duration-500">
-               <FileDigit className="mx-auto text-slate-200 mb-6" size={80} />
-               <h3 className="text-2xl font-black text-slate-900 mb-2">No Records Found</h3>
-               <p className="text-slate-400 font-bold max-w-xs mx-auto">Your prescriptions will appear here once your doctor shares them digitally.</p>
             </div>
          )}
 

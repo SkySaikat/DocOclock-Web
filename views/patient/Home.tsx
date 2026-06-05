@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '../../components/ui/Button';
 import {
    Search, Heart, Activity, Brain, Stethoscope, Star, MapPin,
    ShieldCheck, Users, Clock, ArrowRight, X, GraduationCap,
-   ChevronRight, Calendar, Sparkles, Bell, Pill, BriefcaseMedical,
+   ChevronRight, Calendar, Sparkles, Bell, Pill, FileText, BriefcaseMedical,
    Baby, BabyIcon, VenetianMask, Syringe, Thermometer, BrainCircuit,
-   Microscope, Droplets, UserRound, Zap, Bone, HeartPulse, ClipboardPlus
+   Microscope, Droplets, UserRound, Zap, Bone, HeartPulse, ClipboardPlus, Wind
 } from 'lucide-react';
 import { Doctor, UserRole } from '../../types';
 import { DoctorCard } from '../../components/ui/DoctorCard';
@@ -15,7 +15,55 @@ import { getLocalISODate } from '../../utils/date';
 import { BrowseSpecialtySection } from '../../components/ui/BrowseSpecialtySection';
 import { RecommendedDoctorsSection } from '../../components/ui/RecommendedDoctorsSection';
 import { FindDoctorsNearMe } from '../../components/patient/FindDoctorsNearMe';
+import { HeroSlider } from '../../components/patient/HeroSlider';
 import { supabase } from '../../supabase';
+
+const HEALTH_TIPS = [
+   { emoji: '💧', tip: 'Drink 8 glasses of water daily to stay hydrated and support kidney function.' },
+   { emoji: '🚶', tip: 'A 30-minute walk each day reduces heart disease risk by up to 35%.' },
+   { emoji: '😴', tip: 'Adults need 7–9 hours of quality sleep for optimal cognitive and immune function.' },
+   { emoji: '🥦', tip: 'Eating 5 servings of vegetables daily can lower cancer risk by 20%.' },
+   { emoji: '🧘', tip: 'Just 10 minutes of mindfulness daily significantly reduces cortisol levels.' },
+   { emoji: '🩺', tip: 'Annual check-ups catch conditions early — prevention is always better than cure.' },
+   { emoji: '🫁', tip: 'Deep breathing exercises 3× daily can lower blood pressure naturally.' },
+   { emoji: '🦷', tip: 'Brushing for 2 minutes twice daily prevents gum disease linked to heart problems.' },
+];
+
+const HealthTipsSection: React.FC = () => {
+   const [idx, setIdx] = useState(0);
+
+   useEffect(() => {
+      const t = setInterval(() => setIdx(i => (i + 1) % HEALTH_TIPS.length), 6000);
+      return () => clearInterval(t);
+   }, []);
+
+   const tip = HEALTH_TIPS[idx];
+   const next = HEALTH_TIPS[(idx + 1) % HEALTH_TIPS.length];
+
+   return (
+      <div className="mb-10">
+         <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest px-1">Daily Health Tip</h2>
+            <div className="flex gap-1">
+               {HEALTH_TIPS.map((_, i) => (
+                  <button key={i} onClick={() => setIdx(i)}
+                     className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'bg-blue-500 w-4' : 'bg-slate-200 w-1.5'}`} />
+               ))}
+            </div>
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 flex gap-4 items-start transition-all duration-500">
+               <span className="text-2xl shrink-0">{tip.emoji}</span>
+               <p className="text-sm font-medium text-slate-700 leading-relaxed">{tip.tip}</p>
+            </div>
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-100 rounded-2xl p-5 flex gap-4 items-start opacity-60 hidden md:flex">
+               <span className="text-2xl shrink-0">{next.emoji}</span>
+               <p className="text-sm font-medium text-slate-500 leading-relaxed">{next.tip}</p>
+            </div>
+         </div>
+      </div>
+   );
+};
 
 interface HomeProps {
    onNavigate: (path: string) => void;
@@ -37,6 +85,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    const [activeAppointment, setActiveAppointment] = useState<any>(null);
    const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
    const [isLocationFeatureEnabled, setIsLocationFeatureEnabled] = useState(false);
+   const [heroBanners, setHeroBanners] = useState<any[]>([]);
 
    useEffect(() => {
       const fetchSettings = async () => {
@@ -49,8 +98,13 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
             console.error('Failed to load system settings:', err);
          }
       };
-      
+
       fetchSettings();
+   }, []);
+
+   useEffect(() => {
+      supabase.from('hero_banners').select('*').eq('is_active', true).order('sort_order')
+         .then(({ data }) => setHeroBanners(data || []));
    }, []);
 
    useEffect(() => {
@@ -142,31 +196,25 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    }, [session, doctors, userRole]);
 
    const categories = [
-      { name: 'General Physician', subtitle: 'Primary Care Physician', icon: Stethoscope, color: 'text-blue-600', bg: 'bg-blue-50' },
-      { name: 'Pediatrics', subtitle: 'Child Health Care', icon: Baby, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-      { name: 'Gynae & Obs', subtitle: "Women's Health Care", icon: HeartPulse, color: 'text-rose-600', bg: 'bg-rose-50' },
-      { name: 'Dermatology', subtitle: 'Skin, Hair & Sexual Health', icon: Sparkles, color: 'text-orange-600', bg: 'bg-orange-50' },
-      { name: 'Internal Medicine', subtitle: 'General Health & Medicine', icon: ClipboardPlus, color: 'text-sky-600', bg: 'bg-sky-50' },
-      { name: 'Endocrinology', subtitle: 'Diabetes, Thyroid & Hormone', icon: Droplets, color: 'text-teal-600', bg: 'bg-teal-50' },
-      { name: 'Neurology', subtitle: 'Brain, Spine & Nerve', icon: BrainCircuit, color: 'text-purple-600', bg: 'bg-purple-50' },
-      { name: 'Gastroenterology', subtitle: 'Stomach, Liver & Gut', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-      { name: 'Cardiology', subtitle: 'Heart Disease & Vascular Disease', icon: Heart, color: 'text-red-600', bg: 'bg-red-50' },
+      { name: 'General Physician', subtitle: 'Primary Care', icon: Stethoscope, color: 'text-blue-600', bg: 'bg-blue-50' },
+      { name: 'Cardiology', subtitle: 'Heart Specialist', icon: Heart, color: 'text-red-600', bg: 'bg-red-50' },
+      { name: 'Pediatrics', subtitle: 'Child Health', icon: Baby, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+      { name: 'Gynae & Obs', subtitle: "Women's Health", icon: HeartPulse, color: 'text-rose-600', bg: 'bg-rose-50' },
+      { name: 'Dermatology', subtitle: 'Skin & Hair', icon: Sparkles, color: 'text-orange-600', bg: 'bg-orange-50' },
+      { name: 'Internal Medicine', subtitle: 'General Health', icon: ClipboardPlus, color: 'text-sky-600', bg: 'bg-sky-50' },
+      { name: 'Endocrinology', subtitle: 'Diabetes & Hormone', icon: Droplets, color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Neurology', subtitle: 'Brain & Spine', icon: BrainCircuit, color: 'text-purple-600', bg: 'bg-purple-50' },
+      { name: 'Gastroenterology', subtitle: 'Liver & Gut', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+      { name: 'Orthopedics', subtitle: 'Bone & Joints', icon: Bone, color: 'text-amber-600', bg: 'bg-amber-50' },
+      { name: 'Ophthalmology', subtitle: 'Eye Specialist', icon: VenetianMask, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+      { name: 'Psychiatry', subtitle: 'Mental Health', icon: Brain, color: 'text-violet-600', bg: 'bg-violet-50' },
+      { name: 'ENT', subtitle: 'Ear, Nose, Throat', icon: Activity, color: 'text-slate-600', bg: 'bg-slate-50' },
+      { name: 'Nephrology', subtitle: 'Kidney Specialist', icon: Droplets, color: 'text-blue-700', bg: 'bg-blue-100' },
+      { name: 'Pulmonology', subtitle: 'Chest & Lung', icon: Wind, color: 'text-sky-700', bg: 'bg-sky-100' },
    ];
 
    const handleCategoryClick = (categoryName: string) => {
-      const keywords: Record<string, string> = {
-         'General Physician': 'Physician',
-         'Cardiology': 'Cardiologist',
-         'Neurology': 'Neurologist',
-         'Pediatrics': 'Pediatrician',
-         'Dermatology': 'Dermatologist',
-         'Internal Medicine': 'Medicine',
-         'Endocrinology': 'Endocrinology',
-         'Gastroenterology': 'Gastroenterologist',
-         'Gynae & Obs': 'Gynecologist'
-      };
-      const specialty = keywords[categoryName] || categoryName;
-      setSelectedSpecialty(specialty === selectedSpecialty ? 'All' : specialty);
+      onNavigate('/patient/doctors', undefined, categoryName);
    };
 
    // 1. Refined browseList (Master List)
@@ -180,7 +228,11 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
 
          const matchesSearch = searchTerm === '' || matchesName || matchesSpecialty || matchesHospitals;
 
-         const matchesSelectedSpecialty = selectedSpecialty === 'All' || doc.specialty.toLowerCase().includes(selectedSpecialty.toLowerCase());
+         const stem = (s: string) => s.toLowerCase().replace(/ologist$|ician$|ology$|ics$|ist$|ian$|y$/, '').slice(0, 6);
+         const matchesSelectedSpecialty = selectedSpecialty === 'All' ||
+            doc.specialty.toLowerCase().includes(selectedSpecialty.toLowerCase()) ||
+            selectedSpecialty.toLowerCase().includes(doc.specialty.toLowerCase()) ||
+            stem(doc.specialty) === stem(selectedSpecialty);
 
          return matchesSearch && matchesSelectedSpecialty;
       });
@@ -200,10 +252,14 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
          <div className="max-w-4xl mx-auto px-4 sm:px-6">
             {/* HERO SECTION - REFINED SHARPNESS */}
             <div className="pt-8 pb-12 md:pt-16 md:pb-20">
-               <div className="relative rounded-[24px] bg-slate-900 border border-slate-800 shadow-2xl"
-                  style={{
-                     background: 'radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.1), transparent 50%), #0F172A'
-                  }}>
+               <div className="relative rounded-[24px] overflow-hidden border border-slate-800 shadow-2xl min-h-[320px] md:min-h-[420px]">
+
+                  {/* Background slider — sits behind the content overlay */}
+                  <HeroSlider banners={heroBanners} />
+
+                  {/* Dark overlay — preserves readability of text on any image */}
+                  <div className="absolute inset-0 z-[1]"
+                     style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.90) 40%, rgba(15,23,42,0.45))' }} />
 
                   <div className="relative z-10 px-6 py-12 md:px-12 md:py-20 lg:pr-32">
                      <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-blue-500/20">
@@ -316,6 +372,35 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                </div>
             </div>
 
+            {/* QUICK ACTION CARDS — logged-in patients only */}
+            {isPatient && (
+               <div className="mb-10">
+                  <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 px-1">Quick Actions</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                     {[
+                        { icon: Search,    label: 'Find a Doctor',    path: '/patient/doctors',          bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'hover:border-blue-200' },
+                        { icon: Calendar,  label: 'My Appointments',  path: '/patient/appointments',     bg: 'bg-indigo-50',  text: 'text-indigo-600',  border: 'hover:border-indigo-200' },
+                        { icon: FileText,  label: 'Prescriptions',    path: '/patient/prescriptions',    bg: 'bg-violet-50',  text: 'text-violet-600',  border: 'hover:border-violet-200' },
+                        { icon: Pill,      label: 'Medicine Tracker', path: '/patient/medicine-tracker', bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'hover:border-emerald-200' },
+                     ].map(action => (
+                        <button
+                           key={action.path}
+                           onClick={() => onNavigate(action.path)}
+                           className={`bg-white border border-slate-100 ${action.border} rounded-2xl p-4 flex flex-col items-center gap-2.5 shadow-sm hover:shadow-md transition-all group`}
+                        >
+                           <div className={`w-11 h-11 rounded-xl ${action.bg} ${action.text} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                              <action.icon size={20} />
+                           </div>
+                           <span className="text-[11px] font-black text-slate-700 text-center leading-tight">{action.label}</span>
+                        </button>
+                     ))}
+                  </div>
+               </div>
+            )}
+
+            {/* HEALTH TIPS CAROUSEL */}
+            <HealthTipsSection />
+
             {/* UPCOMING APPOINTMENT (IF ANY) */}
             {isPatient && activeAppointment && (
                <div className="mb-12">
@@ -367,6 +452,15 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                onClearFilters={() => { setSelectedSpecialty('All'); setSearchTerm(''); }}
             />
 
+            <div className="flex justify-between items-center mb-6">
+               <h2 className="text-[24px] font-bold tracking-[-0.3px] text-slate-900 leading-tight">Explore Specialties</h2>
+               <button 
+                  onClick={() => onNavigate('/patient/doctors')}
+                  className="text-blue-600 font-black text-xs uppercase tracking-widest flex items-center gap-1 group"
+               >
+                  View All <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+               </button>
+            </div>
             <BrowseSpecialtySection
                categories={categories}
                onCategoryClick={handleCategoryClick}

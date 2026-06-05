@@ -14,6 +14,7 @@ const More = lazy(() => import('./views/patient/More').then(m => ({ default: m.M
 const Prescriptions = lazy(() => import('./views/patient/Prescriptions').then(m => ({ default: m.Prescriptions })));
 const Consultations = lazy(() => import('./views/patient/Consultations').then(m => ({ default: m.Consultations })));
 const MedicineTracker = lazy(() => import('./views/patient/MedicineTracker').then(m => ({ default: m.MedicineTracker })));
+const DoctorSearch = lazy(() => import('./views/patient/DoctorSearchView').then(m => ({ default: m.DoctorSearchView })));
 
 // Doctor Views
 const DoctorLanding = lazy(() => import('./views/doctor/DoctorLanding').then(m => ({ default: m.DoctorLanding })));
@@ -30,6 +31,7 @@ const DoctorProfileEditor = lazy(() => import('./views/doctor/DoctorProfileEdito
 const AdminLogin = lazy(() => import('./views/admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
 const SuperAdminDashboard = lazy(() => import('./views/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
 const HospitalAdminDashboard = lazy(() => import('./views/hospital-admin/HospitalAdminDashboard').then(m => ({ default: m.HospitalAdminDashboard })));
+const BranchManagerDashboard = lazy(() => import('./views/branch-manager/BranchManagerDashboard').then(m => ({ default: m.BranchManagerDashboard })));
 import { UserRole, Doctor, Patient } from './types';
 
 import { Activity, ShieldAlert, Lock, User, ArrowRight } from 'lucide-react';
@@ -51,7 +53,9 @@ const App: React.FC = () => {
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null);
+  const [selectedSearchCategory, setSelectedSearchCategory] = useState<string>('All');
   const [focusSearchTrigger, setFocusSearchTrigger] = useState<number>(0);
+  const [browsePublicSite, setBrowsePublicSite] = useState(false);
   const { showToast } = useToast();
 
   // [P7] Listen for session expiration events from storage
@@ -102,7 +106,7 @@ const App: React.FC = () => {
     }
   }, [profile, authRole, authLoading]);
 
-  const navigate = (path: string, appointmentId?: string) => {
+  const navigate = (path: string, appointmentId?: string, category: string = 'All') => {
     if ((path === '/' || path === '/patient/home') && (currentPath === '/' || currentPath === '/patient/home')) {
       setFocusSearchTrigger(Date.now());
     }
@@ -111,6 +115,10 @@ const App: React.FC = () => {
       setActiveAppointmentId(appointmentId);
     } else if (path !== '/live-serial') {
       setActiveAppointmentId(null);
+    }
+
+    if (path === '/patient/doctors') {
+      setSelectedSearchCategory(category);
     }
 
     setCurrentPath(path);
@@ -122,7 +130,7 @@ const App: React.FC = () => {
 
   const handleSelectDoctor = (doctor: Doctor) => {
     setSelectedDoctor(doctor);
-    navigate('/patient/profile');
+    navigate(`/doctor/${doctor.id}`);
   };
 
   const handleLoginSuccess = () => {
@@ -178,11 +186,17 @@ const App: React.FC = () => {
     const isDoctor = userRole === UserRole.DOCTOR;
     const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
     const isHospitalAdmin = userRole === UserRole.HOSPITAL_ADMIN;
+    const isBranchManager = userRole === UserRole.BRANCH_MANAGER;
+
+    // Allow all non-patient roles to browse the public site
+    if (browsePublicSite && (isSuperAdmin || isHospitalAdmin || isBranchManager || isDoctor)) {
+      return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={undefined} focusSearchTrigger={focusSearchTrigger} />;
+    }
 
     if (isSuperAdmin) {
       return (
         <ProtectedRoute expectedRole={UserRole.SUPER_ADMIN}>
-          <SuperAdminDashboard onNavigate={navigate} />
+          <SuperAdminDashboard onNavigate={navigate} onBrowsePublicSite={() => setBrowsePublicSite(true)} />
         </ProtectedRoute>
       );
     }
@@ -191,6 +205,14 @@ const App: React.FC = () => {
       return (
         <ProtectedRoute expectedRole={UserRole.HOSPITAL_ADMIN}>
           <HospitalAdminDashboard onNavigate={navigate} />
+        </ProtectedRoute>
+      );
+    }
+
+    if (isBranchManager) {
+      return (
+        <ProtectedRoute expectedRole={UserRole.BRANCH_MANAGER}>
+          <BranchManagerDashboard onNavigate={navigate} />
         </ProtectedRoute>
       );
     }
@@ -221,26 +243,38 @@ const App: React.FC = () => {
       );
     }
 
-    switch (currentPath) {
-      case '/':
-      case '/patient/home':
+    const isDoctorProfilePath = currentPath.startsWith('/doctor/');
+    const doctorIdFromPath = isDoctorProfilePath ? currentPath.split('/doctor/')[1] : null;
+
+    switch (true) {
+      case currentPath === '/':
+      case currentPath === '/patient/home':
         return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} focusSearchTrigger={focusSearchTrigger} />;
-      case '/for-doctors': return <DoctorLanding onNavigate={navigate} />;
-      case '/patient/profile':
-        return selectedDoctor ? (
-          <DoctorProfile doctor={selectedDoctor} onBack={() => navigate('/patient/home')} onBookSuccess={handleBookSuccess} userRole={userRole} onLoginRequest={() => { setPendingAction('BOOKING'); setIsLoginModalOpen(true); }} onNavigate={navigate} />
+      case currentPath === '/for-doctors': return <DoctorLanding onNavigate={navigate} />;
+      case currentPath === '/patient/profile':
+      case isDoctorProfilePath:
+        return (selectedDoctor || doctorIdFromPath) ? (
+          <DoctorProfile 
+            doctor={selectedDoctor!} 
+            doctorId={doctorIdFromPath || undefined}
+            onBack={() => navigate('/patient/home')} 
+            onBookSuccess={handleBookSuccess} 
+            userRole={userRole} 
+            onLoginRequest={() => { setPendingAction('BOOKING'); setIsLoginModalOpen(true); }} 
+            onNavigate={navigate} 
+          />
         ) : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} focusSearchTrigger={focusSearchTrigger} />;
-      case '/patient/appointments': return isPatient ? <Appointments onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case '/patient/rewards': return isPatient ? <Rewards /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case '/patient/more': return isPatient ? <More onNavigate={navigate} onLogout={handleLogout} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case '/patient/prescriptions': return isPatient ? <Prescriptions onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case '/patient/consultations': return isPatient ? <Consultations onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case '/patient/medicine-tracker': return isPatient ? <MedicineTracker /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case '/live-serial': return isPatient ? <LiveSerial appointmentId={activeAppointmentId} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+      case currentPath === '/patient/appointments': return isPatient ? <Appointments onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+      case currentPath === '/patient/rewards': return isPatient ? <Rewards /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+      case currentPath === '/patient/more': return isPatient ? <More onNavigate={navigate} onLogout={handleLogout} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+      case currentPath === '/patient/prescriptions': return isPatient ? <Prescriptions onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+      case currentPath === '/patient/consultations': return isPatient ? <Consultations onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+      case currentPath === '/patient/medicine-tracker': return isPatient ? <MedicineTracker /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+      case currentPath === '/live-serial': return isPatient ? <LiveSerial appointmentId={activeAppointmentId} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+      case currentPath === '/patient/doctors': return <DoctorSearch onNavigate={navigate} onSelectDoctor={handleSelectDoctor} initialCategory={selectedSearchCategory} />;
 
-      case '/admin-login': return <AdminLogin onNavigate={navigate} />;
-
-      case '/doctor-login': return (
+      case currentPath === '/admin-login': return <AdminLogin onNavigate={navigate} />;
+      case currentPath === '/doctor-login': return (
         <div className="max-w-[400px] mx-auto mt-10 px-4 animate-in fade-in zoom-in-95 duration-300">
           <div className="bg-white rounded-[24px] shadow-2xl relative overflow-hidden border border-slate-100 flex flex-col">
             {/* Refined Header (Aligned with Patient Modal) */}
@@ -331,6 +365,13 @@ const App: React.FC = () => {
     </div>
   );
 
+  const handleReturnToDashboard = () => {
+    setBrowsePublicSite(false);
+    if (userRole === UserRole.DOCTOR) navigate('/doctor/dashboard');
+    else if (userRole === UserRole.SUPER_ADMIN || userRole === UserRole.HOSPITAL_ADMIN) navigate('/');
+    else if (userRole === UserRole.BRANCH_MANAGER) navigate('/');
+  };
+
   return (
     <Layout
       userRole={userRole}
@@ -339,6 +380,9 @@ const App: React.FC = () => {
       onLoginClick={openLoginModal}
       hideMobileBottomNav={currentPath === '/patient/profile'}
       currentPath={currentPath}
+      browseMode={browsePublicSite}
+      onBrowsePublicSite={() => setBrowsePublicSite(true)}
+      onReturnToDashboard={handleReturnToDashboard}
     >
       <Suspense fallback={<PageLoader />}>
         {renderView()}

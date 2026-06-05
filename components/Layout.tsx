@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserRole } from '../types';
-import { LogOut, Menu, X, Users, Home, FileText, Calendar, Activity, Gift, MoreHorizontal, User, ChevronDown, Stethoscope, BriefcaseMedical, BarChart2, ClipboardList, LayoutDashboard, Pill, UserCircle, PlusCircle, ShieldCheck, Settings, Wallet } from 'lucide-react';
+import { LogOut, Menu, X, Users, Home, FileText, Calendar, Activity, Gift, MoreHorizontal, User, ChevronDown, Stethoscope, BriefcaseMedical, BarChart2, ClipboardList, LayoutDashboard, Pill, UserCircle, PlusCircle, ShieldCheck, Settings, Wallet, Globe, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../AuthContext';
+import { Footer } from './Footer';
+import { NotificationBell } from './ui/NotificationBell';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +14,9 @@ interface LayoutProps {
   onLoginClick?: (role: UserRole) => void;
   hideMobileBottomNav?: boolean;
   currentPath?: string;
+  browseMode?: boolean;
+  onBrowsePublicSite?: () => void;
+  onReturnToDashboard?: () => void;
 }
 
 const Logo = () => (
@@ -36,7 +41,7 @@ const Logo = () => (
   </svg>
 );
 
-export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, onNavigate, onLoginClick, hideMobileBottomNav, currentPath }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, onNavigate, onLoginClick, hideMobileBottomNav, currentPath, browseMode, onBrowsePublicSite, onReturnToDashboard }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoginDropdownOpen, setIsLoginDropdownOpen] = useState(false);
   const [isDoctorProfileOpen, setIsDoctorProfileOpen] = useState(false);
@@ -63,7 +68,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
   const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
   const isHospitalAdmin = userRole === UserRole.HOSPITAL_ADMIN;
 
-  if (isSuperAdmin || isHospitalAdmin) {
+  if ((isSuperAdmin || isHospitalAdmin) && !browseMode) {
     return <div className="min-h-screen relative font-sans text-slate-800 bg-slate-50 py-10">{children}</div>;
   }
 
@@ -123,23 +128,29 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                 <button onClick={() => onNavigate('/patient/more')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
                   <UserCircle size={18} /> Profile
                 </button>
+                <NotificationBell recipientId={profile?.id} onNavigate={onNavigate} />
               </>
             )}
 
-            {isDoctor && (
+            {(isDoctor || (browseMode && (isSuperAdmin || isHospitalAdmin))) && (
               <div className="flex items-center gap-4 lg:gap-6">
-                <button onClick={() => onNavigate('/doctor/dashboard')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
-                  <LayoutDashboard size={18} /> Dashboard
-                </button>
-                <button onClick={() => onNavigate('/doctor/serial-manager')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
-                  <Users size={18} /> Queue
-                </button>
-                <button onClick={() => onNavigate('/doctor/prescription')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
-                  <FileText size={18} /> RX
-                </button>
+                {isDoctor && !browseMode && (
+                  <>
+                    <button onClick={() => onNavigate('/doctor/dashboard')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
+                      <LayoutDashboard size={18} /> Dashboard
+                    </button>
+                    <button onClick={() => onNavigate('/doctor/serial-manager')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
+                      <Users size={18} /> Queue
+                    </button>
+                    <button onClick={() => onNavigate('/doctor/prescription')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
+                      <FileText size={18} /> RX
+                    </button>
+                  </>
+                )}
+                <NotificationBell recipientId={profile?.id} onNavigate={onNavigate} />
 
                 {/* Doctor Profile Dropdown */}
-                <div ref={doctorDropdownRef} className="relative ml-2">
+                {isDoctor && !browseMode && <div ref={doctorDropdownRef} className="relative ml-2">
                   <button
                     onClick={() => setIsDoctorProfileOpen(!isDoctorProfileOpen)}
                     className="flex items-center gap-3 pl-3 pr-2 py-1.5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-blue-50 hover:border-blue-100 transition-all group"
@@ -203,6 +214,23 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
                         <div className="my-1.5 h-px bg-slate-100 mx-2" />
 
+                        {onBrowsePublicSite && (
+                          <button
+                            onClick={() => { onBrowsePublicSite(); setIsDoctorProfileOpen(false); }}
+                            className="w-full flex items-center gap-3 p-3 hover:bg-blue-50/60 rounded-2xl transition-all text-slate-700 group"
+                          >
+                            <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:border-blue-100 transition-all">
+                              <Globe size={18} />
+                            </div>
+                            <div className="text-left">
+                              <p className="font-black text-[13px] leading-tight group-hover:text-blue-700">View Website</p>
+                              <p className="text-[10px] text-slate-400 font-bold">Browse as patient</p>
+                            </div>
+                          </button>
+                        )}
+
+                        <div className="my-1.5 h-px bg-slate-100 mx-2" />
+
                         <button
                           onClick={() => { onLogout?.(); setIsDoctorProfileOpen(false); }}
                           className="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded-2xl transition-all text-red-600 group"
@@ -218,7 +246,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                       </div>
                     </div>
                   )}
-                </div>
+                </div>}
               </div>
             )}
           </div>
@@ -229,13 +257,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
               {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
           )}
-          {(isPatient || isDoctor) && (
-            <button
-              className="md:hidden w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 overflow-hidden hover:bg-slate-200 transition-colors"
-              onClick={() => onNavigate(isPatient ? '/patient/more' : '/doctor/profile')}
-            >
-              {isPatient ? <UserCircle size={20} /> : <Menu size={20} />}
-            </button>
+          {(isPatient || isDoctor || browseMode) && (
+            <div className="md:hidden flex items-center gap-1">
+              <NotificationBell recipientId={profile?.id} onNavigate={onNavigate} />
+              <button
+                className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 overflow-hidden hover:bg-slate-200 transition-colors"
+                onClick={() => onNavigate(isPatient || browseMode ? '/patient/more' : '/doctor/profile')}
+              >
+                {isPatient || browseMode ? <UserCircle size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
           )}
 
         </div>
@@ -332,8 +363,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
         </div>
       </main>
 
+      <Footer onNavigate={onNavigate} />
+
+      {/* BROWSE MODE BANNER — shown when admin/doctor views the public site */}
+      {browseMode && onReturnToDashboard && (
+        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md text-white pl-4 pr-2 py-2 rounded-2xl shadow-2xl border border-white/10 text-sm whitespace-nowrap">
+          <Globe size={14} className="text-blue-400 shrink-0" />
+          <span className="font-bold text-slate-300 text-xs">Viewing as visitor</span>
+          <button
+            onClick={onReturnToDashboard}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-black transition-colors"
+          >
+            <ArrowLeft size={12} /> Dashboard
+          </button>
+        </div>
+      )}
+
       {/* DOCTOR MOBILE BOTTOM NAV - FLOATING DOCK - Respects safe area bottom */}
-      {isDoctor && !hideMobileBottomNav && (
+      {isDoctor && !hideMobileBottomNav && !browseMode && (
         <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[420px] z-50">
           <div className="bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-2xl px-2 flex justify-around items-center h-16 rounded-[32px] ring-1 ring-white/5">
             <button onClick={() => onNavigate('/doctor/dashboard')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
@@ -356,7 +403,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
       )}
 
       {/* PATIENT MOBILE BOTTOM NAV - REFINED PREMIUM DOCK - Respects safe area bottom */}
-      {isPatient && !hideMobileBottomNav && (
+      {(isPatient || browseMode) && !hideMobileBottomNav && (
         <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[340px] z-50">
           <div className="bg-white border-t border-slate-100/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)] px-1.5 flex justify-around items-center h-[54px] rounded-[20px]">
             {[

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, LogOut, LayoutDashboard, Database, Pill, Activity, FileText, Users, Settings } from 'lucide-react';
+import { ShieldCheck, LogOut, LayoutDashboard, Database, Pill, Activity, FileText, Users, Settings, Building, Image, Globe } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { useSuperAdminData } from '../../hooks/useSuperAdminData';
 
@@ -7,12 +7,17 @@ import { AnalyticsOverview } from '../../components/admin/AnalyticsOverview';
 import { ApprovalQueue } from '../../components/admin/ApprovalQueue';
 import { GlobalDataView } from '../../components/admin/GlobalDataView';
 import { MedicineManager } from '../../components/admin/MedicineManager';
+import { HospitalManager } from '../../components/admin/HospitalManager';
+import { HomepageManager } from '../../components/admin/HomepageManager';
 
-type TabType = 'OVERVIEW' | 'DATABASE' | 'MEDICINES' | 'PRESCRIPTIONS' | 'SETTINGS';
+import { ReviewMonitor } from '../../components/hospital-admin/ReviewMonitor';
+import { UserCheck } from 'lucide-react';
 
-export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
+type TabType = 'OVERVIEW' | 'APPROVALS' | 'DATABASE' | 'HOSPITALS' | 'MEDICINES' | 'SETTINGS' | 'HOMEPAGE';
+
+export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void; onBrowsePublicSite?: () => void }> = ({ onNavigate, onBrowsePublicSite }) => {
   const { profile, logout } = useAuth();
-  const { loading, stats, pendingDoctors, platformSettings, approveDoctor, rejectDoctor, updatePlatformSetting } = useSuperAdminData();
+  const { loading, stats, pendingDoctors, platformSettings, approveDoctor, rejectDoctor, updatePlatformSetting, heroBanners, createHeroBanner, updateHeroBanner, deleteHeroBanner } = useSuperAdminData();
   const [activeTab, setActiveTab] = useState<TabType>('OVERVIEW');
 
   const handleLogout = () => {
@@ -31,8 +36,11 @@ export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void 
 
   const tabs = [
     { id: 'OVERVIEW' as TabType, label: 'Platform Overview', icon: LayoutDashboard },
+    { id: 'APPROVALS' as TabType, label: 'Doctor Approvals', icon: UserCheck },
+    { id: 'HOSPITALS' as TabType, label: 'Hospitals', icon: Building },
     { id: 'DATABASE' as TabType, label: 'Global Database', icon: Database },
     { id: 'MEDICINES' as TabType, label: 'Medicine Catalog', icon: Pill },
+    { id: 'HOMEPAGE' as TabType, label: 'Homepage', icon: Image },
     { id: 'SETTINGS' as TabType, label: 'Platform Settings', icon: Settings },
   ];
 
@@ -55,12 +63,22 @@ export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void 
             </div>
           </div>
           
-          <button 
-            onClick={handleLogout}
-            className="self-start md:self-auto flex items-center gap-2 px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-xl border border-red-500/20 transition-all text-sm group"
-          >
-            <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" /> Sign Out
-          </button>
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            {onBrowsePublicSite && (
+              <button
+                onClick={onBrowsePublicSite}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold rounded-xl border border-blue-500/20 transition-all text-sm"
+              >
+                <Globe size={15} /> View Website
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-xl border border-red-500/20 transition-all text-sm group"
+            >
+              <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" /> Sign Out
+            </button>
+          </div>
         </div>
       </div>
 
@@ -74,14 +92,21 @@ export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void 
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 p-4 rounded-xl font-bold transition-all text-left ${
+                className={`flex justify-between items-center p-4 rounded-xl font-bold transition-all text-left ${
                   activeTab === tab.id 
                   ? 'bg-blue-50 text-blue-700' 
                   : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
-                <tab.icon size={20} />
-                <span className="text-sm">{tab.label}</span>
+                <div className="flex items-center gap-3">
+                  <tab.icon size={20} />
+                  <span className="text-sm">{tab.label}</span>
+                </div>
+                {tab.id === 'APPROVALS' && pendingDoctors.length > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-red-500/20">
+                    {pendingDoctors.length}
+                  </span>
+                )}
               </button>
             ))}
 
@@ -110,18 +135,32 @@ export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void 
         {/* Content Area */}
         <div className="flex-1 space-y-8">
           {activeTab === 'OVERVIEW' && (
-            <>
-              <AnalyticsOverview stats={stats} />
-              <ApprovalQueue pendingDoctors={pendingDoctors} onApprove={approveDoctor} onReject={rejectDoctor} />
-            </>
+            <AnalyticsOverview stats={stats} />
+          )}
+
+          {activeTab === 'APPROVALS' && (
+            <ApprovalQueue pendingDoctors={pendingDoctors} onApprove={approveDoctor} onReject={rejectDoctor} />
           )}
 
           {activeTab === 'DATABASE' && (
             <GlobalDataView />
           )}
 
+          {activeTab === 'HOSPITALS' && (
+            <HospitalManager />
+          )}
+
           {activeTab === 'MEDICINES' && (
             <MedicineManager />
+          )}
+
+          {activeTab === 'HOMEPAGE' && (
+            <HomepageManager
+              banners={heroBanners}
+              onCreate={createHeroBanner}
+              onUpdate={updateHeroBanner}
+              onDelete={deleteHeroBanner}
+            />
           )}
 
           {activeTab === 'SETTINGS' && (

@@ -1,11 +1,19 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { MOCK_MEDICINES, MOCK_DOCTORS, COMMON_DOSAGES, COMMON_INSTRUCTIONS } from '../../constants';
-import { Trash2, Printer, Save, Share2, Search, Building2, Phone, Mail, X, Star, History, CalendarDays, Calendar, Eye, Edit3, Check, ChevronDown, ClipboardCheck, User, Send } from 'lucide-react';
-import { DoctorStorage, savePrescriptionToSupabase, PracticeChamber } from '../../storage';
+import { MOCK_DOCTORS, COMMON_DOSAGES, COMMON_INSTRUCTIONS } from '../../constants';
+import { Trash2, Printer, Save, Share2, Search, Building2, Phone, Mail, X, Star, CalendarDays, Calendar, Eye, Edit3, Check, ChevronDown, ClipboardCheck, User, Send, FileText, Pill, Plus, Loader2, Tag } from 'lucide-react';
+import { DoctorStorage, savePrescriptionToSupabase, createPharmacyOrder, PracticeChamber, fetchMedicineCatalog, addMedicineToCatalog } from '../../storage';
 import { Medicine, PrescriptionMedicine, Prescription } from '../../types';
 import { getActiveChamber } from '../../utils/chamber';
+import { downloadPrescriptionPDF } from '../../pdf/prescriptions';
+
+const MEDICINE_CATEGORIES = [
+  'Antibiotic','Analgesic','NSAID','Antihistamine','Antacid/PPI','Antidiabetic',
+  'Antihypertensive','Antiplatelet','Statin','Supplement','Bronchodilator',
+  'Antiasthmatic','Antifungal','Corticosteroid','Antidepressant','Anxiolytic','General'
+];
+const MEDICINE_FORMS = ['Tablet','Capsule','Syrup','Suspension','Injection','Cream','Ointment','Inhaler','Drop','Suppository'];
 
 interface PrescriptionEditorProps {
   initialPatient?: { id: string; name: string; age?: number; gender: string; phone: string; appointmentId: string; hospitalId: string } | null;
@@ -36,6 +44,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
   // Chamber/Template State
   const [chambers, setChambers] = useState<PracticeChamber[]>([]);
   const [selectedChamberId, setSelectedChamberId] = useState<string | null>(initialPatient?.hospitalId || null);
+  const [selectedTemplate, setSelectedTemplate] = useState<'modern' | 'classic' | 'minimal'>('modern');
 
   const [isLoadingChambers, setIsLoadingChambers] = useState(true);
 
@@ -70,13 +79,26 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
     }
   }, [initialPatient]);
 
+  // Medicine Catalog
+  const [catalog, setCatalog] = useState<Medicine[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState('All');
+
+  // Add-to-catalog state
+  const [addingToCatalog, setAddingToCatalog] = useState(false);
+  const [newMedForm, setNewMedForm] = useState({ name: '', generic_name: '', category: 'General', form: 'Tablet', strength: '', manufacturer: '' });
+  const [savingNewMed, setSavingNewMed] = useState(false);
+
   // Medicine Search State
   const [medSearch, setMedSearch] = useState('');
   const [showMedResults, setShowMedResults] = useState(false);
   const [tempMed, setTempMed] = useState<Partial<PrescriptionMedicine> | null>(null);
 
-  // Favorites & Recents State
-  const [favorites, setFavorites] = useState<string[]>(['m1', 'm6']);
+  // Favorites & Recents (per-doctor localStorage persistence)
+  const favKey = `rx_fav_${doctorId || 'doc'}`;
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(favKey) || '[]'); } catch { return []; }
+  });
   const [recentMedIds, setRecentMedIds] = useState<string[]>([]);
 
   // Derived State for Current Template
@@ -88,6 +110,51 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
     themeColor: '#3b82f6',
     logoUrl: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png',
     watermarkOpacity: 0.1
+  };
+
+  // Load medicine catalog (with sessionStorage cache)
+  useEffect(() => {
+    setCatalogLoading(true);
+    const cached = sessionStorage.getItem('medicine_catalog');
+    if (cached) {
+      try {
+        const parsed: any[] = JSON.parse(cached);
+        // DB rows have `name`; mapped rows have `brandName` — normalise both
+        setCatalog(parsed.map((m: any) => m.brandName ? m : {
+          id: m.id, brandName: m.name, genericName: m.generic_name || '',
+          type: m.category || 'General', strength: m.strength || '',
+          company: m.manufacturer || '', route: m.form || 'Tablet',
+        }));
+        setCatalogLoading(false);
+        return;
+      } catch {}
+    }
+    fetchMedicineCatalog().then(data => {
+      setCatalog(data);
+      setCatalogLoading(false);
+    }).catch(() => setCatalogLoading(false));
+  }, []);
+
+  // Save favorites to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(favKey, JSON.stringify(favorites));
+  }, [favorites, favKey]);
+
+  const handleAddToCatalog = async () => {
+    if (!newMedForm.name.trim()) return;
+    setSavingNewMed(true);
+    try {
+      const added = await addMedicineToCatalog({ ...newMedForm, added_by_doctor_id: doctorId || undefined });
+      setCatalog(prev => [...prev, added].sort((a, b) => a.brandName.localeCompare(b.brandName)));
+      setAddingToCatalog(false);
+      setNewMedForm({ name: '', generic_name: '', category: 'General', form: 'Tablet', strength: '', manufacturer: '' });
+      // Auto-select the new medicine for dosage entry
+      initiateAddMedicine(added);
+    } catch (err: any) {
+      alert('Could not add medicine: ' + (err.message || 'Unknown error'));
+    } finally {
+      setSavingNewMed(false);
+    }
   };
 
   const handleQuickDate = (daysToAdd: number) => {
@@ -201,9 +268,27 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       // 3. Structured Persistence (Supabase)
       await savePrescriptionToSupabase(rxRecord);
 
+      // 4. Auto-create pharmacy order (fire and show order number)
+      let pharmacyOrderNumber = '';
+      try {
+        const diagnosisStr = Array.isArray(diagnosis) ? diagnosis.join(', ') : diagnosis || '';
+        pharmacyOrderNumber = await createPharmacyOrder(
+          rxRecord,
+          patientName,
+          initialPatient?.phone || '',
+          doctor?.name || '',
+          diagnosisStr
+        );
+      } catch (pharmErr) {
+        console.warn('Pharmacy order creation failed (non-critical):', pharmErr);
+      }
+
       if (onSave) {
         onSave(rxPackage);
-        alert('Prescription saved and medicine alerts generated for ' + patientName);
+        const pharmMsg = pharmacyOrderNumber
+          ? `\n\nPharmacy Order ID: ${pharmacyOrderNumber}\nPatient can collect medicines at the store using this ID.`
+          : '';
+        alert(`Prescription saved for ${patientName}.${pharmMsg}`);
       }
     } catch (error) {
       console.error('Error saving prescription to Supabase:', error);
@@ -211,13 +296,20 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
     }
   };
 
+  const catalogCategories = useMemo(() => {
+    const cats = new Set(catalog.map(m => m.type).filter(Boolean));
+    return ['All', ...Array.from(cats).sort()];
+  }, [catalog]);
+
   const filteredMedicines = useMemo(() => {
-    let results = MOCK_MEDICINES;
+    let results = catalog;
+    if (categoryFilter !== 'All') results = results.filter(m => m.type === categoryFilter);
     if (medSearch.length > 0) {
       const lower = medSearch.toLowerCase();
       results = results.filter(m =>
         m.brandName.toLowerCase().includes(lower) ||
-        m.genericName.toLowerCase().includes(lower)
+        (m.genericName || '').toLowerCase().includes(lower) ||
+        (m.company || '').toLowerCase().includes(lower)
       );
     } else if (showMedResults) {
       results = results.filter(m => favorites.includes(m.id) || recentMedIds.includes(m.id));
@@ -230,13 +322,11 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       if (aRecent !== -1 && bRecent !== -1) return aRecent - bRecent;
       if (aRecent !== -1) return -1;
       if (bRecent !== -1) return 1;
-      const aFav = favorites.includes(a.id);
-      const bFav = favorites.includes(b.id);
-      if (aFav && !bFav) return -1;
-      if (!aFav && bFav) return 1;
+      if (favorites.includes(a.id) && !favorites.includes(b.id)) return -1;
+      if (!favorites.includes(a.id) && favorites.includes(b.id)) return 1;
       return a.brandName.localeCompare(b.brandName);
     });
-  }, [medSearch, showMedResults, favorites, recentMedIds]);
+  }, [medSearch, showMedResults, favorites, recentMedIds, catalog, categoryFilter]);
 
   return (
     <div className="flex flex-col h-full md:h-[calc(100vh-140px)] relative">
@@ -330,51 +420,232 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
           </GlassCard>
 
           <GlassCard className="p-4 relative z-20 overflow-visible">
-            <h3 className="text-sm font-bold text-slate-500 uppercase mb-3">Add Medicine</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-slate-500 uppercase flex items-center gap-2">
+                <Pill size={15} className="text-blue-500" /> Add Medicine
+              </h3>
+              {!tempMed && !addingToCatalog && (
+                <span className="text-[10px] font-bold text-slate-400">
+                  {catalogLoading ? <Loader2 size={10} className="animate-spin inline" /> : `${catalog.length} in catalog`}
+                </span>
+              )}
+            </div>
+
             {tempMed ? (
-              <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100 animate-fade-in">
-                <div className="flex justify-between items-start mb-4 border-b border-blue-100 pb-2">
+              /* ── DOSAGE CONFIGURATION PANEL ─────────────────────── */
+              <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 space-y-4">
+                {/* Header */}
+                <div className="flex justify-between items-start pb-3 border-b border-blue-100">
                   <div>
-                    <h4 className="font-bold text-blue-900 text-lg">{tempMed.medicine?.brandName} <span className="text-sm font-normal text-slate-500">{tempMed.medicine?.strength}</span></h4>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700">{tempMed.medicine?.type}</span>
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{tempMed.medicine?.route}</span>
+                    </div>
+                    <h4 className="font-black text-blue-900 text-lg leading-tight">{tempMed.medicine?.brandName}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">{tempMed.medicine?.genericName}{tempMed.medicine?.strength ? ` · ${tempMed.medicine.strength}` : ''}</p>
                   </div>
-                  <button onClick={cancelAddMedicine} className="bg-white p-1 rounded-full text-slate-400 hover:text-red-500 shadow-sm border border-slate-100"><X size={20} /></button>
-                </div>
-                <div className="space-y-5">
-                  <div className="grid grid-cols-3 gap-2 bg-white p-2 rounded-xl border border-slate-200">
-                    {['Morning', 'Noon', 'Night'].map((period, i) => (
-                      <div key={period} className="text-center">
-                        <label className="text-[10px] text-slate-400 block mb-1 font-bold uppercase">{period}</label>
-                        <select className="w-full bg-slate-50 rounded-lg py-2 text-center text-sm font-bold outline-none" value={i === 0 ? tempMed.morningDose : i === 1 ? tempMed.noonDose : tempMed.nightDose} onChange={(e) => setTempMed({ ...tempMed, [i === 0 ? 'morningDose' : i === 1 ? 'noonDose' : 'nightDose']: e.target.value })}>
-                          {DOSAGE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                        </select>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={(e) => toggleFavorite(e, tempMed.medicine?.id || '')} className="p-1.5 rounded-xl hover:bg-blue-100 transition-all">
+                      <Star size={16} className={favorites.includes(tempMed.medicine?.id || '') ? 'text-amber-400 fill-amber-400' : 'text-slate-300'} />
+                    </button>
+                    <button onClick={cancelAddMedicine} className="bg-white p-1.5 rounded-xl text-slate-400 hover:text-red-500 shadow-sm border border-slate-100"><X size={16} /></button>
                   </div>
-                  <Button fullWidth onClick={confirmAddMedicine} className="h-12 font-black shadow-lg">Confirm Medicine</Button>
                 </div>
-              </div>
-            ) : (
-              <div className="relative mb-6">
-                <Search className="absolute left-3 top-3.5 text-slate-400" size={20} />
-                <input
-                  className="w-full pl-10 bg-white border border-slate-200 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Search Medicine..."
-                  value={medSearch}
-                  onChange={e => { setMedSearch(e.target.value); setShowMedResults(true); }}
-                  onFocus={() => setShowMedResults(true)}
-                />
-                {showMedResults && (filteredMedicines.length > 0 || medSearch.length === 0) && (
-                  <div className="absolute top-full left-0 w-full bg-white shadow-xl rounded-xl mt-2 border border-slate-100 max-h-64 overflow-auto z-50 divide-y divide-slate-50">
-                    {filteredMedicines.map(med => (
-                      <div key={med.id} className="px-4 py-3 hover:bg-blue-50 cursor-pointer flex justify-between items-center" onClick={() => initiateAddMedicine(med)}>
-                        <div>
-                          <p className="font-bold text-slate-800 text-sm">{med.brandName}</p>
-                          <p className="text-[10px] text-slate-500">{med.genericName}</p>
+
+                {/* Morning / Noon / Night */}
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Dosage</label>
+                  <div className="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-xl border border-slate-200">
+                    {['Morning', 'Noon', 'Night'].map((period, i) => {
+                      const key = i === 0 ? 'morningDose' : i === 1 ? 'noonDose' : 'nightDose';
+                      return (
+                        <div key={period} className="text-center">
+                          <label className="text-[9px] text-slate-400 block mb-1.5 font-black uppercase">{period}</label>
+                          <select className="w-full bg-slate-50 rounded-lg py-2 text-center text-sm font-bold outline-none border border-slate-100"
+                            value={tempMed[key as keyof typeof tempMed] as string}
+                            onChange={(e) => setTempMed({ ...tempMed, [key]: e.target.value })}>
+                            {DOSAGE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
                         </div>
-                        <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">{med.strength}</span>
+                      );
+                    })}
+                  </div>
+                  {/* Quick dosage presets */}
+                  <div className="flex gap-1.5 mt-2 flex-wrap">
+                    {[['0+0+1','Bedtime'],['1+0+1','BD'],['1+1+1','TDS'],['1+0+0','Morning only'],['0+1+0','Noon only']].map(([p, label]) => (
+                      <button key={p} onClick={() => applyDosagePreset(p)}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-slate-600 rounded-lg text-[9px] font-black transition-all">
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Duration */}
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Duration</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input type="number" min="1" max="365"
+                      className="w-16 bg-white border border-slate-200 rounded-xl px-2 py-2 text-center font-black text-slate-900 outline-none text-sm"
+                      value={tempMed.duration || '7'}
+                      onChange={e => setTempMed({ ...tempMed, duration: e.target.value })} />
+                    <span className="text-xs font-bold text-slate-400">days</span>
+                    <div className="flex gap-1 flex-wrap">
+                      {[3, 5, 7, 10, 14, 30].map(d => (
+                        <button key={d} onClick={() => setTempMed({ ...tempMed, duration: String(d) })}
+                          className={`px-2 py-1 rounded-lg text-[9px] font-black transition-all ${
+                            String(tempMed.duration) === String(d) ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}>{d}d</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instruction */}
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Instruction</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['After meal', 'Before meal', 'Empty stomach', 'With water'].map(instr => (
+                      <button key={instr} onClick={() => setTempMed({ ...tempMed, instruction: instr })}
+                        className={`py-2 rounded-xl text-xs font-black border-2 transition-all ${
+                          tempMed.instruction === instr ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+                        }`}>{instr}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button fullWidth onClick={confirmAddMedicine} className="h-12 font-black shadow-lg bg-blue-600 text-white">✓ Add to Prescription</Button>
+              </div>
+
+            ) : addingToCatalog ? (
+              /* ── ADD NEW MEDICINE TO CATALOG ─────────────────────── */
+              <div className="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-black text-emerald-800">Add to Medicine Catalog</h4>
+                    <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Available to all doctors once added</p>
+                  </div>
+                  <button onClick={() => setAddingToCatalog(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input placeholder="Brand Name *" value={newMedForm.name}
+                    onChange={e => setNewMedForm({ ...newMedForm, name: e.target.value })}
+                    className="col-span-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                  <input placeholder="Generic Name" value={newMedForm.generic_name}
+                    onChange={e => setNewMedForm({ ...newMedForm, generic_name: e.target.value })}
+                    className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                  <input placeholder="Strength (e.g. 500mg)" value={newMedForm.strength}
+                    onChange={e => setNewMedForm({ ...newMedForm, strength: e.target.value })}
+                    className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                  <select value={newMedForm.category} onChange={e => setNewMedForm({ ...newMedForm, category: e.target.value })}
+                    className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400">
+                    {MEDICINE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select value={newMedForm.form} onChange={e => setNewMedForm({ ...newMedForm, form: e.target.value })}
+                    className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400">
+                    {MEDICINE_FORMS.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                  <input placeholder="Manufacturer (optional)" value={newMedForm.manufacturer}
+                    onChange={e => setNewMedForm({ ...newMedForm, manufacturer: e.target.value })}
+                    className="col-span-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                </div>
+                <button disabled={!newMedForm.name.trim() || savingNewMed} onClick={handleAddToCatalog}
+                  className="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                  {savingNewMed ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  {savingNewMed ? 'Adding to catalog...' : 'Add & Use in Prescription'}
+                </button>
+              </div>
+
+            ) : (
+              /* ── SEARCH + RESULTS ─────────────────────────────────── */
+              <div className="space-y-3">
+                {/* Category filter pills */}
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                  {catalogCategories.map(cat => (
+                    <button key={cat} onClick={() => setCategoryFilter(cat)}
+                      className={`shrink-0 px-3 py-1 rounded-lg text-[9px] font-black transition-all ${
+                        categoryFilter === cat ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      }`}>{cat}</button>
+                  ))}
+                </div>
+
+                {/* Search input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
+                  <input
+                    className="w-full pl-9 pr-9 bg-white border border-slate-200 rounded-xl py-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                    placeholder="Search by brand, generic, or manufacturer..."
+                    value={medSearch}
+                    onChange={e => { setMedSearch(e.target.value); setShowMedResults(true); }}
+                    onFocus={() => setShowMedResults(true)}
+                  />
+                  {medSearch && (
+                    <button onClick={() => { setMedSearch(''); setShowMedResults(false); }}
+                      className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600">
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Results dropdown */}
+                {showMedResults && medSearch && (
+                  <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-xl max-h-72 overflow-y-auto">
+                    {catalogLoading ? (
+                      <div className="p-6 text-center"><Loader2 size={20} className="animate-spin text-blue-500 mx-auto" /></div>
+                    ) : filteredMedicines.length > 0 ? (
+                      filteredMedicines.map(med => (
+                        <div key={med.id} onClick={() => initiateAddMedicine(med)}
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-slate-50 last:border-0 group">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-black text-slate-900 text-sm">{med.brandName}</p>
+                              {favorites.includes(med.id) && <Star size={10} className="text-amber-400 fill-amber-400 shrink-0" />}
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-medium truncate">{med.genericName}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            {med.strength && <span className="bg-slate-100 text-slate-600 text-[9px] font-black px-2 py-0.5 rounded-md">{med.strength}</span>}
+                            <span className="bg-blue-50 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded-md">{med.route}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 space-y-3">
+                        <p className="text-sm text-slate-500 font-medium">No results for <span className="font-black">"{medSearch}"</span></p>
+                        <button onClick={() => { setNewMedForm(prev => ({ ...prev, name: medSearch })); setAddingToCatalog(true); setShowMedResults(false); setMedSearch(''); }}
+                          className="w-full py-3 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-black border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center justify-center gap-2">
+                          <Plus size={14} /> Add "{medSearch}" to medicine catalog
+                        </button>
+                        <button onClick={() => { setAddingToCatalog(true); setShowMedResults(false); setMedSearch(''); }}
+                          className="w-full py-2 text-slate-400 rounded-xl text-xs font-bold hover:text-slate-600 transition-all flex items-center justify-center gap-1">
+                          <Tag size={12} /> Add custom medicine with full details
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Recents / Favorites when search empty */}
+                {showMedResults && !medSearch && filteredMedicines.length > 0 && (
+                  <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                    <p className="px-4 pt-3 pb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Recent & Favourites</p>
+                    {filteredMedicines.slice(0, 8).map(med => (
+                      <div key={med.id} onClick={() => initiateAddMedicine(med)}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer border-t border-slate-50">
+                        <Star size={12} className={favorites.includes(med.id) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'} />
+                        <span className="flex-1 font-bold text-slate-800 text-sm">{med.brandName}</span>
+                        <span className="text-[10px] text-slate-400">{med.strength}</span>
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Manual add button when not searching */}
+                {!medSearch && (
+                  <button onClick={() => { setAddingToCatalog(true); setShowMedResults(false); }}
+                    className="w-full py-2.5 border-2 border-dashed border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 rounded-xl text-xs font-black text-slate-400 hover:text-emerald-700 transition-all flex items-center justify-center gap-2 mt-1">
+                    <Plus size={14} /> Add custom / new medicine to catalog
+                  </button>
                 )}
               </div>
             )}
@@ -470,7 +741,24 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       </div>
 
       {/* MOBILE & DESKTOP FLOATING ACTION DOCK - sit above nav */}
-      <div className="fixed bottom-[calc(90px+env(safe-area-inset-bottom))] md:bottom-8 left-0 right-0 md:left-auto md:right-8 z-[70] px-4 md:px-0">
+      <div className="fixed bottom-[calc(90px+env(safe-area-inset-bottom))] md:bottom-8 left-0 right-0 md:left-auto md:right-8 z-[70] px-4 md:px-0 flex flex-col items-end gap-3">
+        
+        {/* Template Selector Bubble */}
+        <div className="bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-xl border border-white/60 flex items-center gap-2 pr-4 transition-all hover:shadow-2xl">
+          <div className="bg-slate-100 p-2 rounded-xl text-slate-500">
+            <FileText size={16} />
+          </div>
+          <select 
+            value={selectedTemplate}
+            onChange={(e) => setSelectedTemplate(e.target.value as any)}
+            className="bg-transparent border-0 font-black text-[10px] uppercase tracking-widest text-slate-700 outline-none cursor-pointer"
+          >
+            <option value="modern">Modern Style</option>
+            <option value="classic">Classic Style</option>
+            <option value="minimal">Minimal Style</option>
+          </select>
+        </div>
+
         <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-xl p-3 md:p-0 rounded-[2.5rem] md:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:shadow-2xl border border-white/60 flex flex-row gap-3">
           <Button
             variant="outline"
@@ -487,7 +775,33 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
           </Button>
           <Button
             className="flex-1 md:w-20 h-14 md:h-16 rounded-2xl md:rounded-3xl shadow-2xl gap-3 font-black text-lg bg-blue-600 text-white border-0"
-            onClick={() => window.print()}
+            onClick={() => {
+              const rxData = {
+                id: `rx-${crypto.randomUUID().slice(0, 8)}`,
+                date: new Date().toLocaleDateString('en-GB'),
+                patientName,
+                patientAge: age,
+                patientGender: gender,
+                doctorName: doctor?.name || '',
+                doctorDegrees: doctor?.degrees || '',
+                specialty: doctor?.specialty || '',
+                hospitalName: currentTemplate.hospitalName,
+                hospitalAddress: currentTemplate.address,
+                hospitalPhone: currentTemplate.phone,
+                diagnosis,
+                complaints,
+                tests,
+                advice,
+                medicines: selectedMeds.map(m => ({
+                  name: m.medicine.brandName,
+                  dosage: `${m.morningDose}+${m.noonDose}+${m.nightDose}`,
+                  duration: `${m.duration} Days`,
+                  instruction: m.instruction
+                })),
+                followUpDate: followUpDate || undefined
+              };
+              downloadPrescriptionPDF(rxData as any, selectedTemplate);
+            }}
           >
             <Printer size={20} />
           </Button>

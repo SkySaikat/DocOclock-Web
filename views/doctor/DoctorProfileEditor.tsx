@@ -15,8 +15,9 @@ interface ProfileEditorProps {
 }
 
 export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) => {
-    const { profile, setProfile } = useAuth() as any; // Cast as any for quick state update if needed, though useAuth usually handles profile
+    const { profile, setProfile } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [success, setSuccess] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -76,6 +77,32 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
         }
     };
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            if (!e.target.files || e.target.files.length === 0) return;
+            setUploading(true);
+            const file = e.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${profile.id}-${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+            setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert('Error uploading image. Make sure the avatars bucket exists and try again.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <div className="max-w-3xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between mb-8 px-2 md:px-0">
@@ -94,7 +121,11 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                 <div className="flex flex-col items-center">
                     <div className="relative group">
                         <div className="w-32 h-32 rounded-[2rem] bg-slate-100 border-4 border-white shadow-xl overflow-hidden">
-                            {formData.image_url ? (
+                            {uploading ? (
+                                <div className="w-full h-full flex items-center justify-center bg-slate-50 text-teal-500">
+                                    <Loader2 size={32} className="animate-spin" />
+                                </div>
+                            ) : formData.image_url ? (
                                 <img src={formData.image_url} alt="Profile" className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-slate-300">
@@ -102,7 +133,19 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                                 </div>
                             )}
                         </div>
-                        <button className="absolute -bottom-2 -right-2 bg-teal-600 text-white p-2.5 rounded-2xl shadow-lg hover:bg-teal-700 transition-colors border-4 border-white">
+                        <input 
+                            type="file" 
+                            id="avatar-upload" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={handleImageUpload} 
+                            disabled={uploading}
+                        />
+                        <button 
+                            onClick={() => document.getElementById('avatar-upload')?.click()}
+                            disabled={uploading}
+                            className="absolute -bottom-2 -right-2 bg-teal-600 text-white p-2.5 rounded-2xl shadow-lg hover:bg-teal-700 transition-colors border-4 border-white disabled:opacity-50"
+                        >
                             <Camera size={20} />
                         </button>
                     </div>

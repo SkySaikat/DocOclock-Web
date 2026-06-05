@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { AppointmentCard } from '../../components/ui/AppointmentCard';
 import { fetchAppointments, PatientStorage, cancelAppointment } from '../../storage';
 import { calculateEstimatedTime } from '../../utils/timeUtils';
+import { ReviewModal } from '../../components/ReviewModal';
 
 interface AppointmentsProps {
    onNavigate: (path: string) => void;
@@ -226,6 +227,8 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate }) => {
       isLoading,
    } = useAppointmentsLogic(onNavigate);
 
+   const [activeReviewApp, setActiveReviewApp] = useState<any>(null);
+
    return (
       <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-24">
          {/* Header */}
@@ -255,10 +258,13 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate }) => {
                   <AppointmentCard
                      key={app.id}
                      appointment={{
+                        id: app.id,
                         patientName: app.patientName,
                         doctorName: app.doctorName,
                         doctorSpecialty: 'Specialist Consultation',
                         hospitalName: app.chamberName,
+                        chamberLocation: app.chamberLocation,
+                        category: app.category,
                         date: app.date,
                         time: app.time,
                         serialNumber: app.serialNumber,
@@ -267,6 +273,12 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate }) => {
                      }}
                      onTrack={() => onNavigate('/live-serial', app.id)}
                      onAction={() => setCancellingAppId(app.id)}
+                     onReview={() => setActiveReviewApp({
+                        id: app.id,
+                        doctor_id: app.doctorId,
+                        doctor_name: app.doctorName,
+                        patient_id: session?.id
+                     })}
                   />
                ))}
             </div>
@@ -298,6 +310,17 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate }) => {
             onClose={() => setCancellingAppId(null)}
             onConfirm={handleCancel}
          />
+
+         {activeReviewApp && (
+            <ReviewModal
+               isOpen={!!activeReviewApp}
+               onClose={() => setActiveReviewApp(null)}
+               onSuccess={() => {
+                  alert("Thank you for your feedback!");
+               }}
+               appointment={activeReviewApp}
+            />
+         )}
       </div>
    );
 };

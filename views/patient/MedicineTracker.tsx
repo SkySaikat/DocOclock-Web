@@ -8,13 +8,20 @@ import {
    Check, Coffee, Sun, Moon, ShieldCheck
 } from 'lucide-react';
 
-import { PatientStorage, fetchDoctors, fetchMedicineAlerts, toggleMedicineAlert } from '../../storage';
+import { PatientStorage, fetchDoctors, fetchMedicineAlerts, toggleMedicineAlert, saveUserMedicine, fetchMedicineCatalog } from '../../storage';
 import { MedicineAlert } from '../../types';
 
 export const MedicineTracker: React.FC = () => {
    const [refresh, setRefresh] = useState(0);
    const patient = PatientStorage.get();
    const currentPatientId = patient?.id;
+
+   const [showAddModal, setShowAddModal] = useState(false);
+   const [medicineCatalog, setMedicineCatalog] = useState<any[]>([]);
+
+   useEffect(() => {
+      fetchMedicineCatalog().then(setMedicineCatalog);
+   }, []);
 
    const [enrichedAlerts, setEnrichedAlerts] = useState<any[]>([]);
    const [isLoading, setIsLoading] = useState(true);
@@ -86,9 +93,14 @@ export const MedicineTracker: React.FC = () => {
    return (
       <div className="space-y-10 animate-fade-in pb-24 px-4 md:px-0 max-w-4xl mx-auto">
 
-         <div className="space-y-2">
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Medicine Schedule</h1>
-            <p className="text-slate-500 font-bold text-lg">Your daily routine, simplified.</p>
+         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-2">
+               <h1 className="text-4xl font-black text-slate-900 tracking-tight">Medicine Schedule</h1>
+               <p className="text-slate-500 font-bold text-lg">Your daily routine, simplified.</p>
+            </div>
+            <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 px-6 h-12 rounded-2xl flex items-center gap-2">
+               <Plus size={20} className="stroke-[3]" /> Add Medicine
+            </Button>
          </div>
 
          {isLoading ? (
@@ -226,6 +238,55 @@ export const MedicineTracker: React.FC = () => {
                <ShieldCheck className="text-teal-500" size={16} /> Data Encryption Active
             </div>
          </div>
+
+         {/* ADD MEDICINE MODAL */}
+         {showAddModal && currentPatientId && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+               <GlassCard className="max-w-md w-full p-8 shadow-2xl scale-in-center bg-white rounded-[2rem]">
+                  <div className="flex justify-between items-center mb-6">
+                     <h2 className="text-2xl font-black text-slate-900">Add Medicine</h2>
+                     <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all"><X size={20} /></button>
+                  </div>
+                  
+                  <form onSubmit={async (e) => {
+                     e.preventDefault();
+                     const fd = new FormData(e.currentTarget);
+                     const medName = fd.get('medicineName') as string;
+                     const dosage = `${fd.get('morning') || 0}+${fd.get('noon') || 0}+${fd.get('night') || 0}`;
+                     const duration = parseInt(fd.get('duration') as string) || 7;
+                     
+                     // Use the free text value if standard selection fails (or catalog is missing)
+                     await saveUserMedicine(currentPatientId, medName, dosage, duration);
+                     setShowAddModal(false);
+                     setRefresh(p => p + 1);
+                  }} className="space-y-6">
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Medicine Name</label>
+                        <input name="medicineName" list="catalog-meds" required placeholder="Type or select medicine..." className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-800 transition-all" />
+                        <datalist id="catalog-meds">
+                           {medicineCatalog.map(m => <option key={m.id} value={m.name} />)}
+                        </datalist>
+                     </div>
+
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Daily Dosage</label>
+                        <div className="grid grid-cols-3 gap-3">
+                           {['morning', 'noon', 'night'].map((time) => (
+                              <input key={time} name={time} type="number" min="0" max="5" defaultValue="0" placeholder={time} className="w-full px-4 py-3 text-center bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-slate-800" />
+                           ))}
+                        </div>
+                     </div>
+
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Duration (Days)</label>
+                        <input name="duration" type="number" min="1" max="90" required defaultValue="7" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-bold text-slate-800 transition-all" />
+                     </div>
+
+                     <Button type="submit" fullWidth className="h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-500/20 py-2 mt-4">Save Tracker</Button>
+                  </form>
+               </GlassCard>
+            </div>
+         )}
       </div>
    );
 };

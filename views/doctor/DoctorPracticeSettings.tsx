@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { Plus, Hospital, MapPin, CreditCard, Save, X, Edit2, Trash2, Clock, ChevronRight } from 'lucide-react';
+import { Plus, Hospital, MapPin, CreditCard, Save, X, Edit2, Trash2, Clock, ChevronRight, Search, GitBranch, Tag, Send } from 'lucide-react';
 import { ChamberCard } from '../../components/ui/ChamberCard';
-import { fetchDoctorChambers, saveChamberWithSchedules, deleteChamberFromSupabase, PracticeChamber, DoctorPracticeSettings as SettingsType, WeeklyDaySchedule, DoctorStorage } from '../../storage';
+import { fetchDoctorChambers, saveChamberWithSchedules, deleteChamberFromSupabase, submitChamberRequest, fetchChamberRequests, PracticeChamber, DoctorPracticeSettings as SettingsType, WeeklyDaySchedule, DoctorStorage } from '../../storage';
+import { supabase } from '../../supabase';
 
 const DAY_LABELS: Record<number, string> = {
     0: 'Sunday',
@@ -22,6 +23,7 @@ export const DoctorPracticeSettings: React.FC = () => {
     const doctorId = session?.id || '';
 
     const [settings, setSettings] = useState<SettingsType>({ dailyBookingLimit: 40, reportFreeDays: 7, chambers: [] });
+    const [chamberRequests, setChamberRequests] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -29,8 +31,12 @@ export const DoctorPracticeSettings: React.FC = () => {
         if (!doctorId) return;
         setIsLoading(true);
         try {
-            const chambers = await fetchDoctorChambers(doctorId);
+            const [chambers, requests] = await Promise.all([
+                fetchDoctorChambers(doctorId),
+                fetchChamberRequests(doctorId),
+            ]);
             setSettings(prev => ({ ...prev, chambers }));
+            setChamberRequests(requests);
         } catch (error) {
             console.error('Failed to load settings:', error);
         } finally {
@@ -65,7 +71,56 @@ export const DoctorPracticeSettings: React.FC = () => {
         address: '',
         feeNormal: 500,
         feeReport: 300,
+        consultationDurationMinutes: 0,
     });
+
+    // Hospital search for linking to registered hospitals
+    const [hospitalSearchQuery, setHospitalSearchQuery] = useState('');
+    const [hospitalSearchResults, setHospitalSearchResults] = useState<any[]>([]);
+    const [selectedHospitalId, setSelectedHospitalId] = useState<string | undefined>(undefined);
+    const [isSearchingHospitals, setIsSearchingHospitals] = useState(false);
+
+    // Branch / Sector selection (populated when a hospital is selected)
+    const [branches, setBranches] = useState<any[]>([]);
+    const [sectors, setSectors] = useState<any[]>([]);
+    const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+    const [selectedSectorId, setSelectedSectorId] = useState<string>('');
+
+    // Chamber request mode: when a registered hospital is selected, the form submits a request instead of creating directly
+    const [requestMode, setRequestMode] = useState(false);
+
+    const searchHospitals = async (query: string) => {
+        setHospitalSearchQuery(query);
+        if (query.length < 2) { setHospitalSearchResults([]); return; }
+        setIsSearchingHospitals(true);
+        try {
+            const { data } = await supabase
+                .from('hospitals')
+                .select('id, name, address')
+                .ilike('name', `%${query}%`)
+                .limit(8);
+            setHospitalSearchResults(data || []);
+        } catch { setHospitalSearchResults([]); }
+        setIsSearchingHospitals(false);
+    };
+
+    const selectHospital = async (h: any) => {
+        setSelectedHospitalId(h.id);
+        setFormData(prev => ({ ...prev, hospitalName: h.name, address: h.address }));
+        setHospitalSearchQuery(h.name);
+        setHospitalSearchResults([]);
+        setRequestMode(true);
+        setSelectedBranchId('');
+        setSelectedSectorId('');
+
+        // Load branches and sectors for this hospital
+        const [branchRes, sectorRes] = await Promise.all([
+            supabase.from('hospital_branches').select('id, name, address').eq('hospital_id', h.id).order('name'),
+            supabase.from('hospital_sectors').select('id, name, branch_id').eq('hospital_id', h.id).order('name'),
+        ]);
+        setBranches(branchRes.data || []);
+        setSectors(sectorRes.data || []);
+    };
 
     const [scheduleState, setScheduleState] = useState<Record<number, { active: boolean; startTime: string; endTime: string; dailyLimit: number }>>(
         DAYS.reduce((acc, day) => ({
@@ -79,6 +134,21 @@ export const DoctorPracticeSettings: React.FC = () => {
         setIsSaving(true);
 
         try {
+            // If a registered hospital is selected (request mode), submit a chamber request instead
+            if (requestMode && selectedHospitalId && !editingChamberId) {
+                await submitChamberRequest(
+                    doctorId,
+                    selectedHospitalId,
+                    formData.feeNormal,
+                    selectedBranchId || undefined,
+                    selectedSectorId || undefined,
+                );
+                await loadSettings();
+                resetForm();
+                alert('Request submitted! The hospital admin will review your chamber request.');
+                return;
+            }
+
             const schedule: WeeklyDaySchedule[] = DAYS
                 .filter(day => scheduleState[day].active)
                 .map(day => ({
@@ -95,7 +165,9 @@ export const DoctorPracticeSettings: React.FC = () => {
                 schedule,
                 feeNormal: formData.feeNormal,
                 feeReport: formData.feeReport,
-                dailyBookingLimit: settings.dailyBookingLimit, // Using global limit or could be per chamber if needed
+                dailyBookingLimit: settings.dailyBookingLimit,
+                linkedHospitalId: selectedHospitalId,
+                consultationDurationMinutes: formData.consultationDurationMinutes || 0,
             };
 
             await saveChamberWithSchedules(doctorId, chamberToSave);
@@ -115,7 +187,10 @@ export const DoctorPracticeSettings: React.FC = () => {
             address: chamber.address,
             feeNormal: chamber.feeNormal,
             feeReport: chamber.feeReport,
+            consultationDurationMinutes: chamber.consultationDurationMinutes || 0,
         });
+        setSelectedHospitalId(chamber.linkedHospitalId);
+        setHospitalSearchQuery(chamber.linkedHospitalId ? chamber.hospitalName : '');
 
         const newScheduleState = { ...scheduleState };
         // Reset all to inactive first
@@ -156,12 +231,15 @@ export const DoctorPracticeSettings: React.FC = () => {
     const resetForm = () => {
         setShowAddForm(false);
         setEditingChamberId(null);
-        setFormData({
-            hospitalName: '',
-            address: '',
-            feeNormal: 500,
-            feeReport: 300,
-        });
+        setFormData({ hospitalName: '', address: '', feeNormal: 500, feeReport: 300, consultationDurationMinutes: 0 });
+        setSelectedHospitalId(undefined);
+        setHospitalSearchQuery('');
+        setHospitalSearchResults([]);
+        setRequestMode(false);
+        setBranches([]);
+        setSectors([]);
+        setSelectedBranchId('');
+        setSelectedSectorId('');
         setScheduleState(
             DAYS.reduce((acc, day) => ({
                 ...acc,
@@ -187,6 +265,45 @@ export const DoctorPracticeSettings: React.FC = () => {
                     <p className="text-slate-500 font-bold">Manage your consultation chambers, fees, and weekly schedule.</p>
                 </div>
             </div>
+
+            {/* PENDING CHAMBER REQUESTS */}
+            {chamberRequests.filter(r => r.status === 'pending').length > 0 && (
+                <div className="space-y-3">
+                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                        <Clock size={20} className="text-orange-500" /> Pending Requests
+                    </h2>
+                    {chamberRequests.filter(r => r.status === 'pending').map(req => (
+                        <div key={req.id} className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-between gap-4">
+                            <div>
+                                <p className="font-black text-slate-900">{req.hospital?.name}</p>
+                                {req.branch && <p className="text-xs text-slate-500 font-medium">{req.branch.name}</p>}
+                                {req.sector && <p className="text-xs text-slate-500 font-medium">{req.sector.name}</p>}
+                                <p className="text-xs text-slate-400 font-medium mt-1">{req.hospital?.address}</p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                                <span className="px-3 py-1.5 bg-orange-100 text-orange-700 text-xs font-black rounded-full uppercase tracking-wider">⏳ Pending Approval</span>
+                                <p className="text-xs text-slate-400 font-medium mt-1">Fee: ৳{req.proposed_fee}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* REJECTED REQUESTS */}
+            {chamberRequests.filter(r => r.status === 'rejected').length > 0 && (
+                <div className="space-y-3">
+                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                        <X size={20} className="text-red-500" /> Rejected Requests
+                    </h2>
+                    {chamberRequests.filter(r => r.status === 'rejected').map(req => (
+                        <div key={req.id} className="p-4 bg-red-50 border border-red-100 rounded-2xl">
+                            <p className="font-black text-slate-900">{req.hospital?.name}</p>
+                            {req.note && <p className="text-xs text-red-600 font-bold mt-1">Reason: {req.note}</p>}
+                            <span className="mt-1 inline-block px-3 py-1 bg-red-100 text-red-700 text-xs font-black rounded-full">Rejected</span>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* CHAMBERS LIST */}
             <div className="space-y-4">
@@ -245,6 +362,89 @@ export const DoctorPracticeSettings: React.FC = () => {
                         <form onSubmit={handleSaveChamber} className="space-y-8">
                             {/* BASIC INFO */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* HOSPITAL SELECTOR */}
+                                <div className="md:col-span-2 space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                        <Hospital size={14} className="text-medical-500" /> Hospital / Clinic
+                                        {selectedHospitalId && (
+                                            <span className="ml-2 px-2 py-0.5 bg-green-50 text-green-600 text-[9px] font-black rounded-full uppercase tracking-wider">Registered Hospital Linked</span>
+                                        )}
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <Search size={16} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={hospitalSearchQuery}
+                                            onChange={e => searchHospitals(e.target.value)}
+                                            placeholder="Search registered hospitals… or type custom name below"
+                                            className="w-full pl-12 pr-5 py-4 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                        />
+                                        {selectedHospitalId && (
+                                            <button type="button" onClick={() => { setSelectedHospitalId(undefined); setHospitalSearchQuery(''); setFormData(p => ({ ...p, hospitalName: '', address: '' })); }}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500">
+                                                <X size={16} />
+                                            </button>
+                                        )}
+                                        {hospitalSearchResults.length > 0 && (
+                                            <div className="absolute z-50 top-full mt-2 left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden">
+                                                {hospitalSearchResults.map(h => (
+                                                    <button key={h.id} type="button"
+                                                        onClick={() => selectHospital(h)}
+                                                        className="w-full text-left px-5 py-3 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0">
+                                                        <p className="font-bold text-slate-900 text-sm">{h.name}</p>
+                                                        <p className="text-xs text-slate-400 font-medium">{h.address}</p>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-bold ml-1">
+                                        Select a registered hospital to send a join request. Or fill in manually below for a custom chamber.
+                                    </p>
+                                </div>
+
+                                {/* Branch & Sector dropdowns — shown when a registered hospital is selected */}
+                                {requestMode && selectedHospitalId && (
+                                    <>
+                                        {branches.length > 0 && (
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                    <GitBranch size={14} className="text-blue-500" /> Select Branch (optional)
+                                                </label>
+                                                <select
+                                                    value={selectedBranchId}
+                                                    onChange={e => { setSelectedBranchId(e.target.value); setSelectedSectorId(''); }}
+                                                    className="w-full p-4 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all"
+                                                >
+                                                    <option value="">Hospital-wide (no specific branch)</option>
+                                                    {branches.map(b => <option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
+                                                </select>
+                                            </div>
+                                        )}
+                                        {sectors.filter(s => !selectedBranchId || s.branch_id === selectedBranchId || !s.branch_id).length > 0 && (
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                    <Tag size={14} className="text-purple-500" /> Select Sector (optional)
+                                                </label>
+                                                <select
+                                                    value={selectedSectorId}
+                                                    onChange={e => setSelectedSectorId(e.target.value)}
+                                                    className="w-full p-4 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 focus:bg-white transition-all"
+                                                >
+                                                    <option value="">No specific sector</option>
+                                                    {sectors.filter(s => !selectedBranchId || s.branch_id === selectedBranchId || !s.branch_id).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                </select>
+                                            </div>
+                                        )}
+                                        <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                                            <p className="text-xs font-black text-blue-700">Request Mode Active</p>
+                                            <p className="text-xs text-blue-600 font-medium mt-1">Clicking Save will submit a join request to the hospital admin. Your chamber will be created once approved.</p>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <Hospital size={14} className="text-medical-500" /> Hospital / Clinic Name
@@ -253,7 +453,7 @@ export const DoctorPracticeSettings: React.FC = () => {
                                         required
                                         type="text"
                                         value={formData.hospitalName}
-                                        onChange={(e) => setFormData({ ...formData, hospitalName: e.target.value })}
+                                        onChange={(e) => { setFormData({ ...formData, hospitalName: e.target.value }); if (selectedHospitalId) setSelectedHospitalId(undefined); }}
                                         placeholder="e.g., Evercare Hospital, Dhaka"
                                         className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
                                     />
@@ -294,6 +494,30 @@ export const DoctorPracticeSettings: React.FC = () => {
                                         onChange={(e) => setFormData({ ...formData, feeReport: parseInt(e.target.value) })}
                                         className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
                                     />
+                                </div>
+                            </div>
+
+                            {/* CONSULTATION DURATION */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <Clock size={14} className="text-medical-500" /> Time Per Patient (minutes)
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={120}
+                                        step={5}
+                                        value={formData.consultationDurationMinutes}
+                                        onChange={(e) => setFormData({ ...formData, consultationDurationMinutes: parseInt(e.target.value) || 0 })}
+                                        className="w-32 p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                    />
+                                    <div className="text-sm text-slate-500 font-medium">
+                                        {formData.consultationDurationMinutes > 0
+                                            ? <span className="text-teal-600 font-bold">Patients will see time slots ({formData.consultationDurationMinutes} min each)</span>
+                                            : <span className="text-slate-400">Set to 0 to use serial numbers only (no time slots)</span>
+                                        }
+                                    </div>
                                 </div>
                             </div>
 
@@ -363,8 +587,11 @@ export const DoctorPracticeSettings: React.FC = () => {
                             </div>
 
                             <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row gap-4">
-                                <Button type="submit" className="bg-medical-600 hover:bg-medical-500 text-white flex-1 h-16 rounded-[20px] font-black text-sm shadow-xl shadow-medical-100 uppercase tracking-widest gap-2">
-                                    <Save size={20} /> {editingChamberId ? 'Update Configuration' : 'Save & Active Chamber'}
+                                <Button type="submit" disabled={isSaving} className="bg-medical-600 hover:bg-medical-500 text-white flex-1 h-16 rounded-[20px] font-black text-sm shadow-xl shadow-medical-100 uppercase tracking-widest gap-2">
+                                    {requestMode && selectedHospitalId && !editingChamberId
+                                        ? <><Send size={20} /> {isSaving ? 'Sending Request...' : 'Send Join Request'}</>
+                                        : <><Save size={20} /> {editingChamberId ? 'Update Configuration' : isSaving ? 'Saving...' : 'Save & Active Chamber'}</>
+                                    }
                                 </Button>
                                 <Button type="button" variant="outline" onClick={resetForm} className="h-16 px-10 rounded-[20px] font-black text-sm border-slate-200 text-slate-500 hover:bg-slate-50">
                                     Cancel

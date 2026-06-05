@@ -55,11 +55,9 @@ export const useEmailOTP = () => {
           console.warn('Email server error, OTP still stored:', data.error);
         }
       } catch (fetchErr) {
-        // Email server not running — show OTP in dev mode
-        console.warn('Email server not reachable. OTP stored in DB.');
-        if (import.meta.env.DEV) {
-          alert(`[DEV MODE] Your OTP is: ${otp}\n\nStart the email server with: npm run email`);
-        }
+        // Email server not reachable — surface a clear error instead of silently failing
+        console.warn('Email server not reachable at localhost:3001. Run: npm run email');
+        throw new Error('Could not reach the email server. Please ensure the email server is running (npm run email) and try again.');
       }
 
       setOtpState({ step: 'SENT', email, error: null });

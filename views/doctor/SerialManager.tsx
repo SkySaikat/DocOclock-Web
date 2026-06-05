@@ -12,9 +12,10 @@ import {
    fetchAppointments, upsertAppointment,
    fetchQueueSession, upsertQueueSession,
    QueueSessionStatus, DoctorSessionMeta, DEFAULT_SESSION_META,
-   assignPatientToReservedSlot
+   assignPatientToReservedSlot, createNotification
 } from '../../storage';
 import { getLocalISODate } from '../../utils/date';
+import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 
 interface SerialManagerProps {
    onNavigate: (path: string) => void;
@@ -23,6 +24,7 @@ interface SerialManagerProps {
 
 export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStartPrescription }) => {
    const doctor = DoctorStorage.get();
+   const { autoSync, syncDelay } = useGoogleCalendar();
    const currentDoctorId = doctor?.id;
    const [activeHospitalId, setActiveHospitalId] = useState<string | null>(null);
    const today = getLocalISODate();
@@ -99,6 +101,21 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
             setQueueSessionStatus(session.sessionStatus);
             setReservedSlotsCount(session.reservedSlotsCount);
             setSessionMeta(session.meta);
+
+            // Auto-sync today's appointments to Google Calendar (non-blocking)
+            if (apps.length > 0) {
+              autoSync(apps.map(a => ({
+                id: a.id,
+                patientName: a.patientName,
+                patientEmail: (a as any).patientEmail,
+                date: a.date,
+                time: a.time,
+                chamberName: a.chamberName,
+                chamberLocation: a.chamberLocation,
+                fee: a.fee,
+                serialNumber: a.serialNumber,
+              })));
+            }
          } catch (error) {
             console.error('Error loading queue data from Supabase:', error);
          } finally {
@@ -180,6 +197,35 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
          });
 
          setSessionMeta(meta);
+
+         // Notify patients via in-app notifications + Google Calendar
+         if (localDelay > 0 && filteredAppointments.length > 0) {
+           const affectedApps = filteredAppointments.filter(a => a.status === 'waiting' || a.status === 'consulting');
+           affectedApps.forEach(a => {
+             if (a.patientId && a.patientId !== 'RESERVED') {
+               createNotification({
+                 recipient_id: a.patientId,
+                 title: `Doctor Running ${localDelay} Min Late`,
+                 body: `Dr. ${doctor?.name || 'Your doctor'} will be ${localDelay} minutes late. Your serial #${a.serialNumber} has been updated.`,
+                 type: 'delay_alert',
+                 link: '/live-serial',
+                 metadata: { appointment_id: a.id, delay_minutes: localDelay },
+               });
+             }
+           });
+           syncDelay(
+             filteredAppointments
+               .filter(a => a.status === 'waiting' || a.status === 'consulting')
+               .map(a => ({
+                 id: a.id,
+                 patientName: a.patientName,
+                 date: a.date,
+                 time: a.time,
+                 serialNumber: a.serialNumber,
+               })),
+             localDelay
+           );
+         }
       } catch (error) {
          console.error('Error saving delay to Supabase:', error);
       } finally {
@@ -461,20 +507,41 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                <div className="hidden md:block w-px h-8 bg-slate-100/80" />
 
                {/* Operations Block: Delay + Action */}
-               <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 p-0.5 bg-slate-50 border border-slate-200/40 rounded-full">
-                     <button onClick={() => setLocalDelay(Math.max(0, localDelay - 5))} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200/60 rounded-full text-slate-500 hover:text-slate-900 transition-all active:scale-95 shadow-sm"><Minus size={12} /></button>
-                     <div className="px-1 text-center min-w-[36px]">
-                        <span className="font-black text-sm text-slate-900 leading-none">{localDelay}</span>
-                        <span className="text-[9px] font-bold text-slate-400 ml-0.5">m</span>
+               <div className="flex flex-col gap-2">
+                  {/* Direct number input + human-readable display */}
+                  <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-1 p-1 bg-slate-50 border border-slate-200/40 rounded-2xl">
+                        <button onClick={() => setLocalDelay(Math.max(0, localDelay - 5))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200/60 rounded-xl text-slate-500 hover:text-slate-900 transition-all active:scale-95 shadow-sm"><Minus size={11} /></button>
+                        <input
+                           type="number"
+                           min={0}
+                           max={480}
+                           value={localDelay}
+                           onChange={e => setLocalDelay(Math.max(0, Math.min(480, parseInt(e.target.value) || 0)))}
+                           className="w-14 text-center font-black text-sm text-slate-900 bg-transparent outline-none"
+                        />
+                        <span className="text-[9px] font-bold text-slate-400 -ml-1">m</span>
+                        <button onClick={() => setLocalDelay(localDelay + 5)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200/60 rounded-xl text-slate-500 hover:text-slate-900 transition-all active:scale-95 shadow-sm"><Plus size={11} /></button>
                      </div>
-                     <button onClick={() => setLocalDelay(localDelay + 5)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200/60 rounded-full text-slate-500 hover:text-slate-900 transition-all active:scale-95 shadow-sm"><Plus size={12} /></button>
+                     {localDelay > 0 && (
+                        <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-1 rounded-lg border border-orange-100">
+                           {localDelay >= 60 ? `${Math.floor(localDelay / 60)}h${localDelay % 60 > 0 ? ` ${localDelay % 60}m` : ''}` : `${localDelay}m`}
+                        </span>
+                     )}
+                  </div>
+                  {/* Quick presets */}
+                  <div className="flex gap-1 flex-wrap">
+                     {[15, 30, 45, 60, 90, 120].map(v => (
+                        <button key={v} onClick={() => setLocalDelay(v)} className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${localDelay === v ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                           {v >= 60 ? `${v/60}h` : `${v}m`}
+                        </button>
+                     ))}
                   </div>
 
                   <Button
                      onClick={handleSaveDelay}
                      disabled={!activeChamber || isSavingDelay}
-                     className={`h-10 px-6 rounded-xl font-black text-[10px] tracking-widest transition-all shadow-md active:translate-y-px ${isSavingDelay ? 'bg-green-600 text-white border-0' : 'bg-slate-900 text-white hover:bg-black active:shadow-none'}`}
+                     className={`h-9 px-5 rounded-xl font-black text-[10px] tracking-widest transition-all shadow-md active:translate-y-px ${isSavingDelay ? 'bg-green-600 text-white border-0' : 'bg-slate-900 text-white hover:bg-black active:shadow-none'}`}
                   >
                      {isSavingDelay ? 'DONE' : 'SET DELAY'}
                   </Button>

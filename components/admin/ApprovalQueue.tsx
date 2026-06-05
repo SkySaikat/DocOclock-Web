@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check, X, FileText, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, X, User, Image, ExternalLink } from 'lucide-react';
 import { useToast } from '../ToastProvider';
 
 interface ApprovalQueueProps {
@@ -10,6 +10,7 @@ interface ApprovalQueueProps {
 
 export const ApprovalQueue: React.FC<ApprovalQueueProps> = ({ pendingDoctors, onApprove, onReject }) => {
   const { showToast } = useToast();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleApprove = async (id: string) => {
     const result = await onApprove(id);
@@ -28,6 +29,7 @@ export const ApprovalQueue: React.FC<ApprovalQueueProps> = ({ pendingDoctors, on
       showToast('Failed to reject doctor', 'error');
     }
   };
+
   return (
     <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
       <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
@@ -49,63 +51,80 @@ export const ApprovalQueue: React.FC<ApprovalQueueProps> = ({ pendingDoctors, on
           <p className="text-sm">There are no pending doctor applications.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-white border-b border-slate-100 text-xs font-black text-slate-400 uppercase tracking-widest">
-                <th className="p-4 pl-6 font-bold">Doctor Profile</th>
-                <th className="p-4 font-bold">BMDC / Contact</th>
-                <th className="p-4 font-bold">Degrees & Experience</th>
-                <th className="p-4 pr-6 text-right font-bold w-40">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingDoctors.map(doctor => (
-                <tr key={doctor.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                  <td className="p-4 pl-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden">
-                        {doctor.image_url ? (
-                          <img src={doctor.image_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-400"><User size={20} /></div>
-                        )}
+        <div className="divide-y divide-slate-50">
+          {pendingDoctors.map(doctor => (
+            <div key={doctor.id} className="p-5">
+              <div className="flex items-start gap-4">
+                {/* Profile + ID photos */}
+                <div className="flex gap-3 shrink-0">
+                  <div className="w-14 h-14 rounded-xl bg-slate-100 overflow-hidden border border-slate-200">
+                    {doctor.image_url ? (
+                      <img src={doctor.image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400"><User size={24} /></div>
+                    )}
+                  </div>
+                  {doctor.id_photo_url && (
+                    <a href={doctor.id_photo_url} target="_blank" rel="noreferrer" title="View ID photo" className="w-14 h-14 rounded-xl bg-blue-50 overflow-hidden border border-blue-200 relative group">
+                      <img src={doctor.id_photo_url} alt="ID" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-blue-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <ExternalLink size={14} className="text-white" />
                       </div>
-                      <div>
-                        <p className="font-black text-slate-900">{doctor.full_name}</p>
-                        <p className="text-xs font-bold text-blue-600">{doctor.specialty || 'General'}</p>
-                      </div>
+                    </a>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-black text-slate-900 text-base">{doctor.full_name}</p>
+                      <p className="text-xs font-bold text-blue-600">{doctor.specialty || 'General'}</p>
                     </div>
-                  </td>
-                  <td className="p-4">
-                    <p className="font-bold text-slate-700 tabular-nums">{doctor.bmdc_number}</p>
-                    <p className="text-xs text-slate-500">{new Date(doctor.created_at).toLocaleDateString()}</p>
-                  </td>
-                  <td className="p-4">
-                    <p className="font-bold text-slate-700">{doctor.degrees || 'MBBS'}</p>
-                    <p className="text-xs text-slate-500">{doctor.experience_years ? `${doctor.experience_years} years` : 'N/A'}</p>
-                  </td>
-                  <td className="p-4 pr-6">
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
                         onClick={() => handleReject(doctor.id)}
-                        className="p-2 border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl transition-all group"
-                        title="Reject Application"
+                        className="p-2 border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-xl transition-all"
+                        title="Reject"
                       >
-                         <X size={18} className="group-active:scale-90 transition-transform" />
+                        <X size={18} />
                       </button>
-                      <button 
-                         onClick={() => handleApprove(doctor.id)}
+                      <button
+                        onClick={() => handleApprove(doctor.id)}
                         className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-500/20 active:scale-95 transition-all flex items-center gap-2"
                       >
-                         <Check size={16} /> Approve
+                        <Check size={16} /> Approve
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">BMDC: {doctor.bmdc_number}</span>
+                    <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">{doctor.degrees || 'MBBS'}</span>
+                    {doctor.email && <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">{doctor.email}</span>}
+                    <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg">{new Date(doctor.created_at).toLocaleDateString()}</span>
+                  </div>
+
+                  {/* ID photo expanded view */}
+                  {doctor.id_photo_url && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => setExpandedId(expandedId === doctor.id ? null : doctor.id)}
+                        className="text-[11px] font-black text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <Image size={12} /> {expandedId === doctor.id ? 'Hide ID Photo' : 'View Full ID Photo'}
+                      </button>
+                      {expandedId === doctor.id && (
+                        <div className="mt-2 rounded-xl overflow-hidden border border-blue-100 max-w-sm">
+                          <img src={doctor.id_photo_url} alt="Doctor ID" className="w-full object-contain max-h-48" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -102,9 +102,23 @@ export const RosterManager: React.FC<RosterManagerProps> = ({ roster, searchResu
               <div className="flex-1 min-w-0">
                 <p className="font-black text-slate-900 truncate">{doc.full_name}</p>
                 <p className="text-xs font-bold text-blue-600 truncate">{doc.specialty || 'General'}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Star size={10} className="fill-amber-400 text-amber-400" />
-                  <span className="text-[10px] font-bold text-slate-500">{doc.rating || '5.0'} Rating</span>
+                <div className="flex flex-col gap-1 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Star size={10} className="fill-amber-400 text-amber-400" />
+                      <span className="text-[10px] font-bold text-slate-500">{doc.rating || '5.0'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-50 pt-1 mt-1">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Patients</span>
+                      <span className="text-xs font-black text-slate-900">{doc.patientCount || 0}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Prescriptions</span>
+                      <span className="text-xs font-black text-blue-600">{doc.rxCount || 0}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

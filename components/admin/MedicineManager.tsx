@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Pill, Upload, Search, Plus, Trash2, Edit2, X, Check, Package, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Pill, Upload, Search, Plus, Trash2, Edit2, X, Check, Package, Loader2, FileSpreadsheet, ShieldCheck, UserRound } from 'lucide-react';
 import { supabase } from '../../supabase';
 
 interface Medicine {
@@ -10,6 +10,8 @@ interface Medicine {
   form: string;
   strength: string;
   manufacturer: string;
+  added_by_doctor_id?: string | null;
+  is_verified?: boolean;
 }
 
 const CATEGORIES = [
@@ -119,14 +121,24 @@ export const MedicineManager: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const [showDoctorSubmitted, setShowDoctorSubmitted] = useState(false);
+
   const filtered = medicines.filter(m => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.generic_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.manufacturer?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || m.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesSubmitted = !showDoctorSubmitted || !!m.added_by_doctor_id;
+    return matchesSearch && matchesCategory && matchesSubmitted;
   });
+
+  const doctorSubmittedCount = medicines.filter(m => !!m.added_by_doctor_id).length;
+
+  const verifyMedicine = async (id: string, verified: boolean) => {
+    await supabase.from('medicines').update({ is_verified: verified }).eq('id', id);
+    fetchMedicines(true);
+  };
 
   const categoryCounts = medicines.reduce((acc, m) => {
     acc[m.category] = (acc[m.category] || 0) + 1;
@@ -148,15 +160,17 @@ export const MedicineManager: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
+            {doctorSubmittedCount > 0 && (
+              <button
+                onClick={() => setShowDoctorSubmitted(!showDoctorSubmitted)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border ${showDoctorSubmitted ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}
+              >
+                <UserRound size={16} /> Doctor Submitted ({doctorSubmittedCount})
+              </button>
+            )}
             {/* CSV Upload */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleCSVUpload}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
@@ -165,7 +179,6 @@ export const MedicineManager: React.FC = () => {
               {uploading ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} />}
               {uploading ? 'Uploading...' : 'Upload CSV'}
             </button>
-
             <button
               onClick={() => setIsAddingNew(true)}
               className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-lg shadow-purple-500/20"
@@ -255,15 +268,15 @@ export const MedicineManager: React.FC = () => {
                 <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   <th className="p-4 pl-6">Medicine</th>
                   <th className="p-4">Category</th>
-                  <th className="p-4">Form</th>
-                  <th className="p-4">Strength</th>
+                  <th className="p-4">Form · Strength</th>
                   <th className="p-4">Manufacturer</th>
-                  <th className="p-4 pr-6 w-20"></th>
+                  <th className="p-4">Source</th>
+                  <th className="p-4 pr-6 w-24"></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(med => (
-                  <tr key={med.id} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <tr key={med.id} className={`border-t border-slate-50 hover:bg-slate-50/50 transition-colors ${med.added_by_doctor_id && !med.is_verified ? 'bg-amber-50/30' : ''}`}>
                     <td className="p-4 pl-6">
                       <p className="font-black text-slate-900 text-sm">{med.name}</p>
                       {med.generic_name && <p className="text-[11px] text-slate-400 font-medium">{med.generic_name}</p>}
@@ -271,16 +284,34 @@ export const MedicineManager: React.FC = () => {
                     <td className="p-4">
                       <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-[10px] font-black">{med.category}</span>
                     </td>
-                    <td className="p-4 text-xs font-bold text-slate-600">{med.form}</td>
-                    <td className="p-4 text-xs font-bold text-slate-600">{med.strength}</td>
-                    <td className="p-4 text-xs text-slate-500">{med.manufacturer}</td>
+                    <td className="p-4 text-xs font-bold text-slate-600">{med.form}{med.strength ? ` · ${med.strength}` : ''}</td>
+                    <td className="p-4 text-xs text-slate-500">{med.manufacturer || '—'}</td>
+                    <td className="p-4">
+                      {med.added_by_doctor_id ? (
+                        <span className="flex items-center gap-1 text-[9px] font-black px-2 py-1 bg-amber-50 text-amber-700 rounded-lg border border-amber-100 w-fit">
+                          <UserRound size={10} /> Doctor
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[9px] font-black px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100 w-fit">
+                          <ShieldCheck size={10} /> Admin
+                        </span>
+                      )}
+                    </td>
                     <td className="p-4 pr-6">
-                      <button
-                        onClick={() => deleteMedicine(med.id)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {med.added_by_doctor_id && (
+                          <button
+                            onClick={() => verifyMedicine(med.id, !med.is_verified)}
+                            title={med.is_verified ? 'Mark unverified' : 'Verify medicine'}
+                            className={`p-1.5 rounded-xl transition-all ${med.is_verified ? 'text-emerald-500 hover:bg-emerald-50' : 'text-amber-500 hover:bg-amber-50'}`}
+                          >
+                            <ShieldCheck size={14} />
+                          </button>
+                        )}
+                        <button onClick={() => deleteMedicine(med.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

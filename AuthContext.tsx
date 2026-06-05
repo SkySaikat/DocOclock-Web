@@ -2,11 +2,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import bcrypt from 'bcryptjs';
 import { UserRole, Patient, Doctor } from './types';
-import { PatientStorage, DoctorStorage, AdminStorage } from './storage';
+import { PatientStorage, DoctorStorage, AdminStorage, BranchManagerStorage } from './storage';
 
 interface AuthContextType {
     user: any | null;
     profile: any | null;
+    setProfile: (p: any) => void;
+    setUserRole: (r: UserRole) => void;
     userRole: UserRole | undefined;
     loading: boolean;
     login: (identifier: string, password: string, role: UserRole) => Promise<{ success: boolean; error?: string }>;
@@ -39,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const patientSession = PatientStorage.get();
             const doctorSession = DoctorStorage.get();
             const adminSession = AdminStorage.get();
+            const branchManagerSession = BranchManagerStorage.get();
 
             if (adminSession) {
                 if (adminSession.role === 'SUPER_ADMIN') {
@@ -50,6 +53,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setProfile(adminSession);
                     setUserRole(UserRole.HOSPITAL_ADMIN);
                 }
+            } else if (branchManagerSession) {
+                console.log('Restoring Branch Manager Session:', branchManagerSession.id);
+                setProfile(branchManagerSession);
+                setUserRole(UserRole.BRANCH_MANAGER);
             } else if (doctorSession) {
                 console.log('Restoring Doctor Session:', doctorSession.id);
                 setProfile(doctorSession);
@@ -79,21 +86,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } catch { /* Rate limit function may not exist — continue */ }
 
             const table = 'profiles';
-            const column = role === UserRole.PATIENT ? 'phone' : ((role === UserRole.SUPER_ADMIN || role === UserRole.HOSPITAL_ADMIN) ? 'email' : 'bmdc_number');
+            const column = role === UserRole.PATIENT ? 'email' : ((role === UserRole.SUPER_ADMIN || role === UserRole.HOSPITAL_ADMIN || role === UserRole.BRANCH_MANAGER) ? 'email' : 'bmdc_number');
 
             console.log(`Attempting login on table: ${table}, column: ${column}, identifier: ${identifier}`);
-            const { data, error, status, statusText } = await supabase
+            const { data, error, status } = await supabase
                 .from(table)
-                .select('id, full_name, role, password, phone, email, bmdc_number, age, gender, specialty, degrees, image_url, experience_years, total_patients, rating, about, registration_status, city, relationship')
+                .select('*')
                 .eq(column, identifier)
-                .eq('role', role)
-                .single();
+                .maybeSingle(); // Returns null (not error) when 0 rows — avoids 406
 
-            if (error || !data) {
-                if (import.meta.env.DEV) console.error('Supabase Login Error:', { error, status, statusText });
-                // Record failed attempt for non-existent users
+            if (error) {
+                if (import.meta.env.DEV) console.error('Supabase Login Error:', { error, status });
                 try { await supabase.rpc('record_login_attempt', { p_identifier: identifier, p_success: false }); } catch (_) {}
-                return { success: false, error: `User not found or connection error (${status}).` };
+                return { success: false, error: `Database error (${status}). Please try again.` };
+            }
+
+            if (!data) {
+                try { await supabase.rpc('record_login_attempt', { p_identifier: identifier, p_success: false }); } catch (_) {}
+                const fieldLabel = column === 'bmdc_number' ? 'BMDC number' : 'email';
+                return { success: false, error: `No account found with that ${fieldLabel}.` };
+            }
+
+            // Verify the role matches what's stored in the DB (case-insensitive guard)
+            if (data.role?.toUpperCase() !== role.toUpperCase()) {
+                return { success: false, error: 'Account type mismatch. Please use the correct login portal.' };
             }
 
             // [M4] Block unapproved doctors
@@ -129,6 +145,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 PatientStorage.set(sessionData);
             } else if (role === UserRole.SUPER_ADMIN || role === UserRole.HOSPITAL_ADMIN) {
                 AdminStorage.set({ ...sessionData, role: role });
+            } else if (role === UserRole.BRANCH_MANAGER) {
+                BranchManagerStorage.set({ ...sessionData, role: role });
             } else {
                 DoctorStorage.set(sessionData);
             }
@@ -152,8 +170,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             const table = 'profiles';
-            const identifierColumn = role === UserRole.PATIENT ? 'phone' : 'bmdc_number';
-            const identifierValue = role === UserRole.PATIENT ? formData.phone : formData.bmdcNumber;
+            const identifierColumn = role === UserRole.PATIENT ? 'email' : 'bmdc_number';
+            const identifierValue = role === UserRole.PATIENT ? formData.email : formData.bmdcNumber;
 
             // Check if already exists
             console.log(`Checking existence on table: ${table}, column: ${identifierColumn}, value: ${identifierValue}`);
@@ -186,23 +204,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
 
             if (role === UserRole.PATIENT) {
-                insertData.phone = formData.phone;
-                insertData.age = parseInt(formData.age);
-                insertData.gender = formData.gender;
+                insertData.email = formData.email;
+                if (formData.phone) insertData.phone = formData.phone;
+                if (formData.age) insertData.age = parseInt(formData.age);
+                if (formData.gender) insertData.gender = formData.gender;
                 insertData.relationship = 'Self';
                 insertData.registration_status = 'approved'; // Patients are auto-approved
-                if (formData.email) insertData.email = formData.email;
             } else {
                 insertData.bmdc_number = formData.bmdcNumber;
                 insertData.specialty = formData.specialty;
                 insertData.degrees = formData.degrees || 'MBBS';
-                insertData.image_url = `https://picsum.photos/200/200?random=${Date.now()}`;
+                insertData.image_url = '';
                 insertData.experience_years = 1;
+                insertData.registration_status = 'pending'; // Doctors require Super Admin approval
                 insertData.total_patients = 0;
                 insertData.rating = 5.0;
                 insertData.about = 'Passionate healthcare provider.';
-                insertData.registration_status = 'pending'; // Doctors require Super Admin approval
                 if (formData.email) insertData.email = formData.email;
+                if (formData.phone) insertData.phone = formData.phone;
+                if (formData.idPhotoUrl) insertData.id_photo_url = formData.idPhotoUrl;
             }
 
             console.log(`Attempting insert into table: ${table}`, insertData);
@@ -257,10 +277,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         PatientStorage.clear();
         DoctorStorage.clear();
         AdminStorage.clear();
+        BranchManagerStorage.clear();
     };
 
     return (
-        <AuthContext.Provider value={{ user, profile, userRole, loading, login, signup, logout }}>
+        <AuthContext.Provider value={{ user, profile, setProfile, setUserRole, userRole, loading, login, signup, logout }}>
             {children}
         </AuthContext.Provider>
     );

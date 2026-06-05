@@ -5,10 +5,11 @@ import {
     LogOut, ChevronRight, Activity, Bell, Pill, Wallet,
     CreditCard, Settings, Gift, Heart, UserCircle2,
     Stethoscope, BriefcaseMedical, LayoutDashboard,
-    ShieldCheck, Banknote, History, Globe, UserCheck
+    ShieldCheck, Banknote, History, Globe, UserCheck, Calendar, Link, Unlink
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { DoctorStorage } from '../../storage';
+import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 
 interface DoctorMoreProps {
     onNavigate: (path: string) => void;
@@ -17,6 +18,7 @@ interface DoctorMoreProps {
 
 export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) => {
     const doctor = DoctorStorage.get();
+    const { isConnected, isConfigured, connect, disconnect } = useGoogleCalendar();
 
     const sections = [
         {
@@ -128,6 +130,43 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
                         </GlassCard>
                     </div>
                 ))}
+            </div>
+
+            {/* GOOGLE CALENDAR SYNC */}
+            <div className="space-y-4">
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.25em] px-4">Integrations</h3>
+                <GlassCard className="p-5 bg-white border-0 ring-1 ring-slate-100 shadow-sm rounded-[2rem]">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className={`p-3 rounded-xl ${isConnected ? 'bg-green-50' : 'bg-slate-50'}`}>
+                                <Calendar size={22} className={isConnected ? 'text-green-600' : 'text-slate-400'} />
+                            </div>
+                            <div>
+                                <p className="font-black text-slate-800">Google Calendar</p>
+                                <p className="text-xs text-slate-400 font-bold mt-0.5">
+                                    {isConnected ? 'Connected — appointments will sync automatically' : isConfigured ? 'Click Connect to sync your appointments' : 'Add VITE_GOOGLE_CLIENT_ID to .env to enable'}
+                                </p>
+                            </div>
+                        </div>
+                        {isConnected ? (
+                            <button onClick={disconnect} className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 text-xs font-black rounded-xl border border-red-100 hover:bg-red-100 transition-all">
+                                <Unlink size={14} /> Disconnect
+                            </button>
+                        ) : (
+                            <button onClick={connect} disabled={!isConfigured} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                                <Link size={14} /> Connect
+                            </button>
+                        )}
+                    </div>
+                    {isConnected && (
+                        <div className="mt-3 pt-3 border-t border-slate-100">
+                            <p className="text-xs text-green-600 font-bold flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-green-500 inline-block animate-pulse" />
+                                Syncing automatically — future appointments will appear in your Google Calendar
+                            </p>
+                        </div>
+                    )}
+                </GlassCard>
             </div>
 
             {/* LOGOUT BUTTON */}

@@ -5,20 +5,23 @@ import { X, Phone, KeyRound, ArrowRight, User, Hash, ShieldCheck, Mail, Check, L
 import { UserRole, Gender } from '../../types';
 import { useAuth } from '../../AuthContext';
 import { useEmailOTP } from '../../hooks/useEmailOTP';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
+import { PatientStorage } from '../../storage';
 
 interface LoginModalProps {
   onClose: () => void;
-  onLoginSuccess: (role: UserRole, phone?: string) => void;
+  onLoginSuccess: (role: UserRole, email?: string) => void;
   onDoctorLoginClick: () => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess, onDoctorLoginClick }) => {
-  const { login, signup } = useAuth();
+  const { login, signup, setProfile, setUserRole } = useAuth();
+  const { signInWithGoogle, findOrCreateGooglePatient, isConfigured: googleConfigured } = useGoogleAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [step, setStep] = useState<'phone' | 'password'>('phone');
+  const [step, setStep] = useState<'email' | 'password'>('email');
 
   // Login State
-  const [loginPhone, setLoginPhone] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
   const [password, setPassword] = useState('');
 
   // Signup State
@@ -42,7 +45,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginPhone.length < 11) return;
+    if (!loginEmail.includes('@')) return;
     setStep('password');
   };
 
@@ -53,10 +56,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
     setIsLoading(true);
     setError(null);
 
-    const result = await login(loginPhone, password, UserRole.PATIENT);
+    const result = await login(loginEmail, password, UserRole.PATIENT);
 
     if (result.success) {
-      onLoginSuccess(UserRole.PATIENT, loginPhone);
+      onLoginSuccess(UserRole.PATIENT, loginEmail);
     } else {
       setError(result.error || "Login failed.");
     }
@@ -99,10 +102,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { name, age, phone, password: signupPassword } = signupData;
+    const { name, password: signupPassword } = signupData;
 
-    if (!name || !age || phone.length < 11 || !signupPassword) {
-      setError("Please fill all fields correctly.");
+    if (!name || !signupPassword) {
+      setError("Please fill in your name and password.");
       return;
     }
 
@@ -120,7 +123,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
       if (result.error === 'PENDING_APPROVAL') {
         setSuccessMessage('Registration successful! Your account is pending admin approval.');
       } else {
-        onLoginSuccess(UserRole.PATIENT, phone);
+        onLoginSuccess(UserRole.PATIENT, signupEmail);
       }
     } else {
       setError(result.error || "Signup failed.");
@@ -128,9 +131,35 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
     setIsLoading(false);
   };
 
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const googleUser = await signInWithGoogle();
+      const { profile } = await findOrCreateGooglePatient(googleUser);
+
+      const sessionData = {
+        ...profile,
+        name: profile.full_name,
+        imageUrl: profile.image_url,
+        image: profile.image_url,
+      };
+
+      PatientStorage.set(sessionData);
+      setProfile(sessionData);
+      setUserRole(UserRole.PATIENT);
+      onLoginSuccess(UserRole.PATIENT, profile.email);
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Reset everything when switching modes
   const switchMode = (newMode: 'login' | 'signup') => {
     setMode(newMode);
+    setStep('email');
     setError(null);
     setSuccessMessage(null);
     setSignupStep('EMAIL');
@@ -159,14 +188,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
               <ShieldCheck size={24} />
             </div>
             <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight mb-1">
-              {mode === 'login' ? 'Welcome Back' : (
+              {mode === 'login' ? (step === 'email' ? 'Welcome Back' : 'Enter Password') : (
                 signupStep === 'EMAIL' ? 'Verify Your Email' :
                 signupStep === 'OTP' ? 'Enter OTP Code' :
                 'Create Account'
               )}
             </h2>
             <p className="text-[13px] text-slate-500 font-medium leading-relaxed max-w-[280px] mx-auto">
-              {mode === 'login' ? 'Login to book appointments and track your live queue.' : (
+              {mode === 'login' ? (step === 'email' ? 'Login with your email to book appointments.' : `Signing in as ${loginEmail}`) : (
                 signupStep === 'EMAIL' ? 'We\'ll send a 6-digit code to verify your email.' :
                 signupStep === 'OTP' ? `Code sent to ${signupEmail}` :
                 'Fill in your details to get started.'
@@ -198,18 +227,39 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
             )}
 
             {!successMessage && mode === 'login' ? (
-              step === 'phone' ? (
+              step === 'email' ? (
                 <form onSubmit={handleNextStep} className="space-y-5">
+                  {/* Google Sign-In */}
+                  {googleConfigured && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleGoogleSignIn}
+                        disabled={isLoading}
+                        className="w-full h-12 flex items-center justify-center gap-3 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl font-bold text-[14px] text-slate-700 transition-all active:scale-[0.98] disabled:opacity-60 shadow-sm"
+                      >
+                        {isLoading ? <Loader2 size={18} className="animate-spin text-slate-400" /> : (
+                          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+                        )}
+                        Continue with Google
+                      </button>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-px bg-slate-100" />
+                        <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">or</span>
+                        <div className="flex-1 h-px bg-slate-100" />
+                      </div>
+                    </>
+                  )}
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Mobile Number</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Email Address</label>
                     <div className="relative group">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                       <input
-                        type="tel"
-                        placeholder="017xxxxxxxx"
+                        type="email"
+                        placeholder="your@email.com"
                         className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
-                        value={loginPhone}
-                        onChange={(e) => setLoginPhone(e.target.value)}
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
                         autoFocus
                       />
                     </div>
@@ -217,7 +267,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                   <Button
                     type="submit"
                     fullWidth
-                    disabled={isLoading || loginPhone.length < 11}
+                    disabled={isLoading || !loginEmail.includes('@')}
                     className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all"
                   >
                     {isLoading ? 'Checking...' : 'Continue'}
@@ -244,7 +294,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       />
                     </div>
                     <p className="text-[11px] text-slate-400 mt-3 font-bold flex items-center gap-1">
-                      No: <span className="text-blue-600 font-black tracking-tight">{loginPhone}</span> • <button type="button" onClick={() => setStep('phone')} className="text-blue-600 hover:underline">Change</button>
+                      Email: <span className="text-blue-600 font-black tracking-tight">{loginEmail}</span> • <button type="button" onClick={() => setStep('email')} className="text-blue-600 hover:underline">Change</button>
                     </p>
                   </div>
                   <Button
@@ -262,6 +312,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                 {/* ── STEP 1: Email Input ── */}
                 {signupStep === 'EMAIL' && (
                   <form onSubmit={handleSendOTP} className="space-y-5 animate-in slide-in-from-right duration-300">
+                    {/* Google Sign-Up */}
+                    {googleConfigured && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleGoogleSignIn}
+                          disabled={isLoading}
+                          className="w-full h-12 flex items-center justify-center gap-3 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl font-bold text-[14px] text-slate-700 transition-all active:scale-[0.98] disabled:opacity-60 shadow-sm"
+                        >
+                          {isLoading ? <Loader2 size={18} className="animate-spin text-slate-400" /> : (
+                            <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+                          )}
+                          Sign up with Google
+                        </button>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-px bg-slate-100" />
+                          <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">or use email</span>
+                          <div className="flex-1 h-px bg-slate-100" />
+                        </div>
+                      </>
+                    )}
                     <div>
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Email Address</label>
                       <div className="relative group">
@@ -390,11 +461,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Mobile Number</label>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Mobile Number <span className="text-slate-300">(Optional)</span></label>
                       <div className="relative group">
                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                         <input
-                          required
                           type="tel"
                           placeholder="017xxxxxxxx"
                           className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
