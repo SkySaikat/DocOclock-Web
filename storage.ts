@@ -193,6 +193,35 @@ export const AdminStorage = {
   },
 };
 
+export const AssistantStorage = {
+  get: () => {
+    if (!isBrowser) return null;
+    const raw = localStorage.getItem('demo_assistant_session');
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      if (data.sessionExpiresAt && Date.now() > data.sessionExpiresAt) {
+        AssistantStorage.clear();
+        window.dispatchEvent(new CustomEvent('session-expired'));
+        return null;
+      }
+      return data;
+    } catch {
+      AssistantStorage.clear();
+      return null;
+    }
+  },
+  set: (data: any) => {
+    if (!isBrowser) return;
+    const sessionData = { ...data, role: 'ASSISTANT', sessionExpiresAt: Date.now() + SESSION_DURATION };
+    localStorage.setItem('demo_assistant_session', JSON.stringify(sessionData));
+  },
+  clear: () => {
+    if (!isBrowser) return;
+    localStorage.removeItem('demo_assistant_session');
+  },
+};
+
 export const BranchManagerStorage = {
   get: () => {
     if (!isBrowser) return null;

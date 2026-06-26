@@ -12,7 +12,7 @@ interface AppointmentsProps {
 }
 
 // --- Custom Hook: Filtering & Cancellation Logic ---
-const useAppointmentsLogic = (onNavigate: (path: string) => void) => {
+const useAppointmentsLogic = (onNavigate: (path: string) => void, overridePatientId?: string | null, overrideDoctorId?: string | null) => {
    const session = PatientStorage.get();
    const [refresh, setRefresh] = useState(0);
    const [rawAppointments, setRawAppointments] = useState<any[]>([]);
@@ -28,10 +28,16 @@ const useAppointmentsLogic = (onNavigate: (path: string) => void) => {
 
    React.useEffect(() => {
       const loadApps = async () => {
-         if (!session) return;
+         if (!session && !overridePatientId && !overrideDoctorId) return;
          setIsLoading(true);
          try {
-            const apps = await fetchAppointments({ patientId: session.id });
+            const queryObj: any = {};
+            if (overrideDoctorId) {
+               queryObj.doctorId = overrideDoctorId;
+            } else {
+               queryObj.patientId = overridePatientId || session?.id;
+            }
+            const apps = await fetchAppointments(queryObj);
             setRawAppointments(apps);
          } catch (error) {
             console.error('Error fetching appointments for patient:', error);
@@ -43,7 +49,6 @@ const useAppointmentsLogic = (onNavigate: (path: string) => void) => {
    }, [session?.id, refresh]);
 
    const filteredAppointments = useMemo(() => {
-      if (!session) return [];
       let filtered = rawAppointments;
 
       // Status Filtering
@@ -213,7 +218,13 @@ const CancelModal: React.FC<{
 };
 
 // --- Main View Component ---
-export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate }) => {
+interface AppointmentsProps {
+  onNavigate: (path: string) => void;
+  overridePatientId?: string | null;
+  overrideDoctorId?: string | null;
+}
+
+export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate, overridePatientId, overrideDoctorId }) => {
    const {
       session,
       userAppointments,
@@ -225,7 +236,7 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate }) => {
       setCancellingAppId,
       handleCancel,
       isLoading,
-   } = useAppointmentsLogic(onNavigate);
+   } = useAppointmentsLogic(onNavigate, overridePatientId, overrideDoctorId);
 
    const [activeReviewApp, setActiveReviewApp] = useState<any>(null);
 

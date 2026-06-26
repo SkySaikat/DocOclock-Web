@@ -5,6 +5,7 @@ import { Plus, Hospital, MapPin, CreditCard, Save, X, Edit2, Trash2, Clock, Chev
 import { ChamberCard } from '../../components/ui/ChamberCard';
 import { fetchDoctorChambers, saveChamberWithSchedules, deleteChamberFromSupabase, submitChamberRequest, fetchChamberRequests, PracticeChamber, DoctorPracticeSettings as SettingsType, WeeklyDaySchedule, DoctorStorage } from '../../storage';
 import { supabase } from '../../supabase';
+import { AssistantManager } from '../../components/doctor/AssistantManager';
 
 const DAY_LABELS: Record<number, string> = {
     0: 'Sunday',
@@ -341,6 +342,11 @@ export const DoctorPracticeSettings: React.FC = () => {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* ASSISTANT MANAGER SECTION */}
+            <div className="mt-8 pt-8 border-t border-slate-100">
+                <AssistantManager />
             </div>
 
             {/* ADD/EDIT CHAMBER FORM MODAL */}

@@ -17,11 +17,12 @@ interface LoginModalProps {
 export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess, onDoctorLoginClick }) => {
   const { login, signup, setProfile, setUserRole } = useAuth();
   const { signInWithGoogle, findOrCreateGooglePatient, isConfigured: googleConfigured } = useGoogleAuth();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'assistant-login'>('login');
   const [step, setStep] = useState<'email' | 'password'>('email');
 
   // Login State
   const [loginEmail, setLoginEmail] = useState('');
+  const [loginPhone, setLoginPhone] = useState('');
   const [password, setPassword] = useState('');
 
   // Signup State
@@ -56,10 +57,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
     setIsLoading(true);
     setError(null);
 
-    const result = await login(loginEmail, password, UserRole.PATIENT);
+    const isAssistant = mode === 'assistant-login';
+    const identifier = isAssistant ? loginPhone : loginEmail;
+    const role = isAssistant ? UserRole.ASSISTANT : UserRole.PATIENT;
+
+    const result = await login(identifier, password, role);
 
     if (result.success) {
-      onLoginSuccess(UserRole.PATIENT, loginEmail);
+      onLoginSuccess(role, identifier);
     } else {
       setError(result.error || "Login failed.");
     }
@@ -157,7 +162,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
   };
 
   // Reset everything when switching modes
-  const switchMode = (newMode: 'login' | 'signup') => {
+  const switchMode = (newMode: 'login' | 'signup' | 'assistant-login') => {
     setMode(newMode);
     setStep('email');
     setError(null);
@@ -188,14 +193,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
               <ShieldCheck size={24} />
             </div>
             <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight mb-1">
-              {mode === 'login' ? (step === 'email' ? 'Welcome Back' : 'Enter Password') : (
+              {mode === 'login' ? (step === 'email' ? 'Welcome Back' : 'Enter Password') : 
+               mode === 'assistant-login' ? 'Assistant Portal' : (
                 signupStep === 'EMAIL' ? 'Verify Your Email' :
                 signupStep === 'OTP' ? 'Enter OTP Code' :
                 'Create Account'
               )}
             </h2>
             <p className="text-[13px] text-slate-500 font-medium leading-relaxed max-w-[280px] mx-auto">
-              {mode === 'login' ? (step === 'email' ? 'Login with your email to book appointments.' : `Signing in as ${loginEmail}`) : (
+              {mode === 'login' ? (step === 'email' ? 'Login with your email to book appointments.' : `Signing in as ${loginEmail}`) : 
+               mode === 'assistant-login' ? 'Login with your phone number' : (
                 signupStep === 'EMAIL' ? 'We\'ll send a 6-digit code to verify your email.' :
                 signupStep === 'OTP' ? `Code sent to ${signupEmail}` :
                 'Fill in your details to get started.'
@@ -275,6 +282,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                   <div className="text-center">
                     <button type="button" onClick={() => switchMode('signup')} className="text-[13px] font-bold text-slate-400 hover:text-blue-600 transition-colors">
                       Don't have an account? <span className="text-blue-600">Sign Up</span>
+                    </button>
+                  </div>
+                  <div className="text-center">
+                    <button type="button" onClick={() => switchMode('assistant-login')} className="text-[12px] font-bold text-slate-400 hover:text-blue-600 transition-colors">
+                      Clinic Assistant? <span className="text-blue-600">Login here</span>
                     </button>
                   </div>
                 </form>
@@ -510,16 +522,65 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
               </>
             )}
 
+            {/* Assistant Login Form */}
+            {!successMessage && mode === 'assistant-login' && (
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Phone Number</label>
+                  <div className="relative group">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={16} />
+                    <input
+                      type="tel"
+                      required
+                      placeholder="+880..."
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                      value={loginPhone}
+                      onChange={e => setLoginPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Password</label>
+                  <div className="relative group">
+                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={16} />
+                    <input
+                      required
+                      type="password"
+                      placeholder="••••••••"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  fullWidth
+                  disabled={isLoading}
+                  className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-indigo-500/10 bg-gradient-to-r from-indigo-600 to-indigo-700 active:scale-[0.98] transition-all mt-2"
+                >
+                  {isLoading ? 'Authenticating...' : 'Login to Portal'}
+                </Button>
+                <div className="text-center pt-2">
+                  <button type="button" onClick={() => switchMode('login')} className="text-[12px] font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+                    Back to Patient Login
+                  </button>
+                </div>
+              </form>
+            )}
+
             {/* Doctor Portal Link */}
-            <div className="mt-8 pt-6 border-t border-slate-100/80 text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Are you a healthcare provider?</p>
-              <button
-                onClick={onDoctorLoginClick}
-                className="w-full h-11 border border-slate-200 text-slate-600 hover:text-teal-600 hover:border-teal-500 hover:bg-teal-50/30 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-[13px] group"
-              >
-                Doctor Portal Login <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
+            {mode !== 'assistant-login' && (
+              <div className="mt-8 pt-6 border-t border-slate-100/80 text-center">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Are you a healthcare provider?</p>
+                <button
+                  onClick={onDoctorLoginClick}
+                  className="w-full h-11 border border-slate-200 text-slate-600 hover:text-teal-600 hover:border-teal-500 hover:bg-teal-50/30 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-[13px] group"
+                >
+                  Doctor Portal Login <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

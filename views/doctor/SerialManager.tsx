@@ -20,12 +20,13 @@ import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 interface SerialManagerProps {
    onNavigate: (path: string) => void;
    onStartPrescription: (patient: { id: string; name: string; phone: string; gender: string; appointmentId: string; hospitalId: string }) => void;
+   overrideDoctorId?: string;
 }
 
-export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStartPrescription }) => {
+export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStartPrescription, overrideDoctorId }) => {
    const doctor = DoctorStorage.get();
    const { autoSync, syncDelay } = useGoogleCalendar();
-   const currentDoctorId = doctor?.id;
+   const currentDoctorId = overrideDoctorId || doctor?.id;
    const [activeHospitalId, setActiveHospitalId] = useState<string | null>(null);
    const today = getLocalISODate();
    const todayNumeric = new Date(today + "T00:00:00").getDay();

@@ -8,6 +8,7 @@ export enum UserRole {
   HOSPITAL_ADMIN = 'HOSPITAL_ADMIN',
   BRANCH_MANAGER = 'BRANCH_MANAGER',
   SUPER_ADMIN = 'SUPER_ADMIN',
+  ASSISTANT = 'ASSISTANT',
 }
 
 export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
@@ -16,6 +17,11 @@ export type Relationship = 'Self' | 'Daughter' | 'Son' | 'Spouse' | 'Parent' | '
 // Statuses updated for strict queue management
 export type AppointmentStatus = 'waiting' | 'consulting' | 'completed' | 'cancelled' | 'late';
 export type Gender = 'Male' | 'Female' | 'Other';
+
+export interface AssistantPermissions {
+  manage_queue: boolean;
+  manage_appointments: boolean;
+}
 
 /**
  * Basic patient entity.

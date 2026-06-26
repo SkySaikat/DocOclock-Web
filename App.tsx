@@ -27,6 +27,10 @@ const DoctorPracticeSettings = lazy(() => import('./views/doctor/DoctorPracticeS
 const DoctorMore = lazy(() => import('./views/doctor/DoctorMore').then(m => ({ default: m.DoctorMore })));
 const DoctorProfileEditor = lazy(() => import('./views/doctor/DoctorProfileEditor').then(m => ({ default: m.DoctorProfileEditor })));
 
+// Assistant Views
+const AssistantLayout = lazy(() => import('./views/assistant/AssistantLayout').then(m => ({ default: m.AssistantLayout })));
+const AssistantDashboard = lazy(() => import('./views/assistant/AssistantDashboard').then(m => ({ default: m.AssistantDashboard })));
+
 // Admin Views
 const AdminLogin = lazy(() => import('./views/admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
 const SuperAdminDashboard = lazy(() => import('./views/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
@@ -187,9 +191,10 @@ const App: React.FC = () => {
     const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
     const isHospitalAdmin = userRole === UserRole.HOSPITAL_ADMIN;
     const isBranchManager = userRole === UserRole.BRANCH_MANAGER;
+    const isAssistant = userRole === UserRole.ASSISTANT;
 
     // Allow all non-patient roles to browse the public site
-    if (browsePublicSite && (isSuperAdmin || isHospitalAdmin || isBranchManager || isDoctor)) {
+    if (browsePublicSite && (isSuperAdmin || isHospitalAdmin || isBranchManager || isDoctor || isAssistant)) {
       return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={undefined} focusSearchTrigger={focusSearchTrigger} />;
     }
 
@@ -239,6 +244,16 @@ const App: React.FC = () => {
               default: return <DoctorDashboard onNavigate={navigate} />;
             }
           })()}
+        </ProtectedRoute>
+      );
+    }
+
+    if (isAssistant) {
+      return (
+        <ProtectedRoute expectedRole={UserRole.ASSISTANT}>
+          <AssistantLayout currentPath={currentPath} onNavigate={navigate}>
+            <AssistantDashboard />
+          </AssistantLayout>
         </ProtectedRoute>
       );
     }

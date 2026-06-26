@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import bcrypt from 'bcryptjs';
 import { UserRole, Patient, Doctor } from './types';
-import { PatientStorage, DoctorStorage, AdminStorage, BranchManagerStorage } from './storage';
+import { PatientStorage, DoctorStorage, AdminStorage, BranchManagerStorage, AssistantStorage } from './storage';
 
 interface AuthContextType {
     user: any | null;
@@ -42,6 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const doctorSession = DoctorStorage.get();
             const adminSession = AdminStorage.get();
             const branchManagerSession = BranchManagerStorage.get();
+            const assistantSession = AssistantStorage.get();
 
             if (adminSession) {
                 if (adminSession.role === 'SUPER_ADMIN') {
@@ -57,6 +58,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('Restoring Branch Manager Session:', branchManagerSession.id);
                 setProfile(branchManagerSession);
                 setUserRole(UserRole.BRANCH_MANAGER);
+            } else if (assistantSession) {
+                console.log('Restoring Assistant Session:', assistantSession.id);
+                setProfile(assistantSession);
+                setUserRole(UserRole.ASSISTANT);
             } else if (doctorSession) {
                 console.log('Restoring Doctor Session:', doctorSession.id);
                 setProfile(doctorSession);
@@ -86,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } catch { /* Rate limit function may not exist — continue */ }
 
             const table = 'profiles';
-            const column = role === UserRole.PATIENT ? 'email' : ((role === UserRole.SUPER_ADMIN || role === UserRole.HOSPITAL_ADMIN || role === UserRole.BRANCH_MANAGER) ? 'email' : 'bmdc_number');
+            const column = role === UserRole.ASSISTANT ? 'phone' : ((role === UserRole.PATIENT || role === UserRole.SUPER_ADMIN || role === UserRole.HOSPITAL_ADMIN || role === UserRole.BRANCH_MANAGER) ? 'email' : 'bmdc_number');
 
             console.log(`Attempting login on table: ${table}, column: ${column}, identifier: ${identifier}`);
             const { data, error, status } = await supabase
@@ -147,6 +152,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 AdminStorage.set({ ...sessionData, role: role });
             } else if (role === UserRole.BRANCH_MANAGER) {
                 BranchManagerStorage.set({ ...sessionData, role: role });
+            } else if (role === UserRole.ASSISTANT) {
+                AssistantStorage.set(sessionData);
             } else {
                 DoctorStorage.set(sessionData);
             }
