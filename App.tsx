@@ -252,7 +252,7 @@ const App: React.FC = () => {
       return (
         <ProtectedRoute expectedRole={UserRole.ASSISTANT}>
           <AssistantLayout currentPath={currentPath} onNavigate={navigate}>
-            <AssistantDashboard />
+            <AssistantDashboard currentPath={currentPath} />
           </AssistantLayout>
         </ProtectedRoute>
       );

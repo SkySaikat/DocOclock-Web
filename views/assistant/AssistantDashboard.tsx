@@ -4,13 +4,11 @@ import { supabase } from '../../supabase';
 import { ShieldAlert, Users, Clock, Calendar } from 'lucide-react';
 import { Appointments } from '../patient/Appointments';
 import { SerialManager } from '../doctor/SerialManager';
-import { useLocation } from 'react-router-dom';
 
-export const AssistantDashboard = () => {
+export const AssistantDashboard = ({ currentPath }: { currentPath?: string }) => {
   const { profile } = useAuth();
   const [parentDoctor, setParentDoctor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const location = useLocation();
 
   const permissions = profile?.permissions || { manage_queue: false, manage_appointments: false };
 
@@ -48,8 +46,8 @@ export const AssistantDashboard = () => {
     );
   }
 
-  const isAppointmentsRoute = location.pathname.includes('/assistant/appointments');
-  const isQueueRoute = location.pathname.includes('/assistant/queue');
+  const isAppointmentsRoute = currentPath === '/assistant/appointments';
+  const isQueueRoute = currentPath === '/assistant/queue';
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
