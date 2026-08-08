@@ -25,12 +25,12 @@ export const RecommendedDoctorsSection: React.FC<RecommendedDoctorsSectionProps>
     };
 
     return (
-        <section className="py-10 md:py-12 border-t border-slate-100/50">
+        <section className="py-10 md:py-12 border-t border-ink-100/50">
             <div className="mb-6">
-                <h2 className="text-[24px] font-bold tracking-[-0.3px] text-slate-900 leading-tight">
+                <h2 className="font-display text-[24px] font-bold tracking-[-0.3px] text-ink-800 leading-tight">
                     {selectedSpecialty === 'All' ? 'Recommended Specialists' : `${selectedSpecialty} Specialists`}
                 </h2>
-                <p className="text-[14px] text-slate-500 font-medium mt-1 opacity-60">Showing {doctors.length} top-tier medical experts</p>
+                <p className="text-[14px] text-ink-500 font-medium mt-1 opacity-60">Showing {doctors.length} top-tier medical experts</p>
             </div>
 
             <div className="relative group/carousel overflow-visible">
@@ -39,14 +39,14 @@ export const RecommendedDoctorsSection: React.FC<RecommendedDoctorsSectionProps>
                     <>
                         <button
                             onClick={() => scrollContainer('left')}
-                            className="absolute left-1 md:left-[-22px] top-1/2 -translate-y-1/2 z-30 w-10 md:w-11 h-10 md:h-11 rounded-full bg-white/70 md:bg-white/60 backdrop-blur-[10px] border border-white/40 shadow-[0_8px_20px_rgba(0,0,0,0.12)] flex items-center justify-center text-slate-900 transition-all hover:bg-white/85 hover:scale-105 opacity-100 md:opacity-0 md:group-hover/carousel:opacity-100"
+                            className="absolute left-1 md:left-[-22px] top-1/2 -translate-y-1/2 z-30 w-10 md:w-11 h-10 md:h-11 rounded-full bg-white/70 md:bg-white/60 backdrop-blur-[10px] border border-white/40 shadow-[0_8px_20px_rgba(0,0,0,0.12)] flex items-center justify-center text-ink-800 transition-all hover:bg-white/85 hover:scale-105 opacity-100 md:opacity-0 md:group-hover/carousel:opacity-100"
                         >
                             <ChevronRight size={20} className="rotate-180" />
                         </button>
 
                         <button
                             onClick={() => scrollContainer('right')}
-                            className="absolute right-1 md:right-[-22px] top-1/2 -translate-y-1/2 z-30 w-10 md:w-11 h-10 md:h-11 rounded-full bg-white/70 md:bg-white/60 backdrop-blur-[10px] border border-white/40 shadow-[0_8px_20px_rgba(0,0,0,0.12)] flex items-center justify-center text-slate-900 transition-all hover:bg-white/85 hover:scale-105 opacity-100 md:opacity-0 md:group-hover/carousel:opacity-100"
+                            className="absolute right-1 md:right-[-22px] top-1/2 -translate-y-1/2 z-30 w-10 md:w-11 h-10 md:h-11 rounded-full bg-white/70 md:bg-white/60 backdrop-blur-[10px] border border-white/40 shadow-[0_8px_20px_rgba(0,0,0,0.12)] flex items-center justify-center text-ink-800 transition-all hover:bg-white/85 hover:scale-105 opacity-100 md:opacity-0 md:group-hover/carousel:opacity-100"
                         >
                             <ChevronRight size={20} />
                         </button>
@@ -78,14 +78,14 @@ export const RecommendedDoctorsSection: React.FC<RecommendedDoctorsSectionProps>
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-20 bg-white/50 backdrop-blur-sm rounded-[32px] border border-slate-100 shadow-sm flex flex-col items-center">
-                            <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-4">
+                        <div className="text-center py-20 bg-white/50 backdrop-blur-sm rounded-ds-xl border border-ink-100 shadow-sm flex flex-col items-center">
+                            <div className="w-16 h-16 bg-ink-50 text-ink-300 rounded-full flex items-center justify-center mb-4">
                                 <Search size={32} />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900">No Specialists Found</h3>
-                            <p className="text-slate-500 font-medium mt-1">Try a different specialty or clear your filters.</p>
+                            <h3 className="font-display text-xl font-bold text-ink-800">No Specialists Found</h3>
+                            <p className="text-ink-500 font-medium mt-1">Try a different specialty or clear your filters.</p>
                             {onClearFilters && (
-                                <button onClick={onClearFilters} className="mt-6 text-blue-600 font-bold hover:underline transition-all">
+                                <button onClick={onClearFilters} className="mt-6 text-medical-600 font-bold hover:underline transition-all">
                                     Clear Filters
                                 </button>
                             )}

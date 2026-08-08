@@ -35,14 +35,14 @@ const STYLES = {
   success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
   error: 'bg-red-50 border-red-200 text-red-800',
   warning: 'bg-amber-50 border-amber-200 text-amber-800',
-  info: 'bg-blue-50 border-blue-200 text-blue-800',
+  info: 'bg-medical-50 border-medical-200 text-medical-700',
 };
 
 const ICON_STYLES = {
   success: 'text-emerald-500',
   error: 'text-red-500',
   warning: 'text-amber-500',
-  info: 'text-blue-500',
+  info: 'text-medical-500',
 };
 
 const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: string) => void }> = ({ toast, onDismiss }) => {
@@ -59,7 +59,7 @@ const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: string) => void }> = (
 
   return (
     <div
-      className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-lg backdrop-blur-sm font-bold text-sm max-w-md transition-all duration-300 ${STYLES[toast.type]} ${isExiting ? 'opacity-0 translate-x-8' : 'opacity-100 translate-x-0 animate-in slide-in-from-right-4'}`}
+      className={`flex items-center gap-3 px-5 py-3.5 rounded-ds-md border shadow-ds-soft backdrop-blur-sm font-bold text-sm max-w-md transition-all duration-300 ${STYLES[toast.type]} ${isExiting ? 'opacity-0 translate-x-8' : 'opacity-100 translate-x-0 animate-in slide-in-from-right-4'}`}
     >
       <Icon size={18} className={`shrink-0 ${ICON_STYLES[toast.type]}`} />
       <span className="flex-1 leading-snug">{toast.message}</span>

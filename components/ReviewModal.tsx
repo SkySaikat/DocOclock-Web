@@ -53,24 +53,24 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, onSuc
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-navy-900/60 backdrop-blur-sm animate-in fade-in duration-300">
       <GlassCard className="max-w-md w-full p-8 space-y-8 shadow-2xl scale-in-center overflow-hidden relative">
         {/* Aesthetic Background */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 blur-3xl rounded-full" />
         
         <div className="relative z-10">
           <div className="flex justify-between items-start mb-2">
-            <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 shadow-inner border border-teal-100/50">
+            <div className="w-14 h-14 bg-teal-50 rounded-ds-md flex items-center justify-center text-teal-600 shadow-inner border border-teal-100/50">
               <HeartPulse size={28} />
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
+            <button onClick={onClose} className="p-2 hover:bg-ink-100 rounded-xl transition-colors text-ink-500">
               <X size={20} />
             </button>
           </div>
 
           <div className="space-y-1">
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">Rate Your Visit</h3>
-            <p className="text-slate-500 font-bold text-sm tracking-tight">How was your experience with <span className="text-teal-600">Dr. {appointment.doctor_name}</span>?</p>
+            <h3 className="font-display text-2xl font-black text-ink-800 tracking-tight leading-tight">Rate Your Visit</h3>
+            <p className="text-ink-500 font-bold text-sm tracking-tight">How was your experience with <span className="text-teal-600">Dr. {appointment.doctor_name}</span>?</p>
           </div>
 
           <div className="py-10 flex flex-col items-center gap-6">
@@ -89,21 +89,21 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, onSuc
                     className={`${
                       (hover || rating) >= star 
                       ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' 
-                      : 'text-slate-200'
+                      : 'text-ink-200'
                     } transition-colors`}
                     strokeWidth={2.5}
                   />
                 </button>
               ))}
             </div>
-            <span className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">
+            <span className="text-[10px] uppercase font-black tracking-[0.2em] text-ink-500">
               {['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][rating - 1]}
             </span>
           </div>
 
           <div className="space-y-4">
             <div className="relative group">
-              <div className="absolute left-4 top-4 text-slate-300 group-focus-within:text-teal-500 transition-colors">
+              <div className="absolute left-4 top-4 text-ink-300 group-focus-within:text-teal-500 transition-colors">
                 <MessageSquare size={18} />
               </div>
               <textarea
@@ -111,13 +111,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, onSuc
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Any specific comments or feedback?"
                 rows={4}
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-teal-500/5 focus:border-teal-500 outline-none font-bold text-sm transition-all placeholder:text-slate-300 resize-none"
+                className="w-full pl-12 pr-4 py-4 bg-ink-50 border border-ink-200 rounded-ds-md focus:ring-4 focus:ring-teal-500/5 focus:border-teal-500 outline-none font-bold text-sm transition-all placeholder:text-ink-300 resize-none"
               />
             </div>
 
             <Button
               fullWidth
-              className="h-14 rounded-2xl font-black bg-slate-900 hover:bg-slate-800 text-white shadow-xl shadow-slate-100 text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95"
+              className="h-14 rounded-ds-md font-display font-black bg-medical-500 hover:bg-medical-600 text-white shadow-md shadow-medical-200 text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95"
               onClick={handleSubmit}
               disabled={isSubmitting}
             >

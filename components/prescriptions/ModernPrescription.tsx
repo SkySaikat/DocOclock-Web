@@ -27,7 +27,7 @@ export const ModernPrescription: React.FC<{ data: PrescriptionData }> = ({ data 
   return (
     <div className="bg-white w-full max-w-[800px] mx-auto shadow-2xl rounded-3xl overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Header - Gradient */}
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 p-8 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-r from-medical-500 via-medical-600 to-medical-700 p-8 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4" />
         
@@ -36,19 +36,19 @@ export const ModernPrescription: React.FC<{ data: PrescriptionData }> = ({ data 
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-2xl font-black">D</div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight">{data.doctorName}</h1>
-                <p className="text-blue-200 text-sm font-medium">{data.doctorDegrees}</p>
+                <h1 className="font-display text-2xl font-black tracking-tight">{data.doctorName}</h1>
+                <p className="text-medical-200 text-sm font-medium">{data.doctorDegrees}</p>
               </div>
             </div>
-            <div className="flex gap-4 text-xs text-blue-200">
+            <div className="flex gap-4 text-xs text-medical-200">
               <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">{data.doctorSpecialty}</span>
               <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">BMDC: {data.doctorBmdc}</span>
             </div>
           </div>
           <div className="text-right text-sm">
             {data.hospitalName && <p className="font-bold text-white/90">{data.hospitalName}</p>}
-            {data.hospitalAddress && <p className="text-blue-200 text-xs max-w-[200px]">{data.hospitalAddress}</p>}
-            {data.doctorPhone && <p className="text-blue-200 text-xs mt-2">{data.doctorPhone}</p>}
+            {data.hospitalAddress && <p className="text-medical-200 text-xs max-w-[200px]">{data.hospitalAddress}</p>}
+            {data.doctorPhone && <p className="text-medical-200 text-xs mt-2">{data.doctorPhone}</p>}
           </div>
         </div>
       </div>
@@ -86,12 +86,12 @@ export const ModernPrescription: React.FC<{ data: PrescriptionData }> = ({ data 
 
         <div className="space-y-3">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="text-2xl text-blue-600">℞</span> Prescribed Medications
+            <span className="text-2xl text-medical-500">℞</span> Prescribed Medications
           </p>
           
           {data.medicines.map((med, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 transition-colors group">
-              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black text-sm shrink-0 group-hover:bg-blue-100 transition-colors">
+            <div key={i} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:border-medical-200 transition-colors group">
+              <div className="w-10 h-10 bg-medical-50 text-medical-500 rounded-xl flex items-center justify-center font-black text-sm shrink-0 group-hover:bg-medical-100 transition-colors">
                 {i + 1}
               </div>
               <div className="flex-1">
@@ -101,7 +101,7 @@ export const ModernPrescription: React.FC<{ data: PrescriptionData }> = ({ data 
                   <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg">{med.duration}</span>
                 </div>
                 {med.instructions && (
-                  <p className="text-xs text-blue-600 mt-1.5 font-medium">📝 {med.instructions}</p>
+                  <p className="text-xs text-medical-500 mt-1.5 font-medium">📝 {med.instructions}</p>
                 )}
               </div>
             </div>
@@ -119,11 +119,11 @@ export const ModernPrescription: React.FC<{ data: PrescriptionData }> = ({ data 
             </div>
           )}
           {data.followUpDate && (
-            <p className="text-xs text-slate-500">Next Visit: <strong className="text-blue-600">{data.followUpDate}</strong></p>
+            <p className="text-xs text-slate-500">Next Visit: <strong className="text-medical-500">{data.followUpDate}</strong></p>
           )}
         </div>
         <div className="text-center">
-          <div className="w-48 border-t-2 border-blue-600 pt-3">
+          <div className="w-48 border-t-2 border-medical-500 pt-3">
             <p className="text-xs font-bold text-slate-500">Doctor's Signature</p>
           </div>
         </div>

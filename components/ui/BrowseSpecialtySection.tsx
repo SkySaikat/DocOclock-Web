@@ -14,13 +14,13 @@ export const BrowseSpecialtySection: React.FC<BrowseSpecialtySectionProps> = ({
     selectedSpecialty
 }) => {
     return (
-        <section className="py-6 border-t border-slate-100">
+        <section className="py-6 border-t border-ink-100">
             <div className="flex justify-between items-center mb-5">
                 <div>
-                    <h2 className="text-[20px] font-black tracking-tight text-slate-900 leading-none">Find by Department</h2>
-                    <p className="text-[12px] text-slate-500 font-medium mt-1">Select from 36+ specialized clinical areas</p>
+                    <h2 className="font-display text-[20px] font-black tracking-tight text-ink-800 leading-none">Find by Department</h2>
+                    <p className="text-[12px] text-ink-500 font-medium mt-1">Select from 36+ specialized clinical areas</p>
                 </div>
-                <button className="text-[10px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-widest border-b-2 border-blue-600/10 pb-0.5">
+                <button className="text-[10px] font-black text-medical-600 hover:text-medical-700 transition-colors uppercase tracking-widest border-b-2 border-medical-600/10 pb-0.5">
                     View All
                 </button>
             </div>
