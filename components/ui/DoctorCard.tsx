@@ -15,13 +15,55 @@ interface DoctorCardProps {
     };
     ctaLabel?: string;
     onCtaClick?: () => void;
+    /** Figma "variant2" — photo, specialty pill, name, qualification, rating.
+     *  No stat panels, no CTA button. Used by the "Meet Our Medical Experts" carousel. */
+    compact?: boolean;
+    onClick?: () => void;
 }
 
 export const DoctorCard: React.FC<DoctorCardProps> = ({
     doctor,
     ctaLabel = 'Book Appointment',
-    onCtaClick
+    onCtaClick,
+    compact = false,
+    onClick,
 }) => {
+    if (compact) {
+        return (
+            <div
+                onClick={onClick}
+                className="flex-shrink-0 w-[220px] md:w-[240px] group cursor-pointer"
+            >
+                <div className="relative h-[220px] md:h-[240px] rounded-ds-lg overflow-hidden bg-medical-50">
+                    {doctor.image ? (
+                        <img
+                            src={doctor.image}
+                            alt={doctor.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                    ) : (
+                        <div className="w-full h-full bg-medical-100/60 flex items-center justify-center">
+                            <span className="text-medical-400 font-display font-bold text-4xl">{(doctor.name || '?').charAt(0)}</span>
+                        </div>
+                    )}
+                    <span className="absolute top-3 right-3 bg-white/95 text-ink-800 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                        {doctor.specialty}
+                    </span>
+                </div>
+                <div className="pt-3 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                        <h3 className="font-display text-[15px] font-bold text-ink-800 leading-tight truncate">{doctor.name}</h3>
+                        <p className="text-[11px] text-ink-500 font-medium truncate">MBBS, FCPS({doctor.specialty.toUpperCase()})</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                        <Star size={13} className="text-amber-500 fill-amber-500" />
+                        <span className="text-[13px] font-bold text-ink-800">{doctor.rating || '4.5'}</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex-shrink-0 w-[260px] md:w-[280px] rounded-ds-lg bg-white shadow-ds-card flex flex-col group relative overflow-hidden hover:shadow-ds-soft transition-all duration-300">
             {/* Photo header */}

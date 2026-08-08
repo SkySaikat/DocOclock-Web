@@ -5,7 +5,8 @@ import {
    ShieldCheck, Users, Clock, ArrowRight, X, GraduationCap,
    ChevronRight, Calendar, Sparkles, Bell, Pill, FileText, BriefcaseMedical,
    Baby, BabyIcon, VenetianMask, Syringe, Thermometer, BrainCircuit,
-   Microscope, Droplets, UserRound, Zap, Bone, HeartPulse, ClipboardPlus, Wind
+   Microscope, Droplets, UserRound, Zap, Bone, HeartPulse, ClipboardPlus, Wind,
+   Quote, ClipboardList, LayoutDashboard, KanbanSquare
 } from 'lucide-react';
 import { Doctor, UserRole } from '../../types';
 import { DoctorCard } from '../../components/ui/DoctorCard';
@@ -28,6 +29,20 @@ const HEALTH_TIPS = [
    { emoji: '🫁', tip: 'Deep breathing exercises 3× daily can lower blood pressure naturally.' },
    { emoji: '🦷', tip: 'Brushing for 2 minutes twice daily prevents gum disease linked to heart problems.' },
 ];
+
+const SPECIALTY_TICKER = ['Medicine & Nephrology', 'Dental Care', 'Neurology', 'Food & Nutrition'];
+
+const SpecialtyMarquee: React.FC = () => (
+   <div className="border-y border-ink-100 overflow-hidden">
+      <div className="flex w-max animate-marquee">
+         {[...Array(4)].flatMap(() => SPECIALTY_TICKER).map((label, i) => (
+            <span key={i} className="flex items-center gap-2 px-8 py-5 text-[13px] font-medium text-ink-500 whitespace-nowrap shrink-0">
+               <Sparkles size={14} className="text-medical-400" /> {label}
+            </span>
+         ))}
+      </div>
+   </div>
+);
 
 const HealthTipsSection: React.FC = () => {
    const [idx, setIdx] = useState(0);
@@ -70,9 +85,11 @@ interface HomeProps {
    onSelectDoctor?: (doctor: Doctor) => void;
    userRole?: UserRole;
    focusSearchTrigger?: number;
+   onLoginClick?: () => void;
+   onRegisterClick?: () => void;
 }
 
-export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole, focusSearchTrigger }) => {
+export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole, focusSearchTrigger, onLoginClick, onRegisterClick }) => {
    const [searchTerm, setSearchTerm] = useState('');
    const [selectedSpecialty, setSelectedSpecialty] = useState('All');
    const [showDropdown, setShowDropdown] = useState(false);
@@ -105,6 +122,34 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    useEffect(() => {
       supabase.from('hero_banners').select('*').eq('is_active', true).order('sort_order')
          .then(({ data }) => setHeroBanners(data || []));
+   }, []);
+
+   // "What Our Patients Say" — real approved reviews, never fabricated testimonials.
+   const [testimonials, setTestimonials] = useState<{ id: string; comment: string; rating: number; patientName: string; patientImage?: string }[]>([]);
+   useEffect(() => {
+      const loadTestimonials = async () => {
+         const { data: reviewRows } = await supabase
+            .from('reviews')
+            .select('id, rating, comment, patient_id, created_at')
+            .not('comment', 'is', null)
+            .order('rating', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(6);
+         if (!reviewRows || reviewRows.length === 0) { setTestimonials([]); return; }
+         const patientIds = [...new Set(reviewRows.map((r: any) => r.patient_id))];
+         const { data: patients } = await supabase.from('profiles').select('id, name, image').in('id', patientIds);
+         const byId = new Map((patients || []).map((p: any) => [p.id, p]));
+         setTestimonials(
+            reviewRows.slice(0, 3).map((r: any) => ({
+               id: r.id,
+               comment: r.comment,
+               rating: r.rating,
+               patientName: byId.get(r.patient_id)?.name || 'Verified Patient',
+               patientImage: byId.get(r.patient_id)?.image,
+            }))
+         );
+      };
+      loadTestimonials();
    }, []);
 
    useEffect(() => {
@@ -250,74 +295,95 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    return (
       <div className="min-h-screen bg-white font-sans text-ink-800 pb-24">
          <div className="max-w-4xl mx-auto px-4 sm:px-6">
-            {/* HERO SECTION - REFINED SHARPNESS */}
-            <div className="pt-8 pb-12 md:pt-16 md:pb-20">
-               <div className="relative rounded-ds-lg overflow-hidden shadow-ds-soft min-h-[320px] md:min-h-[420px]">
-
-                  {/* Background slider — sits behind the content overlay */}
-                  <HeroSlider banners={heroBanners} />
-
-                  {/* Dark overlay — preserves readability of text on any image */}
-                  <div className="absolute inset-0 z-[1]"
-                     style={{ background: 'linear-gradient(to right, rgba(6,21,53,0.90) 40%, rgba(6,21,53,0.45))' }} />
-
-                  <div className="relative z-10 px-6 py-12 md:px-12 md:py-20 lg:pr-32">
-                     <div className="inline-flex items-center gap-2 bg-medical-500/10 text-medical-300 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-medical-500/20">
-                        <ShieldCheck size={12} />
-                        <span>BMDC Verified Doctors</span>
-                     </div>
-
-                     <h1 className="font-display text-4xl md:text-[52px] font-bold tracking-tight text-white leading-[1.08] mb-6">
-                        Your Time, Your Health,<br />
-                        <span className="text-medical-400">Fully Controlled.</span>
+            {/* HERO SECTION — literal Figma "Web-Version / Pre-Login-Pages" layout:
+                headline + copy + Register/Login row on the left, image panel on the right. */}
+            <div className="pt-10 pb-16 md:pt-20 md:pb-20">
+               <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
+                  <div className="flex-1 w-full">
+                     <h1 className="font-display text-4xl md:text-[52px] font-normal text-ink-900 leading-[1.08] mb-5">
+                        {isPatient ? (
+                           <>Welcome back.<br />Your Health, Fully<br />Controlled.</>
+                        ) : (
+                           <>Your Time, Your<br />Health, Fully<br />Controlled.</>
+                        )}
                      </h1>
-
-                     <p className="text-sm md:text-base text-slate-400 font-medium mb-10 max-w-lg leading-relaxed">
-                        Book top specialists instantly, track your live serial status, and manage your health records in one premium platform.
+                     <p className="text-ink-500 text-base max-w-md leading-relaxed mb-8">
+                        Healthcare made simple with smarter appointment scheduling. Book verified doctors and track your queue status live.
                      </p>
-
-                     {/* Search Bar - Disciplined Integration */}
-                     <div ref={searchContainerRef} className="relative max-w-xl group">
-                        <div className="bg-white/5 backdrop-blur-md flex items-center gap-2 md:gap-3 p-1.5 rounded-ds-md border border-white/10 focus-within:border-medical-500/50 focus-within:bg-white/10 transition-all duration-300">
-                           <div className="bg-medical-600 text-white p-2.5 md:p-3 rounded-ds-sm shadow-lg shadow-medical-500/20 shrink-0">
-                              <Search size={18} className="md:w-5 md:h-5" />
-                           </div>
-                           <input
-                              ref={searchInputRef}
-                              className="flex-1 min-w-0 py-2 text-sm md:text-base outline-none text-white placeholder:text-slate-500 font-bold bg-transparent"
-                              placeholder="Search Doctor..."
-                              value={searchTerm}
-                              onChange={(e) => { setSearchTerm(e.target.value); setShowDropdown(true); }}
-                              onFocus={() => setShowDropdown(true)}
-                           />
-                           {searchTerm && (
-                              <button onClick={() => { setSearchTerm(''); setShowDropdown(false); }} className="p-2 text-slate-400 hover:text-white transition-colors mr-2">
-                                 <X size={18} />
+                     <div className="flex items-center gap-6">
+                        {isPatient ? (
+                           <Button
+                              variant="primary"
+                              className="h-[52px] px-8"
+                              onClick={() => {
+                                 searchContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                 searchInputRef.current?.focus();
+                              }}
+                           >
+                              Find a Doctor
+                           </Button>
+                        ) : (
+                           <>
+                              <Button variant="primary" className="h-[52px] px-8" onClick={() => onRegisterClick?.()}>
+                                 Register
+                              </Button>
+                              <button onClick={() => onLoginClick?.()} className="text-ink-800 text-[16px] font-normal hover:text-medical-600 transition-colors">
+                                 Login
                               </button>
-                           )}
-                        </div>
-
-                        {showDropdown && searchTerm && browseList.length > 0 && (
-                           <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-white rounded-ds-md shadow-ds-soft border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-300">
-                              <div className="divide-y divide-slate-50">
-                                 {browseList.slice(0, 5).map(doc => (
-                                    <div key={doc.id} onClick={() => { onSelectDoctor?.(doc); setShowDropdown(false); }} className="p-4 hover:bg-slate-50 cursor-pointer flex gap-4 items-center group transition-colors">
-                                       <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                                          {doc.imageUrl && <img src={doc.imageUrl} className="w-full h-full object-cover" alt={doc.name} />}
-                                       </div>
-                                       <div className="flex-1">
-                                          <h4 className="text-sm font-black text-ink-800 group-hover:text-medical-600 transition-colors tracking-tight">{doc.name}</h4>
-                                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{doc.specialty}</p>
-                                       </div>
-                                       <div className="bg-medical-50 text-medical-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">View Profile</div>
-                                    </div>
-                                 ))}
-                              </div>
-                           </div>
+                           </>
                         )}
                      </div>
                   </div>
+
+                  {/* Image panel — real content comes from the admin-managed Hero Banner slider */}
+                  <div className="flex-1 w-full">
+                     <div className="relative rounded-ds-xl overflow-hidden shadow-ds-soft h-[320px] md:h-[420px]">
+                        <HeroSlider banners={heroBanners} />
+                     </div>
+                  </div>
                </div>
+            </div>
+
+            {/* FIND A DOCTOR — dedicated search (product functionality Figma's marketing
+                frame doesn't include a slot for, since it has no logged-in product screens) */}
+            <div ref={searchContainerRef} className="relative mb-16 md:mb-20">
+               <div className="bg-white flex items-center gap-2 md:gap-3 p-1.5 rounded-ds-md shadow-ds-card border border-ink-100 focus-within:border-medical-400 transition-all duration-300 max-w-2xl mx-auto">
+                  <div className="bg-medical-600 text-white p-2.5 md:p-3 rounded-ds-sm shrink-0">
+                     <Search size={18} className="md:w-5 md:h-5" />
+                  </div>
+                  <input
+                     ref={searchInputRef}
+                     className="flex-1 min-w-0 py-2 text-sm md:text-base outline-none text-ink-800 placeholder:text-ink-400 font-medium bg-transparent"
+                     placeholder="Search Doctor..."
+                     value={searchTerm}
+                     onChange={(e) => { setSearchTerm(e.target.value); setShowDropdown(true); }}
+                     onFocus={() => setShowDropdown(true)}
+                  />
+                  {searchTerm && (
+                     <button onClick={() => { setSearchTerm(''); setShowDropdown(false); }} className="p-2 text-ink-400 hover:text-ink-700 transition-colors mr-2">
+                        <X size={18} />
+                     </button>
+                  )}
+               </div>
+
+               {showDropdown && searchTerm && browseList.length > 0 && (
+                  <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-full max-w-2xl bg-white rounded-ds-md shadow-ds-soft border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+                     <div className="divide-y divide-slate-50">
+                        {browseList.slice(0, 5).map(doc => (
+                           <div key={doc.id} onClick={() => { onSelectDoctor?.(doc); setShowDropdown(false); }} className="p-4 hover:bg-slate-50 cursor-pointer flex gap-4 items-center group transition-colors">
+                              <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                                 {doc.imageUrl && <img src={doc.imageUrl} className="w-full h-full object-cover" alt={doc.name} />}
+                              </div>
+                              <div className="flex-1">
+                                 <h4 className="text-sm font-black text-ink-800 group-hover:text-medical-600 transition-colors tracking-tight">{doc.name}</h4>
+                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{doc.specialty}</p>
+                              </div>
+                              <div className="bg-medical-50 text-medical-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">View Profile</div>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               )}
             </div>
 
             {/* NEW HIGH-IMPACT ATTENTION SECTION */}
