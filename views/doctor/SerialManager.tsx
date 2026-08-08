@@ -437,15 +437,15 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
    return (
       <div className="space-y-4 max-w-6xl mx-auto px-2 md:px-0 pb-20 animate-fade-in">
          {/* Unified Grid-Based Control Panel */}
-         <div className="bg-white border border-slate-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.01)] rounded-xl overflow-hidden">
+         <div className="bg-white border border-slate-200/50 shadow-ds-card rounded-ds-md overflow-hidden">
             {/* Row 1: Context Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50/50 bg-white">
                <div className="flex items-baseline gap-2.5">
-                  <h1 className="text-base font-black text-slate-900 tracking-tighter leading-none">Today's Queue</h1>
+                  <h1 className="font-display text-base font-black text-ink-800 tracking-tighter leading-none">Today's Queue</h1>
                </div>
                <div className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50 border border-slate-200/40 rounded-lg shrink-0">
                   <Calendar size={12} className="text-slate-400" />
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">
+                  <span className="text-[10px] font-black text-ink-600 uppercase tracking-tighter">
                      {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   </span>
                </div>
@@ -458,7 +458,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                <div className="flex items-center gap-4">
                   <div className="flex flex-col items-end md:items-start">
                      <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Availability</span>
-                     <span className="text-[9px] font-black text-slate-900 uppercase tracking-tighter leading-none">{doctorStatus === 'arrived' ? 'Live Now' : 'Off-Duty'}</span>
+                     <span className="text-[9px] font-black text-ink-800 uppercase tracking-tighter leading-none">{doctorStatus === 'arrived' ? 'Live Now' : 'Off-Duty'}</span>
                   </div>
                   <div className="flex p-0.5 bg-slate-100/80 rounded-full w-40 relative border border-slate-200/20">
                      <button
@@ -501,7 +501,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                      >
                         Away
                      </button>
-                     <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full transition-all duration-300 shadow-lg ${doctorStatus === 'arrived' ? 'left-0.5 bg-green-600 shadow-green-500/20' : 'left-[calc(50%+0.5px)] bg-slate-900'}`} />
+                     <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full transition-all duration-300 shadow-lg ${doctorStatus === 'arrived' ? 'left-0.5 bg-green-600 shadow-green-500/20' : 'left-[calc(50%+0.5px)] bg-navy-900'}`} />
                   </div>
                </div>
 
@@ -542,7 +542,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   <Button
                      onClick={handleSaveDelay}
                      disabled={!activeChamber || isSavingDelay}
-                     className={`h-9 px-5 rounded-xl font-black text-[10px] tracking-widest transition-all shadow-md active:translate-y-px ${isSavingDelay ? 'bg-green-600 text-white border-0' : 'bg-slate-900 text-white hover:bg-black active:shadow-none'}`}
+                     className={`h-9 px-5 rounded-xl font-black text-[10px] tracking-widest transition-all shadow-md active:translate-y-px ${isSavingDelay ? 'bg-green-600 text-white border-0' : 'bg-navy-900 text-white hover:bg-black active:shadow-none'}`}
                   >
                      {isSavingDelay ? 'DONE' : 'SET DELAY'}
                   </Button>
@@ -553,19 +553,19 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
                {sessionMeta.status === 'DELAYED' && doctorStatus === 'not-arrived' && (
-                  <div className="p-6 rounded-[2rem] border-2 border-orange-200 bg-amber-50/50 space-y-3 shadow-lg shadow-orange-100/20">
+                  <div className="p-6 rounded-ds-xl border-2 border-orange-200 bg-amber-50/50 space-y-3 shadow-ds-soft">
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                            <div className="w-10 h-10 bg-orange-500 text-white rounded-xl flex items-center justify-center shadow-lg">
                               <History size={20} />
                            </div>
                            <div>
-                              <h2 className="text-xl font-black text-orange-950 tracking-tight">DELAYED SESSION</h2>
+                              <h2 className="font-display text-xl font-black text-orange-950 tracking-tight">Delayed Session</h2>
                               <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest bg-orange-100 px-2 py-0.5 rounded">Doctor not arrived</span>
                            </div>
                         </div>
                         <div className="text-right">
-                           <p className="text-2xl font-black text-orange-600">{sessionMeta.delayMinutes}m</p>
+                           <p className="font-stat text-2xl font-bold text-orange-600">{sessionMeta.delayMinutes}m</p>
                         </div>
                      </div>
                      <p className="text-sm font-bold text-orange-800/70 pl-1">Patients have been notified of the delay.</p>
@@ -573,24 +573,24 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                )}
 
                {sessionMeta.status === 'BREAK' && doctorStatus === 'arrived' && (
-                  <div className="p-6 rounded-[2rem] border-2 border-blue-200 bg-blue-50/50 space-y-4 shadow-lg shadow-blue-100/20">
+                  <div className="p-6 rounded-ds-xl border-2 border-medical-200 bg-medical-50/50 space-y-4 shadow-ds-soft">
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg">
+                           <div className="w-10 h-10 bg-medical-600 text-white rounded-xl flex items-center justify-center shadow-lg">
                               <Clock size={20} />
                            </div>
                            <div>
-                              <h2 className="text-xl font-black text-blue-950 tracking-tight">BREAK IN PROGRESS</h2>
-                              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-100 px-2 py-0.5 rounded">Doctor is on break</span>
+                              <h2 className="font-display text-xl font-black text-medical-700 tracking-tight">Break In Progress</h2>
+                              <span className="text-[10px] font-black text-medical-600 uppercase tracking-widest bg-medical-100 px-2 py-0.5 rounded">Doctor is on break</span>
                            </div>
                         </div>
                         <div className="text-right">
                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Duration</p>
-                           <p className="text-xl font-black text-blue-600">{sessionMeta.delayMinutes} Minutes</p>
+                           <p className="font-stat text-xl font-bold text-medical-600">{sessionMeta.delayMinutes} Minutes</p>
                         </div>
                      </div>
                      <div className="flex gap-4 items-center">
-                        <p className="text-sm font-bold text-blue-800/70 flex-1">Break duration: {sessionMeta.delayMinutes} minutes</p>
+                        <p className="text-sm font-bold text-medical-800/70 flex-1">Break duration: {sessionMeta.delayMinutes} minutes</p>
                         <button
                            onClick={async () => {
                               if (doctor && activeChamber) {
@@ -607,7 +607,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                  setSessionMeta(meta);
                               }
                            }}
-                           className="bg-blue-600 hover:bg-blue-700 text-white px-6 font-black rounded-xl shadow-lg shadow-blue-100 uppercase tracking-widest text-xs h-11"
+                           className="bg-medical-500 hover:bg-medical-600 text-white px-6 font-black rounded-full shadow-md shadow-medical-200 uppercase tracking-widest text-xs h-11"
                         >
                            End Break
                         </button>
@@ -616,10 +616,10 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                )}
 
                <div className="relative">
-                  <GlassCard className="p-8 bg-slate-900 text-white border-0 relative overflow-hidden rounded-[2.5rem] shadow-2xl shadow-blue-900/20">
+                  <GlassCard className="p-8 bg-navy-900 text-white border-0 relative overflow-hidden rounded-ds-xl shadow-ds-soft">
                      <div className="relative z-10">
                         <div className="flex justify-between items-start mb-6">
-                           <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 backdrop-blur-sm">
+                           <div className="flex items-center gap-2 px-3 py-1 bg-medical-500/20 text-medical-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 backdrop-blur-sm">
                               <Activity size={12} className="animate-pulse" /> Current Patient
                            </div>
                         </div>
@@ -627,8 +627,8 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                         {currentApp ? (
                            <div className="flex flex-col md:flex-row justify-between items-center gap-8">
                               <div className="text-center md:text-left">
-                                 <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tight">{currentApp.patientName}</h2>
-                                 <p className="text-blue-200/60 font-bold flex items-center justify-center md:justify-start gap-4">
+                                 <h2 className="font-display text-4xl md:text-5xl font-black mb-2 tracking-tight">{currentApp.patientName}</h2>
+                                 <p className="text-medical-200/60 font-bold flex items-center justify-center md:justify-start gap-4">
                                     <span className="bg-white/10 px-3 py-1 rounded-lg">Serial #{currentApp.serialNumber}</span>
                                     <span className="flex items-center gap-1"><Phone size={14} /> {currentApp.patientPhone}</span>
                                  </p>
@@ -637,12 +637,12 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                  <Button
                                     onClick={() => setSelectedAppId(currentApp.id)}
                                     variant="outline"
-                                    className="!bg-white/10 hover:!bg-white/20 !text-white !border-white/20 px-8 py-4 h-16 rounded-2xl font-black text-lg shadow-none"
+                                    className="!bg-white/10 hover:!bg-white/20 !text-white !border-white/20 px-8 py-4 h-16 rounded-full font-black text-lg shadow-none"
                                  >
                                     Patient Records
                                  </Button>
                                  <Button
-                                    className="h-16 px-10 gap-3 !bg-blue-500 hover:!bg-blue-400 shadow-2xl shadow-blue-500/20 active:scale-95 transition-all font-black text-lg rounded-2xl !text-white"
+                                    className="h-16 px-10 gap-3 !bg-medical-500 hover:!bg-medical-400 shadow-lg shadow-medical-500/20 active:scale-95 transition-all font-black text-lg rounded-full !text-white"
                                     onClick={handleNextPatient}
                                     disabled={sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK'}
                                  >
@@ -653,9 +653,9 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            </div>
                         ) : (
                            <div className="flex flex-col md:flex-row justify-between items-center py-4 gap-8">
-                              <h2 className="text-3xl font-black text-slate-500 tracking-tight">No Active Patient</h2>
+                              <h2 className="font-display text-3xl font-black text-slate-500 tracking-tight">No Active Patient</h2>
                               <Button
-                                 className="h-16 px-10 gap-3 !bg-white hover:!bg-slate-100 !text-slate-900 shadow-xl transition-all font-black text-lg rounded-2xl w-full md:w-auto"
+                                 className="h-16 px-10 gap-3 !bg-white hover:!bg-slate-100 !text-navy-900 shadow-xl transition-all font-black text-lg rounded-full w-full md:w-auto"
                                  onClick={handleNextPatient}
                                  disabled={!activeChamber || sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK'}
                               >
@@ -670,14 +670,14 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
                <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 gap-4">
-                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Timeline</h3>
+                     <h3 className="font-display text-[10px] font-black text-ink-500 uppercase tracking-[0.2em]">Live Timeline</h3>
                      <div className="flex overflow-x-auto pb-2 -mb-2 no-scrollbar gap-2 flex-nowrap">
                         {['all', 'waiting', 'late', 'completed', 'cancelled'].map((status) => (
                            <button
                               key={status}
                               onClick={() => setFilterStatus(status as any)}
-                              className={`px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filterStatus === status
-                                 ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                              className={`px-3.5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filterStatus === status
+                                 ? 'bg-navy-900 text-white border-navy-900 shadow-md'
                                  : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'
                                  }`}
                            >
@@ -695,7 +695,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            <div
                               key={app.id}
                               onClick={() => setSelectedAppId(app.id)}
-                              className={`group p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all border
+                              className={`group p-4 rounded-ds-md flex items-center justify-between cursor-pointer transition-all border
                                   ${isCurrent ? 'bg-teal-50/50 border-teal-500/50 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}
                                `}
                            >
@@ -709,7 +709,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                  </div>
 
                                  <div className="min-w-0 flex flex-col justify-center flex-1">
-                                    <h4 className={`font-black text-base tracking-tight truncate ${app.status === 'cancelled' ? 'text-slate-300 line-through' : (app.isReserved ? 'text-slate-400 italic' : 'text-slate-900')}`}>
+                                    <h4 className={`font-display text-base font-black tracking-tight truncate ${app.status === 'cancelled' ? 'text-slate-300 line-through' : (app.isReserved ? 'text-slate-400 italic' : 'text-ink-800')}`}>
                                        {app.isReserved ? 'Reserved Slot' : app.patientName}
                                     </h4>
                                     <div className="text-[10px] text-slate-400 font-bold flex items-center gap-2 mt-0.5">
@@ -870,7 +870,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            </div>
                         );
                      }) : (
-                        <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                        <div className="text-center py-20 bg-white rounded-ds-xl border-2 border-dashed border-slate-100">
                            <ClipboardList className="mx-auto text-slate-200 mb-4" size={48} />
                            <p className="text-slate-400 font-bold">No appointments found matching this filter.</p>
                         </div>
@@ -880,33 +880,41 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
             </div>
 
             <div className="space-y-6">
-               <GlassCard className="p-8 bg-white border-0 shadow-sm rounded-[2.5rem]">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 text-center">Operational Insights</h3>
+               <GlassCard className="p-8 bg-white border-0 shadow-ds-soft rounded-ds-xl">
+                  <h3 className="font-display text-[10px] font-black text-ink-500 uppercase tracking-[0.2em] mb-8 text-center">Operational Insights</h3>
                   <div className="space-y-8">
                      <div className="flex justify-between items-center">
                         <div>
-                           <p className="text-sm font-black text-slate-800">Total Patients</p>
+                           <p className="text-sm font-black text-ink-800">Total Patients</p>
                            <p className="text-[10px] text-slate-400 font-bold">Today's registry</p>
                         </div>
-                        <span className="text-3xl font-black text-slate-900">{filteredAppointments.length}</span>
+                        <span className="font-stat text-3xl font-bold text-ink-800">{filteredAppointments.length}</span>
                      </div>
                      <div className="flex justify-between items-center">
                         <div>
-                           <p className="text-sm font-black text-slate-800">Remaining</p>
+                           <p className="text-sm font-black text-ink-800">Remaining</p>
                            <p className="text-[10px] text-slate-400 font-bold">Waiting in queue</p>
                         </div>
-                        <span className="text-3xl font-black text-yellow-600">{filteredAppointments.filter(a => a.status === 'waiting').length}</span>
+                        {/* Signature pastel dashed-ring motif — reserved for live queue/countdown numbers */}
+                        <div
+                           className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
+                           style={{ background: 'conic-gradient(#96ced7,#d6b2ba,#c8db9c,#8ec7b7,#e9e8ef,#96bce6,#93d3fd,#96ced7)', padding: 4 }}
+                        >
+                           <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                              <span className="font-stat text-lg font-bold text-ink-800">{filteredAppointments.filter(a => a.status === 'waiting').length}</span>
+                           </div>
+                        </div>
                      </div>
                      <div className="flex justify-between items-center">
                         <div>
-                           <p className="text-sm font-black text-slate-800">Finished</p>
+                           <p className="text-sm font-black text-ink-800">Finished</p>
                            <p className="text-[10px] text-slate-400 font-bold">Consultations ended</p>
                         </div>
-                        <span className="text-3xl font-black text-green-600">{filteredAppointments.filter(a => a.status === 'completed').length}</span>
+                        <span className="font-stat text-3xl font-bold text-teal-600">{filteredAppointments.filter(a => a.status === 'completed').length}</span>
                      </div>
                   </div>
                   <div className="mt-10 pt-8 border-t border-slate-50 space-y-4">
-                     <Button fullWidth variant="outline" className="h-14 rounded-2xl gap-3 border-slate-200 font-black" onClick={() => window.print()}>
+                     <Button fullWidth variant="outline" className="h-14 rounded-full gap-3 border-slate-200 font-black" onClick={() => window.print()}>
                         <ClipboardList size={20} /> Export Queue List
                      </Button>
                   </div>
@@ -917,14 +925,14 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
          {selectedApp && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-2xl animate-fade-in p-4">
-               <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl flex flex-col max-h-[90vh] relative overflow-hidden">
+               <div className="bg-white w-full max-w-4xl rounded-ds-xl shadow-2xl flex flex-col max-h-[90vh] relative overflow-hidden">
                   <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center">
                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-lg">
+                        <div className="w-12 h-12 bg-medical-500 text-white rounded-2xl flex items-center justify-center font-black text-lg">
                            {selectedApp.serialNumber}
                         </div>
                         <div>
-                           <h2 className="text-2xl font-black text-slate-800">{selectedApp.patientName}</h2>
+                           <h2 className="font-display text-2xl font-black text-ink-800">{selectedApp.patientName}</h2>
                            <p className="text-xs font-bold text-slate-400">Patient ID: {selectedApp.patientId}</p>
                         </div>
                      </div>
@@ -934,13 +942,13 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                   <div className="flex-1 overflow-y-auto p-8 space-y-8">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <section className="space-y-4">
-                           <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">Medical History</h3>
+                           <h3 className="font-display text-xs font-black text-ink-500 uppercase tracking-widest border-b pb-2">Medical History</h3>
                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 min-h-[150px] flex items-center justify-center italic text-slate-400">
                               No previous prescriptions found in system.
                            </div>
                         </section>
                         <section className="space-y-4">
-                           <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">Action Center</h3>
+                           <h3 className="font-display text-xs font-black text-ink-500 uppercase tracking-widest border-b pb-2">Action Center</h3>
                            <div className="space-y-3">
                               {selectedApp.status === 'consulting' && (
                                  <Button
@@ -1005,7 +1013,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
                               <Button
                                  fullWidth
-                                 className="h-16 text-lg font-black rounded-2xl bg-slate-900 shadow-xl shadow-slate-100 flex items-center gap-3 !text-white"
+                                 className="h-16 text-lg font-black rounded-2xl bg-navy-900 shadow-xl shadow-slate-100 flex items-center gap-3 !text-white"
                                  onClick={() => {
                                     if (selectedApp.isReserved) {
                                        setAssignData({ name: '', phone: '', appId: selectedApp.id });
@@ -1036,10 +1044,10 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
          {showAssignModal && (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
-               <GlassCard className="w-full max-w-md p-8 bg-white overflow-hidden rounded-[2.5rem] shadow-2xl border-0 animate-scale-up">
+               <GlassCard className="w-full max-w-md p-8 bg-white overflow-hidden rounded-ds-xl shadow-2xl border-0 animate-scale-up">
                   <div className="flex justify-between items-start mb-6">
                      <div>
-                        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Assign Patient</h2>
+                        <h2 className="font-display text-2xl font-black text-ink-800 tracking-tight">Assign Patient</h2>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Manual entry for Serial #{selectedApp?.serialNumber}</p>
                      </div>
                      <button onClick={() => setShowAssignModal(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
@@ -1053,7 +1061,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                         <input
                            type="text"
                            autoFocus
-                           className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all h-14"
+                           className="w-full bg-slate-50 border border-slate-100 p-4 rounded-ds-sm font-bold text-ink-800 outline-none focus:ring-2 focus:ring-medical-500 transition-all h-14"
                            placeholder="Enter name"
                            value={assignData.name}
                            onChange={e => setAssignData({ ...assignData, name: e.target.value })}
@@ -1063,7 +1071,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Phone Number</label>
                         <input
                            type="tel"
-                           className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all h-14"
+                           className="w-full bg-slate-50 border border-slate-100 p-4 rounded-ds-sm font-bold text-ink-800 outline-none focus:ring-2 focus:ring-medical-500 transition-all h-14"
                            placeholder="01XXXXXXXXX"
                            value={assignData.phone}
                            onChange={e => setAssignData({ ...assignData, phone: e.target.value })}
@@ -1074,7 +1082,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                         <Button
                            variant="outline"
                            fullWidth
-                           className="h-14 rounded-2xl font-black text-slate-500 border-slate-200"
+                           className="h-14 rounded-full font-black text-slate-500 border-slate-200"
                            onClick={() => setShowAssignModal(false)}
                         >
                            Cancel
@@ -1082,7 +1090,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                         <Button
                            fullWidth
                            disabled={!assignData.name || !assignData.phone}
-                           className="h-14 rounded-2xl font-black bg-blue-600 shadow-xl shadow-blue-100 disabled:opacity-50 disabled:shadow-none"
+                           className="h-14 rounded-full font-black bg-medical-500 shadow-md shadow-medical-200 disabled:opacity-50 disabled:shadow-none"
                            onClick={async () => {
                               if (assignData.appId && assignData.name && assignData.phone) {
                                  let slot = allAppointments.find(a => a.id === assignData.appId);

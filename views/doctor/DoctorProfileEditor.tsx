@@ -112,7 +112,7 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                 >
                     <ChevronLeft size={24} />
                 </button>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">Edit Profile</h1>
+                <h1 className="text-xl font-display font-black text-ink-800 tracking-tight">Edit Profile</h1>
                 <div className="w-10 h-10" /> {/* Spacer */}
             </div>
 
@@ -120,7 +120,7 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                 {/* Profile Picture Section */}
                 <div className="flex flex-col items-center">
                     <div className="relative group">
-                        <div className="w-32 h-32 rounded-[2rem] bg-slate-100 border-4 border-white shadow-xl overflow-hidden">
+                        <div className="w-32 h-32 rounded-ds-xl bg-slate-100 border-4 border-white shadow-xl overflow-hidden">
                             {uploading ? (
                                 <div className="w-full h-full flex items-center justify-center bg-slate-50 text-teal-500">
                                     <Loader2 size={32} className="animate-spin" />
@@ -149,14 +149,14 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                             <Camera size={20} />
                         </button>
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-4">Profile Photo</p>
+                    <p className="text-[10px] font-black text-ink-500 uppercase tracking-widest mt-4">Profile Photo</p>
                 </div>
 
-                <GlassCard className="p-8 bg-white border-0 shadow-2xl shadow-slate-200/50 rounded-[2.5rem] space-y-6">
+                <GlassCard className="p-8 bg-white border-0 shadow-ds-soft rounded-ds-xl space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Full Name */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                            <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                 <User size={12} className="text-teal-500" /> Full Name
                             </label>
                             <input
@@ -164,13 +164,13 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                                 value={formData.name}
                                 onChange={handleChange}
                                 placeholder="Dr. Full Name"
-                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-slate-800 transition-all"
+                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all"
                             />
                         </div>
 
                         {/* Specialty */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                            <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                 <Stethoscope size={12} className="text-teal-500" /> Medical Specialty
                             </label>
                             <input
@@ -178,13 +178,13 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                                 value={formData.specialty}
                                 onChange={handleChange}
                                 placeholder="e.g. Cardiology"
-                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-slate-800 transition-all"
+                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all"
                             />
                         </div>
 
                         {/* Degrees */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                            <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                 <GraduationCap size={12} className="text-teal-500" /> Degrees & Qualifications
                             </label>
                             <input
@@ -192,13 +192,13 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                                 value={formData.degrees}
                                 onChange={handleChange}
                                 placeholder="MBBS, FCPS, MD"
-                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-slate-800 transition-all"
+                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all"
                             />
                         </div>
 
                         {/* Experience */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                            <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                 <Clock size={12} className="text-teal-500" /> Experience (Years)
                             </label>
                             <input
@@ -206,14 +206,14 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                                 type="number"
                                 value={formData.experience_years}
                                 onChange={handleChange}
-                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-slate-800 transition-all"
+                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all"
                             />
                         </div>
                     </div>
 
                     {/* About / Bio */}
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                             <Info size={12} className="text-teal-500" /> Professional Biography
                         </label>
                         <textarea
@@ -222,7 +222,7 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                             onChange={handleChange}
                             rows={4}
                             placeholder="Tell patients about your medical background..."
-                            className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-slate-800 transition-all resize-none"
+                            className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all resize-none"
                         />
                     </div>
 
@@ -252,13 +252,13 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                 </GlassCard>
 
                 {/* Info Box */}
-                <div className="bg-blue-50/50 border border-blue-100 rounded-[2rem] p-6 flex gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                <div className="bg-medical-50/50 border border-medical-100 rounded-ds-xl p-6 flex gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-medical-100 flex items-center justify-center text-medical-600 shrink-0">
                         <ShieldCheck size={20} />
                     </div>
                     <div>
-                        <h4 className="text-sm font-black text-blue-900 mb-1">Verify Your Identity</h4>
-                        <p className="text-[12px] text-blue-600 font-medium leading-relaxed">
+                        <h4 className="text-sm font-black text-medical-700 mb-1">Verify Your Identity</h4>
+                        <p className="text-[12px] text-medical-600 font-medium leading-relaxed">
                             Your BMDC number and primary credentials are locked for verification purposes. Contact support if you need to change your medical license details.
                         </p>
                     </div>

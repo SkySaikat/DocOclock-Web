@@ -45,7 +45,7 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
         {
             title: "Practice & Finances",
             items: [
-                { icon: Settings, label: "Chamber & Schedule", path: "/doctor/practice-settings", color: "text-blue-600", bg: "bg-blue-50", desc: "Manage visiting hours and fees" },
+                { icon: Settings, label: "Chamber & Schedule", path: "/doctor/practice-settings", color: "text-medical-600", bg: "bg-medical-50", desc: "Manage visiting hours and fees" },
                 { icon: Banknote, label: "Payout Options", path: "#", color: "text-amber-600", bg: "bg-amber-50", desc: "Manage bKash/Bank details" },
             ]
         },
@@ -62,11 +62,11 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
         <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-10 px-2 lg:px-0">
             {/* DOCTOR PROFILE CARD */}
             <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-teal-600 to-blue-500 rounded-[2.5rem] blur-2xl opacity-10 group-hover:opacity-20 transition duration-500"></div>
-                <GlassCard className="p-6 bg-slate-900 border-0 shadow-2xl rounded-[2.5rem]">
+                <div className="absolute -inset-1 bg-gradient-to-r from-teal-600 to-medical-500 rounded-ds-xl blur-2xl opacity-10 group-hover:opacity-20 transition duration-500"></div>
+                <GlassCard className="p-6 bg-navy-900 border-0 shadow-2xl rounded-ds-xl">
                     <div className="flex items-center gap-5">
                         <div className="relative">
-                            <div className="w-20 h-20 bg-gradient-to-tr from-teal-400 to-blue-400 rounded-2xl flex items-center justify-center text-white text-3xl font-black shadow-2xl ring-4 ring-slate-800 overflow-hidden">
+                            <div className="w-20 h-20 bg-gradient-to-tr from-teal-400 to-medical-400 rounded-2xl flex items-center justify-center text-white text-3xl font-black shadow-2xl ring-4 ring-slate-800 overflow-hidden">
                                 {doctor?.image ? (
                                     <img src={doctor.image} alt="" className="w-full h-full object-cover" />
                                 ) : (
@@ -78,7 +78,7 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
                             </div>
                         </div>
                         <div className="flex-1">
-                            <h2 className="text-3xl font-black text-white leading-tight">{doctor?.name || 'Dr. Account'}</h2>
+                            <h2 className="text-3xl font-display font-black text-white leading-tight">{doctor?.name || 'Dr. Account'}</h2>
                             <div className="flex flex-col gap-1 mt-1">
                                 <p className="text-teal-400 font-bold text-sm flex items-center gap-2">
                                     <Stethoscope size={14} className="text-teal-400" />
@@ -89,7 +89,7 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
                                         BMDC: {doctor?.bmdcNumber || doctor?.bmdc_number || '123456'}
                                     </span>
                                     {doctor?.degrees && (
-                                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700">
+                                        <span className="text-[10px] font-black text-medical-400 uppercase tracking-widest bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700">
                                             {doctor.degrees}
                                         </span>
                                     )}
@@ -104,8 +104,8 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
             <div className="space-y-6">
                 {sections.map((section, idx) => (
                     <div key={idx} className="space-y-4">
-                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.25em] px-4">{section.title}</h3>
-                        <GlassCard className="p-0 overflow-hidden bg-white border-0 ring-1 ring-slate-100 shadow-sm rounded-[2rem]">
+                        <h3 className="text-[11px] font-black text-ink-500 uppercase tracking-[0.25em] px-4">{section.title}</h3>
+                        <GlassCard className="p-0 overflow-hidden bg-white border-0 ring-1 ring-slate-100 shadow-ds-soft rounded-ds-xl">
                             <div className="divide-y divide-slate-50">
                                 {section.items.map((item, i) => (
                                     <div
@@ -118,10 +118,10 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2">
-                                                <span className="block font-black text-slate-800 text-base group-hover:text-teal-700 transition-colors">{item.label}</span>
-                                                {item.path === '#' && <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest bg-slate-100 px-1.5 py-0.5 rounded">Soon</span>}
+                                                <span className="block font-black text-ink-800 text-base group-hover:text-teal-700 transition-colors">{item.label}</span>
+                                                {item.path === '#' && <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest bg-ink-100 px-1.5 py-0.5 rounded">Soon</span>}
                                             </div>
-                                            {item.desc && <span className="text-xs text-slate-400 font-bold leading-tight block mt-0.5">{item.desc}</span>}
+                                            {item.desc && <span className="text-xs text-ink-500 font-bold leading-tight block mt-0.5">{item.desc}</span>}
                                         </div>
                                         <ChevronRight size={22} className="text-slate-300 group-hover:text-teal-500 transform group-hover:translate-x-1 transition-all" />
                                     </div>
@@ -134,16 +134,16 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
 
             {/* GOOGLE CALENDAR SYNC */}
             <div className="space-y-4">
-                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.25em] px-4">Integrations</h3>
-                <GlassCard className="p-5 bg-white border-0 ring-1 ring-slate-100 shadow-sm rounded-[2rem]">
+                <h3 className="text-[11px] font-black text-ink-500 uppercase tracking-[0.25em] px-4">Integrations</h3>
+                <GlassCard className="p-5 bg-white border-0 ring-1 ring-slate-100 shadow-ds-soft rounded-ds-xl">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-xl ${isConnected ? 'bg-green-50' : 'bg-slate-50'}`}>
-                                <Calendar size={22} className={isConnected ? 'text-green-600' : 'text-slate-400'} />
+                            <div className={`p-3 rounded-xl ${isConnected ? 'bg-green-50' : 'bg-ink-50'}`}>
+                                <Calendar size={22} className={isConnected ? 'text-green-600' : 'text-ink-500'} />
                             </div>
                             <div>
-                                <p className="font-black text-slate-800">Google Calendar</p>
-                                <p className="text-xs text-slate-400 font-bold mt-0.5">
+                                <p className="font-black text-ink-800">Google Calendar</p>
+                                <p className="text-xs text-ink-500 font-bold mt-0.5">
                                     {isConnected ? 'Connected — appointments will sync automatically' : isConfigured ? 'Click Connect to sync your appointments' : 'Add VITE_GOOGLE_CLIENT_ID to .env to enable'}
                                 </p>
                             </div>
@@ -153,7 +153,7 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
                                 <Unlink size={14} /> Disconnect
                             </button>
                         ) : (
-                            <button onClick={connect} disabled={!isConfigured} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                            <button onClick={connect} disabled={!isConfigured} className="flex items-center gap-1.5 px-4 py-2 bg-medical-600 hover:bg-medical-500 text-white text-xs font-black rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                                 <Link size={14} /> Connect
                             </button>
                         )}
@@ -181,7 +181,7 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
                 </Button>
                 <div className="flex flex-col items-center gap-2 mt-8 pb-8 opacity-30">
                     <Heart size={20} className="text-teal-500" fill="currentColor" />
-                    <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">DocOclock for Doctors • v2.0.1</p>
+                    <p className="text-center text-[10px] font-black text-ink-500 uppercase tracking-[0.3em]">DocOclock for Doctors • v2.0.1</p>
                 </div>
             </div>
         </div>

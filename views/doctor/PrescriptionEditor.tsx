@@ -332,19 +332,19 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
     <div className="flex flex-col h-full md:h-[calc(100vh-140px)] relative">
 
       {/* MOBILE TAB TOGGLE */}
-      <div className="xl:hidden flex bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm -mx-4 px-4 pt-2 mb-4">
+      <div className="xl:hidden flex bg-white border-b border-ink-100 sticky top-0 z-40 shadow-ds-card -mx-4 px-4 pt-2 mb-4">
         <button
           onClick={() => setMobileView('editor')}
-          className={`flex-1 py-3 text-sm font-black border-b-2 transition-colors flex items-center justify-center gap-2 ${mobileView === 'editor' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}
+          className={`flex-1 py-3 text-sm font-black border-b-2 transition-colors flex items-center justify-center gap-2 ${mobileView === 'editor' ? 'border-medical-600 text-medical-600' : 'border-transparent text-ink-500'}`}
         >
           <Edit3 size={16} /> Editor
         </button>
         <button
           onClick={() => setMobileView('preview')}
-          className={`flex-1 py-3 text-sm font-black border-b-2 transition-colors flex items-center justify-center gap-2 ${mobileView === 'preview' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}
+          className={`flex-1 py-3 text-sm font-black border-b-2 transition-colors flex items-center justify-center gap-2 ${mobileView === 'preview' ? 'border-medical-600 text-medical-600' : 'border-transparent text-ink-500'}`}
         >
           <Eye size={16} /> Preview Rx
-          <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full text-[10px]">{selectedMeds.length}</span>
+          <span className="bg-medical-100 text-medical-700 px-1.5 py-0.5 rounded-full text-[10px]">{selectedMeds.length}</span>
         </button>
       </div>
 
@@ -355,7 +355,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
           <GlassCard className="p-4">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-bold text-slate-500 uppercase">Patient Details</h3>
+              <h3 className="text-sm font-bold text-ink-500 uppercase">Patient Details</h3>
               {initialPatient && (
                 <button onClick={onClearInitial} className="text-[10px] font-black text-red-500 uppercase flex items-center gap-1">
                   <X size={10} /> Clear Data
@@ -365,13 +365,13 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
             <div className="space-y-4">
               <div className="flex gap-4">
                 <input
-                  className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 h-12 font-bold"
+                  className="flex-1 bg-white border border-ink-200 rounded-ds-sm px-4 py-3 outline-none focus:ring-2 focus:ring-medical-500 h-12 font-bold"
                   placeholder="Patient Name"
                   value={patientName}
                   onChange={e => setPatientName(e.target.value)}
                 />
                 <input
-                  className="w-24 bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 h-12 text-center font-bold"
+                  className="w-24 bg-white border border-ink-200 rounded-ds-sm px-4 py-3 outline-none focus:ring-2 focus:ring-medical-500 h-12 text-center font-bold"
                   placeholder="Age"
                   value={age}
                   onChange={e => setAge(e.target.value)}
@@ -379,7 +379,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
               </div>
               <div className="flex gap-2">
                 {['Male', 'Female', 'Other'].map(g => (
-                  <button key={g} onClick={() => setGender(g)} className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all border ${gender === g ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white border-slate-200 text-slate-400'}`}>
+                  <button key={g} onClick={() => setGender(g)} className={`flex-1 py-2 text-xs font-black uppercase rounded-ds-sm transition-all border ${gender === g ? 'bg-medical-500 border-medical-500 text-white shadow-md shadow-medical-200' : 'bg-white border-ink-200 text-ink-400'}`}>
                     {g}
                   </button>
                 ))}
@@ -388,16 +388,16 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
           </GlassCard>
 
           <GlassCard className="p-4">
-            <h3 className="text-sm font-bold text-slate-500 uppercase mb-3">Clinical Notes</h3>
+            <h3 className="text-sm font-bold text-ink-500 uppercase mb-3">Clinical Notes</h3>
             <div className="space-y-4">
               <textarea
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 h-16 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-2 h-16 text-sm outline-none focus:ring-2 focus:ring-medical-500"
                 placeholder="Chief Complaints (one per line)..."
                 value={complaints.join('\n')}
                 onChange={e => setComplaints(e.target.value.split('\n'))}
               />
               <textarea
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 h-16 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-2 h-16 text-sm outline-none focus:ring-2 focus:ring-medical-500"
                 placeholder="Diagnosis..."
                 value={diagnosis}
                 onChange={e => setDiagnosis(e.target.value)}
@@ -407,12 +407,12 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
           <GlassCard className="p-4">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-bold text-slate-500 uppercase flex items-center gap-2">
-                <ClipboardCheck size={16} className="text-blue-500" /> Tests Recommended
+              <h3 className="text-sm font-bold text-ink-500 uppercase flex items-center gap-2">
+                <ClipboardCheck size={16} className="text-medical-500" /> Tests Recommended
               </h3>
             </div>
             <textarea
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 h-20 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-3 h-20 text-sm outline-none focus:ring-2 focus:ring-medical-500"
               placeholder="Required diagnostic tests..."
               value={tests.join('\n')}
               onChange={e => setTests(e.target.value.split('\n'))}
@@ -421,11 +421,11 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
           <GlassCard className="p-4 relative z-20 overflow-visible">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-slate-500 uppercase flex items-center gap-2">
-                <Pill size={15} className="text-blue-500" /> Add Medicine
+              <h3 className="text-sm font-bold text-ink-500 uppercase flex items-center gap-2">
+                <Pill size={15} className="text-medical-500" /> Add Medicine
               </h3>
               {!tempMed && !addingToCatalog && (
-                <span className="text-[10px] font-bold text-slate-400">
+                <span className="text-[10px] font-bold text-ink-400">
                   {catalogLoading ? <Loader2 size={10} className="animate-spin inline" /> : `${catalog.length} in catalog`}
                 </span>
               )}
@@ -433,35 +433,35 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
             {tempMed ? (
               /* ── DOSAGE CONFIGURATION PANEL ─────────────────────── */
-              <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 space-y-4">
+              <div className="bg-medical-50/50 rounded-ds-md p-4 border border-medical-100 space-y-4">
                 {/* Header */}
-                <div className="flex justify-between items-start pb-3 border-b border-blue-100">
+                <div className="flex justify-between items-start pb-3 border-b border-medical-100">
                   <div>
                     <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[9px] font-black px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700">{tempMed.medicine?.type}</span>
-                      <span className="text-[9px] font-black px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{tempMed.medicine?.route}</span>
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded-ds-sm bg-medical-100 text-medical-700">{tempMed.medicine?.type}</span>
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded-ds-sm bg-ink-100 text-ink-600">{tempMed.medicine?.route}</span>
                     </div>
-                    <h4 className="font-black text-blue-900 text-lg leading-tight">{tempMed.medicine?.brandName}</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">{tempMed.medicine?.genericName}{tempMed.medicine?.strength ? ` · ${tempMed.medicine.strength}` : ''}</p>
+                    <h4 className="font-display font-black text-medical-700 text-lg leading-tight">{tempMed.medicine?.brandName}</h4>
+                    <p className="text-xs text-ink-500 mt-0.5">{tempMed.medicine?.genericName}{tempMed.medicine?.strength ? ` · ${tempMed.medicine.strength}` : ''}</p>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={(e) => toggleFavorite(e, tempMed.medicine?.id || '')} className="p-1.5 rounded-xl hover:bg-blue-100 transition-all">
-                      <Star size={16} className={favorites.includes(tempMed.medicine?.id || '') ? 'text-amber-400 fill-amber-400' : 'text-slate-300'} />
+                    <button onClick={(e) => toggleFavorite(e, tempMed.medicine?.id || '')} className="p-1.5 rounded-ds-sm hover:bg-medical-100 transition-all">
+                      <Star size={16} className={favorites.includes(tempMed.medicine?.id || '') ? 'text-amber-400 fill-amber-400' : 'text-ink-300'} />
                     </button>
-                    <button onClick={cancelAddMedicine} className="bg-white p-1.5 rounded-xl text-slate-400 hover:text-red-500 shadow-sm border border-slate-100"><X size={16} /></button>
+                    <button onClick={cancelAddMedicine} className="bg-white p-1.5 rounded-ds-sm text-ink-400 hover:text-red-500 shadow-sm border border-ink-100"><X size={16} /></button>
                   </div>
                 </div>
 
                 {/* Morning / Noon / Night */}
                 <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Dosage</label>
-                  <div className="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-xl border border-slate-200">
+                  <label className="text-[9px] font-black text-ink-400 uppercase tracking-widest block mb-2">Dosage</label>
+                  <div className="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-ds-sm border border-ink-200">
                     {['Morning', 'Noon', 'Night'].map((period, i) => {
                       const key = i === 0 ? 'morningDose' : i === 1 ? 'noonDose' : 'nightDose';
                       return (
                         <div key={period} className="text-center">
-                          <label className="text-[9px] text-slate-400 block mb-1.5 font-black uppercase">{period}</label>
-                          <select className="w-full bg-slate-50 rounded-lg py-2 text-center text-sm font-bold outline-none border border-slate-100"
+                          <label className="text-[9px] text-ink-400 block mb-1.5 font-black uppercase">{period}</label>
+                          <select className="w-full bg-ink-50 rounded-ds-sm py-2 text-center text-sm font-bold outline-none border border-ink-100"
                             value={tempMed[key as keyof typeof tempMed] as string}
                             onChange={(e) => setTempMed({ ...tempMed, [key]: e.target.value })}>
                             {DOSAGE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -474,7 +474,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
                   <div className="flex gap-1.5 mt-2 flex-wrap">
                     {[['0+0+1','Bedtime'],['1+0+1','BD'],['1+1+1','TDS'],['1+0+0','Morning only'],['0+1+0','Noon only']].map(([p, label]) => (
                       <button key={p} onClick={() => applyDosagePreset(p)}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-slate-600 rounded-lg text-[9px] font-black transition-all">
+                        className="px-2.5 py-1 bg-ink-100 hover:bg-medical-100 hover:text-medical-700 text-ink-600 rounded-ds-sm text-[9px] font-black transition-all">
                         {label}
                       </button>
                     ))}
@@ -483,18 +483,18 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
                 {/* Duration */}
                 <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Duration</label>
+                  <label className="text-[9px] font-black text-ink-400 uppercase tracking-widest block mb-2">Duration</label>
                   <div className="flex items-center gap-2 flex-wrap">
                     <input type="number" min="1" max="365"
-                      className="w-16 bg-white border border-slate-200 rounded-xl px-2 py-2 text-center font-black text-slate-900 outline-none text-sm"
+                      className="w-16 bg-white border border-ink-200 rounded-ds-sm px-2 py-2 text-center font-black text-ink-800 outline-none text-sm"
                       value={tempMed.duration || '7'}
                       onChange={e => setTempMed({ ...tempMed, duration: e.target.value })} />
-                    <span className="text-xs font-bold text-slate-400">days</span>
+                    <span className="text-xs font-bold text-ink-400">days</span>
                     <div className="flex gap-1 flex-wrap">
                       {[3, 5, 7, 10, 14, 30].map(d => (
                         <button key={d} onClick={() => setTempMed({ ...tempMed, duration: String(d) })}
-                          className={`px-2 py-1 rounded-lg text-[9px] font-black transition-all ${
-                            String(tempMed.duration) === String(d) ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          className={`px-2 py-1 rounded-ds-sm text-[9px] font-black transition-all ${
+                            String(tempMed.duration) === String(d) ? 'bg-medical-600 text-white' : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
                           }`}>{d}d</button>
                       ))}
                     </div>
@@ -503,54 +503,54 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
                 {/* Instruction */}
                 <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Instruction</label>
+                  <label className="text-[9px] font-black text-ink-400 uppercase tracking-widest block mb-2">Instruction</label>
                   <div className="grid grid-cols-2 gap-2">
                     {['After meal', 'Before meal', 'Empty stomach', 'With water'].map(instr => (
                       <button key={instr} onClick={() => setTempMed({ ...tempMed, instruction: instr })}
-                        className={`py-2 rounded-xl text-xs font-black border-2 transition-all ${
-                          tempMed.instruction === instr ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+                        className={`py-2 rounded-ds-sm text-xs font-black border-2 transition-all ${
+                          tempMed.instruction === instr ? 'border-medical-500 bg-medical-50 text-medical-700' : 'border-ink-100 bg-white text-ink-500 hover:border-ink-200'
                         }`}>{instr}</button>
                     ))}
                   </div>
                 </div>
 
-                <Button fullWidth onClick={confirmAddMedicine} className="h-12 font-black shadow-lg bg-blue-600 text-white">✓ Add to Prescription</Button>
+                <Button fullWidth onClick={confirmAddMedicine} className="h-12 font-black shadow-lg bg-medical-600 text-white">✓ Add to Prescription</Button>
               </div>
 
             ) : addingToCatalog ? (
               /* ── ADD NEW MEDICINE TO CATALOG ─────────────────────── */
-              <div className="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-4 space-y-3">
+              <div className="bg-emerald-50/60 border border-emerald-100 rounded-ds-md p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-sm font-black text-emerald-800">Add to Medicine Catalog</h4>
                     <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Available to all doctors once added</p>
                   </div>
-                  <button onClick={() => setAddingToCatalog(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+                  <button onClick={() => setAddingToCatalog(false)} className="text-ink-400 hover:text-ink-600"><X size={16} /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <input placeholder="Brand Name *" value={newMedForm.name}
                     onChange={e => setNewMedForm({ ...newMedForm, name: e.target.value })}
-                    className="col-span-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                    className="col-span-2 p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400" />
                   <input placeholder="Generic Name" value={newMedForm.generic_name}
                     onChange={e => setNewMedForm({ ...newMedForm, generic_name: e.target.value })}
-                    className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                    className="p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400" />
                   <input placeholder="Strength (e.g. 500mg)" value={newMedForm.strength}
                     onChange={e => setNewMedForm({ ...newMedForm, strength: e.target.value })}
-                    className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                    className="p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400" />
                   <select value={newMedForm.category} onChange={e => setNewMedForm({ ...newMedForm, category: e.target.value })}
-                    className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400">
+                    className="p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400">
                     {MEDICINE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <select value={newMedForm.form} onChange={e => setNewMedForm({ ...newMedForm, form: e.target.value })}
-                    className="p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400">
+                    className="p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400">
                     {MEDICINE_FORMS.map(f => <option key={f} value={f}>{f}</option>)}
                   </select>
                   <input placeholder="Manufacturer (optional)" value={newMedForm.manufacturer}
                     onChange={e => setNewMedForm({ ...newMedForm, manufacturer: e.target.value })}
-                    className="col-span-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-400" />
+                    className="col-span-2 p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400" />
                 </div>
                 <button disabled={!newMedForm.name.trim() || savingNewMed} onClick={handleAddToCatalog}
-                  className="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                  className="w-full py-3 bg-emerald-600 text-white rounded-ds-sm text-xs font-black hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
                   {savingNewMed ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   {savingNewMed ? 'Adding to catalog...' : 'Add & Use in Prescription'}
                 </button>
@@ -563,17 +563,17 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
                   {catalogCategories.map(cat => (
                     <button key={cat} onClick={() => setCategoryFilter(cat)}
-                      className={`shrink-0 px-3 py-1 rounded-lg text-[9px] font-black transition-all ${
-                        categoryFilter === cat ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      className={`shrink-0 px-3 py-1 rounded-ds-sm text-[9px] font-black transition-all ${
+                        categoryFilter === cat ? 'bg-medical-600 text-white shadow-md shadow-medical-500/20' : 'bg-ink-100 text-ink-500 hover:bg-ink-200'
                       }`}>{cat}</button>
                   ))}
                 </div>
 
                 {/* Search input */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
+                  <Search className="absolute left-3 top-3.5 text-ink-400" size={16} />
                   <input
-                    className="w-full pl-9 pr-9 bg-white border border-slate-200 rounded-xl py-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                    className="w-full pl-9 pr-9 bg-white border border-ink-200 rounded-ds-sm py-3 outline-none focus:ring-2 focus:ring-medical-500 text-sm font-medium"
                     placeholder="Search by brand, generic, or manufacturer..."
                     value={medSearch}
                     onChange={e => { setMedSearch(e.target.value); setShowMedResults(true); }}
@@ -581,7 +581,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
                   />
                   {medSearch && (
                     <button onClick={() => { setMedSearch(''); setShowMedResults(false); }}
-                      className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600">
+                      className="absolute right-3 top-3.5 text-ink-400 hover:text-ink-600">
                       <X size={16} />
                     </button>
                   )}
@@ -589,35 +589,35 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
                 {/* Results dropdown */}
                 {showMedResults && medSearch && (
-                  <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-xl max-h-72 overflow-y-auto">
+                  <div className="bg-white border border-ink-100 rounded-ds-md overflow-hidden shadow-xl max-h-72 overflow-y-auto">
                     {catalogLoading ? (
-                      <div className="p-6 text-center"><Loader2 size={20} className="animate-spin text-blue-500 mx-auto" /></div>
+                      <div className="p-6 text-center"><Loader2 size={20} className="animate-spin text-medical-500 mx-auto" /></div>
                     ) : filteredMedicines.length > 0 ? (
                       filteredMedicines.map(med => (
                         <div key={med.id} onClick={() => initiateAddMedicine(med)}
-                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-slate-50 last:border-0 group">
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-medical-50 cursor-pointer border-b border-ink-50 last:border-0 group">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="font-black text-slate-900 text-sm">{med.brandName}</p>
+                              <p className="font-black text-ink-800 text-sm">{med.brandName}</p>
                               {favorites.includes(med.id) && <Star size={10} className="text-amber-400 fill-amber-400 shrink-0" />}
                             </div>
-                            <p className="text-[10px] text-slate-400 font-medium truncate">{med.genericName}</p>
+                            <p className="text-[10px] text-ink-400 font-medium truncate">{med.genericName}</p>
                           </div>
                           <div className="flex flex-col items-end gap-1 shrink-0">
-                            {med.strength && <span className="bg-slate-100 text-slate-600 text-[9px] font-black px-2 py-0.5 rounded-md">{med.strength}</span>}
-                            <span className="bg-blue-50 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded-md">{med.route}</span>
+                            {med.strength && <span className="bg-ink-100 text-ink-600 text-[9px] font-black px-2 py-0.5 rounded-md">{med.strength}</span>}
+                            <span className="bg-medical-50 text-medical-600 text-[9px] font-black px-2 py-0.5 rounded-md">{med.route}</span>
                           </div>
                         </div>
                       ))
                     ) : (
                       <div className="p-4 space-y-3">
-                        <p className="text-sm text-slate-500 font-medium">No results for <span className="font-black">"{medSearch}"</span></p>
+                        <p className="text-sm text-ink-500 font-medium">No results for <span className="font-black">"{medSearch}"</span></p>
                         <button onClick={() => { setNewMedForm(prev => ({ ...prev, name: medSearch })); setAddingToCatalog(true); setShowMedResults(false); setMedSearch(''); }}
-                          className="w-full py-3 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-black border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center justify-center gap-2">
+                          className="w-full py-3 bg-emerald-50 text-emerald-700 rounded-ds-sm text-xs font-black border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center justify-center gap-2">
                           <Plus size={14} /> Add "{medSearch}" to medicine catalog
                         </button>
                         <button onClick={() => { setAddingToCatalog(true); setShowMedResults(false); setMedSearch(''); }}
-                          className="w-full py-2 text-slate-400 rounded-xl text-xs font-bold hover:text-slate-600 transition-all flex items-center justify-center gap-1">
+                          className="w-full py-2 text-ink-400 rounded-ds-sm text-xs font-bold hover:text-ink-600 transition-all flex items-center justify-center gap-1">
                           <Tag size={12} /> Add custom medicine with full details
                         </button>
                       </div>
@@ -627,14 +627,14 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
                 {/* Recents / Favorites when search empty */}
                 {showMedResults && !medSearch && filteredMedicines.length > 0 && (
-                  <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                    <p className="px-4 pt-3 pb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Recent & Favourites</p>
+                  <div className="bg-white border border-ink-100 rounded-ds-md overflow-hidden shadow-sm">
+                    <p className="px-4 pt-3 pb-1 text-[9px] font-black text-ink-400 uppercase tracking-widest">Recent & Favourites</p>
                     {filteredMedicines.slice(0, 8).map(med => (
                       <div key={med.id} onClick={() => initiateAddMedicine(med)}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer border-t border-slate-50">
-                        <Star size={12} className={favorites.includes(med.id) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'} />
-                        <span className="flex-1 font-bold text-slate-800 text-sm">{med.brandName}</span>
-                        <span className="text-[10px] text-slate-400">{med.strength}</span>
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-medical-50 cursor-pointer border-t border-ink-50">
+                        <Star size={12} className={favorites.includes(med.id) ? 'text-amber-400 fill-amber-400' : 'text-ink-200'} />
+                        <span className="flex-1 font-bold text-ink-800 text-sm">{med.brandName}</span>
+                        <span className="text-[10px] text-ink-400">{med.strength}</span>
                       </div>
                     ))}
                   </div>
@@ -643,19 +643,19 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
                 {/* Manual add button when not searching */}
                 {!medSearch && (
                   <button onClick={() => { setAddingToCatalog(true); setShowMedResults(false); }}
-                    className="w-full py-2.5 border-2 border-dashed border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 rounded-xl text-xs font-black text-slate-400 hover:text-emerald-700 transition-all flex items-center justify-center gap-2 mt-1">
+                    className="w-full py-2.5 border-2 border-dashed border-ink-200 hover:border-emerald-300 hover:bg-emerald-50/50 rounded-ds-sm text-xs font-black text-ink-400 hover:text-emerald-700 transition-all flex items-center justify-center gap-2 mt-1">
                     <Plus size={14} /> Add custom / new medicine to catalog
                   </button>
                 )}
               </div>
             )}
 
-            <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><CalendarDays size={16} className="text-blue-500" /> Next Follow Up</h3>
+            <h3 className="text-sm font-bold text-ink-500 uppercase mb-3 flex items-center gap-2"><CalendarDays size={16} className="text-medical-500" /> Next Follow Up</h3>
             <div className="space-y-3">
-              <input type="date" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 h-12 outline-none focus:ring-2 focus:ring-blue-500" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
+              <input type="date" className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-3 h-12 outline-none focus:ring-2 focus:ring-medical-500" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
               <div className="flex gap-2">
                 {[7, 14, 30].map(days => (
-                  <button type="button" key={days} onClick={() => handleQuickDate(days)} className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold border transition-all ${followUpDate ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                  <button type="button" key={days} onClick={() => handleQuickDate(days)} className={`flex-1 py-2 px-3 rounded-ds-sm text-xs font-bold border transition-all ${followUpDate ? 'bg-medical-50 border-medical-100 text-medical-600' : 'bg-ink-50 border-ink-100 text-ink-400'}`}>
                     +{days === 30 ? '1 Month' : `${days} Days`}
                   </button>
                 ))}
@@ -664,13 +664,13 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
           </GlassCard>
 
           <GlassCard className="p-4">
-            <h3 className="text-sm font-bold text-slate-500 uppercase mb-3">Advice</h3>
-            <textarea className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 h-20 text-sm outline-none" value={advice} onChange={e => setAdvice(e.target.value)} />
+            <h3 className="text-sm font-bold text-ink-500 uppercase mb-3">Advice</h3>
+            <textarea className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-3 h-20 text-sm outline-none" value={advice} onChange={e => setAdvice(e.target.value)} />
           </GlassCard>
         </div>
 
         {/* RIGHT PANEL: PREVIEW */}
-        <GlassCard className={`flex-[1.5] flex flex-col h-full bg-white shadow-2xl relative overflow-hidden p-0 rounded-none md:rounded-3xl border-0 md:border md:border-white/60 ${mobileView === 'editor' ? 'hidden xl:flex' : 'flex'} pb-40 xl:pb-0`}>
+        <GlassCard className={`flex-[1.5] flex flex-col h-full bg-white shadow-2xl relative overflow-hidden p-0 rounded-none md:rounded-ds-lg border-0 md:border md:border-white/60 ${mobileView === 'editor' ? 'hidden xl:flex' : 'flex'} pb-40 xl:pb-0`}>
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center" style={{ opacity: currentTemplate.watermarkOpacity }}>
             <img src={currentTemplate.logoUrl} className="w-1/2 grayscale" alt="Watermark" />
           </div>
@@ -679,39 +679,39 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
               <img src={currentTemplate.logoUrl} className="w-12 h-12 md:w-16 md:h-16 object-contain shrink-0" alt="Logo" />
               <div>
                 <h1 className="text-base md:text-2xl font-serif font-bold leading-tight" style={{ color: currentTemplate.themeColor }}>{currentTemplate.hospitalName}</h1>
-                <p className="text-[9px] md:text-[10px] text-slate-500 mt-1 max-w-[240px] leading-relaxed">{currentTemplate.address}</p>
+                <p className="text-[9px] md:text-[10px] text-ink-500 mt-1 max-w-[240px] leading-relaxed">{currentTemplate.address}</p>
               </div>
             </div>
-            <div className="text-left md:text-right border-l-2 md:border-l-0 md:border-r-0 border-slate-200/50 pl-4 md:pl-0">
-              <h2 className="text-sm md:text-xl font-bold text-slate-900 leading-tight">{doctor?.name}</h2>
-              <p className="text-[10px] md:text-sm text-blue-600 font-bold uppercase tracking-widest mt-0.5">{doctor?.specialty}</p>
-              <p className="text-[9px] text-slate-400 font-medium mt-1 uppercase tracking-tighter">{doctor?.degrees}</p>
+            <div className="text-left md:text-right border-l-2 md:border-l-0 md:border-r-0 border-ink-200/50 pl-4 md:pl-0">
+              <h2 className="text-sm md:text-xl font-bold text-ink-800 leading-tight">{doctor?.name}</h2>
+              <p className="text-[10px] md:text-sm text-medical-600 font-bold uppercase tracking-widest mt-0.5">{doctor?.specialty}</p>
+              <p className="text-[9px] text-ink-400 font-medium mt-1 uppercase tracking-tighter">{doctor?.degrees}</p>
             </div>
           </div>
-          <div className="px-6 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center gap-x-8 gap-y-2 text-[10px] md:text-xs font-black uppercase tracking-widest border-b border-slate-100 bg-slate-50/50">
-            <div className="flex items-center gap-1 min-w-0"><span className="text-blue-600 shrink-0">Name:</span> <span className="text-slate-600 truncate">{patientName || '__________'}</span></div>
-            <div className="flex items-center gap-1"><span className="text-blue-600 shrink-0">Age/Sex:</span> <span className="text-slate-600">{age || '____'} / {gender.charAt(0)}</span></div>
-            <div className="sm:ml-auto text-blue-600 flex items-center gap-1">ID: <span className="text-slate-600">#PRES-LIVE</span></div>
+          <div className="px-6 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center gap-x-8 gap-y-2 text-[10px] md:text-xs font-black uppercase tracking-widest border-b border-ink-100 bg-ink-50/50">
+            <div className="flex items-center gap-1 min-w-0"><span className="text-medical-600 shrink-0">Name:</span> <span className="text-ink-600 truncate">{patientName || '__________'}</span></div>
+            <div className="flex items-center gap-1"><span className="text-medical-600 shrink-0">Age/Sex:</span> <span className="text-ink-600">{age || '____'} / {gender.charAt(0)}</span></div>
+            <div className="sm:ml-auto text-medical-600 flex items-center gap-1">ID: <span className="text-ink-600">#PRES-LIVE</span></div>
           </div>
           <div className="flex-1 flex flex-col md:flex-row p-6 md:p-8 overflow-y-auto custom-scrollbar">
-            <div className="w-full md:w-1/3 md:border-r border-slate-100 md:pr-6 space-y-10">
+            <div className="w-full md:w-1/3 md:border-r border-ink-100 md:pr-6 space-y-10">
               <section>
-                <h4 className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Clinical Findings</h4>
-                <ul className="space-y-1.5 pl-4 list-disc text-xs font-bold text-slate-700 marker:text-slate-300">
-                  {complaints.filter(c => c.trim()).length > 0 ? complaints.map((c, i) => <li key={i}>{c}</li>) : <li className="text-slate-300 italic">None entered</li>}
+                <h4 className="text-[9px] font-black text-medical-500 uppercase tracking-[0.2em] mb-3">Clinical Findings</h4>
+                <ul className="space-y-1.5 pl-4 list-disc text-xs font-bold text-ink-700 marker:text-ink-300">
+                  {complaints.filter(c => c.trim()).length > 0 ? complaints.map((c, i) => <li key={i}>{c}</li>) : <li className="text-ink-300 italic">None entered</li>}
                 </ul>
               </section>
               <section>
-                <h4 className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Tests Recommended</h4>
-                <ol className="space-y-1.5 pl-4 list-decimal text-xs font-bold text-slate-700 marker:text-slate-300">
-                  {tests.filter(t => t.trim()).length > 0 ? tests.map((t, i) => <li key={i}>{t}</li>) : <li className="text-slate-300 italic">No tests requested</li>}
+                <h4 className="text-[9px] font-black text-medical-500 uppercase tracking-[0.2em] mb-3">Tests Recommended</h4>
+                <ol className="space-y-1.5 pl-4 list-decimal text-xs font-bold text-ink-700 marker:text-ink-300">
+                  {tests.filter(t => t.trim()).length > 0 ? tests.map((t, i) => <li key={i}>{t}</li>) : <li className="text-ink-300 italic">No tests requested</li>}
                 </ol>
               </section>
               {followUpDate && (
-                <section className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
-                  <h4 className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] mb-2">Follow Up</h4>
-                  <p className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                    <Calendar size={14} className="text-blue-500" /> {new Date(followUpDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                <section className="bg-medical-50/50 p-4 rounded-ds-md border border-medical-100">
+                  <h4 className="text-[9px] font-black text-medical-500 uppercase tracking-[0.2em] mb-2">Follow Up</h4>
+                  <p className="text-xs font-bold text-ink-700 flex items-center gap-2">
+                    <Calendar size={14} className="text-medical-500" /> {new Date(followUpDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </section>
               )}
@@ -719,21 +719,21 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
             <div className="flex-1 md:pl-8 flex flex-col relative pt-8 md:pt-0">
               <div className="absolute top-0 right-0 opacity-[0.05] pointer-events-none select-none"><span className="text-8xl font-black italic">Rx</span></div>
               <div className="flex-1 space-y-8 min-h-[300px]">
-                {selectedMeds.length === 0 && <p className="text-slate-300 italic text-sm mt-12">No medicines added to Rx yet...</p>}
+                {selectedMeds.length === 0 && <p className="text-ink-300 italic text-sm mt-12">No medicines added to Rx yet...</p>}
                 {selectedMeds.map((item, idx) => (
                   <div key={idx} className="relative group">
-                    <h4 className="font-black text-slate-900 text-base md:text-lg">{idx + 1}. {item.medicine.brandName} <span className="text-xs font-bold text-slate-400">{item.medicine.strength}</span></h4>
+                    <h4 className="font-black text-ink-800 text-base md:text-lg">{idx + 1}. {item.medicine.brandName} <span className="text-xs font-bold text-ink-400">{item.medicine.strength}</span></h4>
                     <div className="flex items-center gap-6 mt-3">
-                      <div className="bg-slate-100 px-3 py-1 rounded-lg font-black tracking-widest text-slate-800 text-xs border border-slate-200">{item.morningDose} + {item.noonDose} + {item.nightDose}</div>
-                      <div className="text-xs text-slate-500 font-bold">{item.instruction} | {item.duration} Days</div>
+                      <div className="bg-ink-100 px-3 py-1 rounded-ds-sm font-black tracking-widest text-ink-800 text-xs border border-ink-200">{item.morningDose} + {item.noonDose} + {item.nightDose}</div>
+                      <div className="text-xs text-ink-500 font-bold">{item.instruction} | {item.duration} Days</div>
                     </div>
-                    <button onClick={() => removeMedicine(idx)} className="absolute top-0 -right-2 p-1 text-slate-300 hover:text-red-500 transition"><Trash2 size={16} /></button>
+                    <button onClick={() => removeMedicine(idx)} className="absolute top-0 -right-2 p-1 text-ink-300 hover:text-red-500 transition"><Trash2 size={16} /></button>
                   </div>
                 ))}
               </div>
-              <div className="mt-8 pt-6 border-t border-slate-100">
-                <h4 className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] mb-2">Advice:</h4>
-                <p className="text-xs font-bold text-slate-600 italic leading-relaxed">{advice}</p>
+              <div className="mt-8 pt-6 border-t border-ink-100">
+                <h4 className="text-[9px] font-black text-medical-500 uppercase tracking-[0.2em] mb-2">Advice:</h4>
+                <p className="text-xs font-bold text-ink-600 italic leading-relaxed">{advice}</p>
               </div>
             </div>
           </div>
@@ -744,14 +744,14 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       <div className="fixed bottom-[calc(90px+env(safe-area-inset-bottom))] md:bottom-8 left-0 right-0 md:left-auto md:right-8 z-[70] px-4 md:px-0 flex flex-col items-end gap-3">
         
         {/* Template Selector Bubble */}
-        <div className="bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-xl border border-white/60 flex items-center gap-2 pr-4 transition-all hover:shadow-2xl">
-          <div className="bg-slate-100 p-2 rounded-xl text-slate-500">
+        <div className="bg-white/90 backdrop-blur-xl p-2 rounded-ds-md shadow-xl border border-white/60 flex items-center gap-2 pr-4 transition-all hover:shadow-2xl">
+          <div className="bg-ink-100 p-2 rounded-ds-sm text-ink-500">
             <FileText size={16} />
           </div>
           <select 
             value={selectedTemplate}
             onChange={(e) => setSelectedTemplate(e.target.value as any)}
-            className="bg-transparent border-0 font-black text-[10px] uppercase tracking-widest text-slate-700 outline-none cursor-pointer"
+            className="bg-transparent border-0 font-black text-[10px] uppercase tracking-widest text-ink-700 outline-none cursor-pointer"
           >
             <option value="modern">Modern Style</option>
             <option value="classic">Classic Style</option>
@@ -759,22 +759,22 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
           </select>
         </div>
 
-        <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-xl p-3 md:p-0 rounded-[2.5rem] md:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:shadow-2xl border border-white/60 flex flex-row gap-3">
+        <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-xl p-3 md:p-0 rounded-[2.5rem] md:rounded-ds-lg shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:shadow-2xl border border-white/60 flex flex-row gap-3">
           <Button
             variant="outline"
-            className="flex-1 md:w-40 h-14 md:h-16 rounded-2xl md:rounded-3xl bg-white shadow-lg gap-2 font-black border-2 border-slate-100 text-slate-600"
+            className="flex-1 md:w-40 h-14 md:h-16 rounded-ds-md md:rounded-ds-lg bg-white shadow-lg gap-2 font-display font-black border-2 border-ink-100 text-ink-600"
             onClick={() => alert('Draft saved successfully!')}
           >
             <Save size={20} /> <span className="hidden sm:inline">Save Draft</span><span className="sm:hidden">Draft</span>
           </Button>
           <Button
-            className="flex-[2] md:w-64 h-14 md:h-16 rounded-2xl md:rounded-3xl shadow-2xl gap-3 font-black text-lg bg-teal-600 hover:bg-teal-700 text-white border-0"
+            className="flex-[2] md:w-64 h-14 md:h-16 rounded-ds-md md:rounded-ds-lg shadow-2xl gap-3 font-display font-black text-lg bg-medical-500 hover:bg-medical-600 text-white border-0"
             onClick={handleFinishPrescription}
           >
             <Send size={20} /> <span className="inline">Send Rx</span>
           </Button>
           <Button
-            className="flex-1 md:w-20 h-14 md:h-16 rounded-2xl md:rounded-3xl shadow-2xl gap-3 font-black text-lg bg-blue-600 text-white border-0"
+            className="flex-1 md:w-20 h-14 md:h-16 rounded-ds-md md:rounded-ds-lg shadow-2xl gap-3 font-display font-black text-lg bg-medical-600 text-white border-0"
             onClick={() => {
               const rxData = {
                 id: `rx-${crypto.randomUUID().slice(0, 8)}`,

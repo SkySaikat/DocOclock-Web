@@ -23,7 +23,7 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
     onCtaClick
 }) => {
     return (
-        <div className="flex-shrink-0 w-[260px] md:w-[280px] rounded-[16px] bg-white border border-slate-100 shadow-sm flex flex-col group relative overflow-hidden hover:border-blue-200 transition-all duration-300">
+        <div className="flex-shrink-0 w-[260px] md:w-[280px] rounded-ds-lg bg-white shadow-ds-card flex flex-col group relative overflow-hidden hover:shadow-ds-soft transition-all duration-300">
             <div className="p-4 flex flex-col gap-4">
                 <div className="flex items-start gap-3">
                     {/* Doctor Image - Disciplined Card style */}
@@ -43,11 +43,11 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
 
                     <div className="flex-1 min-w-0 pt-0.5">
                         <div className="flex items-center gap-1 mb-1">
-                            <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded-md leading-none">
+                            <span className="text-[9px] font-black text-medical-600 uppercase tracking-widest bg-medical-50 px-1.5 py-0.5 rounded-md leading-none">
                                 {doctor.specialty}
                             </span>
                         </div>
-                        <h3 className="text-[15px] font-black text-slate-900 leading-tight truncate group-hover:text-blue-600 transition-colors">
+                        <h3 className="font-display text-[15px] font-black text-ink-800 leading-tight truncate group-hover:text-medical-600 transition-colors">
                             {doctor.name}
                         </h3>
                         <div className="flex items-center gap-1 text-emerald-600 mt-1">
@@ -87,7 +87,7 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
                                 e.stopPropagation();
                                 onCtaClick();
                             }}
-                            className="w-full h-11 rounded-[12px] bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-blue-600 active:scale-95"
+                            className="w-full h-11 rounded-full bg-medical-500 text-white font-display font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-medical-600 active:scale-95"
                         >
                             {ctaLabel}
                             <ChevronRight size={14} />

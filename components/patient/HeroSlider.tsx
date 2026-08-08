@@ -59,14 +59,14 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ banners }) => {
         <>
           <button
             onClick={prev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors"
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/30 hover:bg-medical-600/70 text-white flex items-center justify-center transition-colors shadow-ds-pill"
             aria-label="Previous slide"
           >
             <ChevronLeft size={18} />
           </button>
           <button
             onClick={next}
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/30 hover:bg-medical-600/70 text-white flex items-center justify-center transition-colors shadow-ds-pill"
             aria-label="Next slide"
           >
             <ChevronRight size={18} />

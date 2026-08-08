@@ -12,6 +12,21 @@ dist
 dist-ssr
 *.local
 
+# Vite dependency cache — should never be committed
+.vite
+
+# Environment secrets — should never be committed
+.env
+.env.local
+
+# Android build/signing outputs
+android/app/release/
+android/app/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

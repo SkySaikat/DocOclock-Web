@@ -8,7 +8,7 @@ interface NotificationBellProps {
 }
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; border: string; bg: string }> = {
-  appointment_booked: { icon: Calendar,    color: 'text-blue-600',   border: 'border-blue-400',   bg: 'bg-blue-50' },
+  appointment_booked: { icon: Calendar,    color: 'text-medical-600', border: 'border-medical-400', bg: 'bg-medical-50' },
   delay_alert:        { icon: Clock,       color: 'text-orange-600', border: 'border-orange-400', bg: 'bg-orange-50' },
   approval_status:    { icon: ShieldCheck, color: 'text-green-600',  border: 'border-green-400',  bg: 'bg-green-50' },
   prescription_ready: { icon: FileText,    color: 'text-violet-600', border: 'border-violet-400', bg: 'bg-violet-50' },
@@ -68,7 +68,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ recipientId,
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-3 w-80 bg-white rounded-[20px] shadow-2xl border border-slate-100 z-[70] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+        <div className="absolute right-0 top-full mt-3 w-80 bg-white rounded-ds-lg shadow-2xl border border-slate-100 z-[70] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-50">
             <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ recipientId,
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="flex items-center gap-1 text-[10px] font-black text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
+                  className="flex items-center gap-1 text-[10px] font-black text-medical-600 hover:text-medical-700 px-2 py-1 rounded-lg hover:bg-medical-50 transition-colors"
                   title="Mark all as read"
                 >
                   <CheckCheck size={12} /> All read
@@ -126,7 +126,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ recipientId,
                         <p className="text-[10px] text-slate-400 font-bold mt-1">{relativeTime(n.created_at)}</p>
                       </div>
                       {!n.is_read && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />
+                        <div className="w-2 h-2 bg-medical-500 rounded-full shrink-0 mt-1.5" />
                       )}
                     </div>
                   );

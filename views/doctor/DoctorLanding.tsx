@@ -126,10 +126,10 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-100 text-teal-700 text-xs font-bold uppercase tracking-wider mb-2">
             For Specialists
           </div>
-          <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          <h1 className="text-5xl md:text-7xl font-display font-extrabold text-ink-800 tracking-tight leading-tight">
             Grow Your Practice with <span className="text-teal-600">DocOclock</span>
           </h1>
-          <p className="text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-ink-500 max-w-2xl mx-auto leading-relaxed">
             Manage patient serials, reduce no-shows, issue digital prescriptions, and streamline your chambers — all in one platform.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
@@ -152,8 +152,8 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
               <div className="w-16 h-16 mx-auto bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mb-6">
                 <item.icon size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-3">{item.title}</h3>
-              <p className="text-slate-500 leading-relaxed">{item.desc}</p>
+              <h3 className="text-xl font-display font-bold text-ink-800 mb-3">{item.title}</h3>
+              <p className="text-ink-500 leading-relaxed">{item.desc}</p>
             </GlassCard>
           ))}
         </div>
@@ -177,8 +177,8 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
             <div className="w-16 h-16 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <ShieldCheck size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Eligibility Criteria</h2>
-            <p className="text-slate-500 mt-2">Please confirm you meet the following requirements before proceeding.</p>
+            <h2 className="text-2xl font-display font-bold text-ink-800">Eligibility Criteria</h2>
+            <p className="text-ink-500 mt-2">Please confirm you meet the following requirements before proceeding.</p>
           </div>
           <div className="space-y-4 mb-8">
             {[
@@ -187,9 +187,9 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
               "Digital-first approach to patient care.",
               "Email verification required for all registrations.",
             ].map((req, i) => (
-              <div key={i} className="flex gap-3 items-start p-3 rounded-xl bg-slate-50">
+              <div key={i} className="flex gap-3 items-start p-3 rounded-xl bg-ink-50">
                 <CheckCircle className="text-teal-600 shrink-0 mt-0.5" size={20} />
-                <span className="font-medium text-slate-700 text-sm">{req}</span>
+                <span className="font-medium text-ink-800 text-sm">{req}</span>
               </div>
             ))}
           </div>
@@ -208,11 +208,11 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
       <div className="min-h-[60vh] flex items-center justify-center py-10 animate-fade-in">
         <GlassCard className="max-w-md w-full p-10 border-t-4 border-teal-600">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-medical-50 text-medical-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <Mail size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Verify Your Email</h2>
-            <p className="text-slate-500 mt-2 text-sm">We'll send a 6-digit code to your email address.</p>
+            <h2 className="text-2xl font-display font-bold text-ink-800">Verify Your Email</h2>
+            <p className="text-ink-500 mt-2 text-sm">We'll send a 6-digit code to your email address.</p>
           </div>
 
           {error && (
@@ -223,9 +223,9 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
 
           <form onSubmit={handleSendOTP} className="space-y-5">
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Email Address</label>
+              <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">Email Address</label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-600 transition-colors" size={16} />
                 <input
                   name="email"
                   type="email"
@@ -233,7 +233,7 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
                   placeholder="doctor@example.com"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                   autoFocus
                 />
               </div>
@@ -261,8 +261,8 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
             <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <ShieldCheck size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Enter OTP Code</h2>
-            <p className="text-slate-500 mt-2 text-sm">Code sent to <span className="font-bold text-slate-700">{formData.email}</span></p>
+            <h2 className="text-2xl font-display font-bold text-ink-800">Enter OTP Code</h2>
+            <p className="text-ink-500 mt-2 text-sm">Code sent to <span className="font-bold text-ink-800">{formData.email}</span></p>
           </div>
 
           {error && (
@@ -273,22 +273,22 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
 
           <form onSubmit={handleVerifyOTP} className="space-y-5">
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">6-Digit Code</label>
+              <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">6-Digit Code</label>
               <input
                 required
                 type="text"
                 maxLength={6}
                 placeholder="000000"
-                className="w-full text-center text-3xl font-black tracking-[16px] py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all placeholder:text-slate-200 placeholder:tracking-[16px]"
+                className="w-full text-center text-3xl font-stat font-black tracking-[16px] py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none transition-all placeholder:text-slate-200 placeholder:tracking-[16px]"
                 value={otpCode}
                 onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 autoFocus
               />
               <div className="flex justify-between mt-3">
-                <button type="button" onClick={() => { setStep('email_verify'); setError(null); setOtpCode(''); }} className="text-xs font-bold text-slate-400 hover:text-slate-600">
+                <button type="button" onClick={() => { setStep('email_verify'); setError(null); setOtpCode(''); }} className="text-xs font-bold text-ink-500 hover:text-ink-800">
                   Change Email
                 </button>
-                <button type="button" onClick={() => { sendOTP(formData.email); setError(null); }} className="text-xs font-bold text-blue-600 hover:underline">
+                <button type="button" onClick={() => { sendOTP(formData.email); setError(null); }} className="text-xs font-bold text-medical-600 hover:underline">
                   Resend Code
                 </button>
               </div>
@@ -312,7 +312,7 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
           <ArrowLeft size={20} /> Back
         </button>
         <GlassCard className="p-8 md:p-10 border-t-4 border-teal-600">
-          <h2 className="text-2xl font-black text-slate-900 mb-2">Doctor Registration</h2>
+          <h2 className="text-2xl font-display font-black text-ink-800 mb-2">Doctor Registration</h2>
 
           {/* Verified badge */}
           <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl mb-6">
@@ -331,43 +331,43 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
           <form className="space-y-6" onSubmit={handleRegistrationSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-1">
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Title</label>
-                <select name="title" value={formData.title} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none">
+                <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">Title</label>
+                <select name="title" value={formData.title} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-ink-50 outline-none">
                   <option>Dr.</option><option>Prof. Dr.</option><option>Assoc. Prof. Dr.</option>
                 </select>
               </div>
               <div className="md:col-span-3">
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Full Name</label>
-                <input name="name" required placeholder="Full Name" value={formData.name} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
+                <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">Full Name</label>
+                <input name="name" required placeholder="Full Name" value={formData.name} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-ink-50 outline-none" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">BMDC Reg. Number</label>
-                <input name="bmdcNumber" required placeholder="A-XXXXX" value={formData.bmdcNumber} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
+                <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">BMDC Reg. Number</label>
+                <input name="bmdcNumber" required placeholder="A-XXXXX" value={formData.bmdcNumber} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-ink-50 outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Primary Specialty</label>
-                <select name="specialty" value={formData.specialty} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none">
+                <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">Primary Specialty</label>
+                <select name="specialty" value={formData.specialty} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-ink-50 outline-none">
                   <option>General Medicine</option><option>Cardiology</option><option>Neurology</option><option>Pediatrics</option><option>Orthopedics</option><option>Dermatology</option><option>ENT</option><option>Gynecology</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Phone <span className="text-slate-300">(Optional)</span></label>
-              <input name="phone" type="tel" placeholder="017..." value={formData.phone} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
+              <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">Phone <span className="text-slate-300">(Optional)</span></label>
+              <input name="phone" type="tel" placeholder="017..." value={formData.phone} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-ink-50 outline-none" />
             </div>
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Password</label>
-              <input name="password" type="password" required placeholder="••••••••" value={formData.password} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 outline-none" />
+              <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">Password</label>
+              <input name="password" type="password" required placeholder="••••••••" value={formData.password} onChange={handleInputChange} className="w-full p-3 border border-slate-200 rounded-xl bg-ink-50 outline-none" />
             </div>
 
             {/* ID Photo Upload */}
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+              <label className="block text-xs font-black text-ink-500 uppercase tracking-widest mb-2">
                 BMDC Card / Government ID Photo <span className="text-red-400">*</span>
               </label>
-              <p className="text-xs text-slate-400 mb-3">Take a photo of your BMDC registration card or government-issued ID. This will be reviewed by admin.</p>
+              <p className="text-xs text-ink-500 mb-3">Take a photo of your BMDC registration card or government-issued ID. This will be reviewed by admin.</p>
               <input
                 ref={idPhotoRef}
                 type="file"
@@ -402,7 +402,7 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
                   type="button"
                   onClick={() => idPhotoRef.current?.click()}
                   disabled={uploadingId}
-                  className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-teal-400 hover:text-teal-500 transition-all"
+                  className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 text-ink-500 hover:border-teal-400 hover:text-teal-500 transition-all"
                 >
                   {uploadingId ? (
                     <Loader2 size={24} className="animate-spin" />
@@ -433,17 +433,17 @@ export const DoctorLanding: React.FC<DoctorLandingProps> = ({ onNavigate }) => {
           <div className="w-24 h-24 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-amber-100">
             <Clock size={48} />
           </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-4">Registration Submitted!</h2>
-          <p className="text-slate-500 mb-3 font-bold">Your account has been created and is now <span className="text-amber-600 font-black">pending approval</span> by a Super Admin.</p>
-          <p className="text-slate-400 text-sm mb-8">You'll be able to log in once your account is approved. This typically takes 24-48 hours.</p>
+          <h2 className="text-3xl font-display font-black text-ink-800 mb-4">Registration Submitted!</h2>
+          <p className="text-ink-500 mb-3 font-bold">Your account has been created and is now <span className="text-amber-600 font-black">pending approval</span> by a Super Admin.</p>
+          <p className="text-ink-500 text-sm mb-8">You'll be able to log in once your account is approved. This typically takes 24-48 hours.</p>
 
-          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs text-left space-y-2 mb-8">
-            <div className="flex justify-between"><span className="text-slate-400 font-bold">Email:</span><span className="font-black text-slate-700">{formData.email}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400 font-bold">BMDC:</span><span className="font-black text-slate-700">{formData.bmdcNumber}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400 font-bold">Status:</span><span className="font-black text-amber-600">Pending Review</span></div>
+          <div className="p-4 bg-ink-50 border border-slate-100 rounded-xl text-xs text-left space-y-2 mb-8">
+            <div className="flex justify-between"><span className="text-ink-500 font-bold">Email:</span><span className="font-black text-ink-800">{formData.email}</span></div>
+            <div className="flex justify-between"><span className="text-ink-500 font-bold">BMDC:</span><span className="font-black text-ink-800">{formData.bmdcNumber}</span></div>
+            <div className="flex justify-between"><span className="text-ink-500 font-bold">Status:</span><span className="font-black text-amber-600">Pending Review</span></div>
           </div>
 
-          <Button onClick={() => onNavigate('/')} fullWidth className="bg-slate-900 h-14 font-black">Back to Home</Button>
+          <Button onClick={() => onNavigate('/')} fullWidth className="bg-navy-900 h-14 font-black">Back to Home</Button>
         </GlassCard>
       </div>
     );

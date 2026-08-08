@@ -175,7 +175,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="w-full max-w-[400px] max-h-[calc(100vh-2rem)] bg-white rounded-[24px] shadow-2xl relative border border-slate-100 flex flex-col animate-in zoom-in-95 duration-300">
+      <div className="w-full max-w-[400px] max-h-[calc(100vh-2rem)] bg-white rounded-ds-xl shadow-2xl relative flex flex-col animate-in zoom-in-95 duration-300">
 
         {/* Close Button */}
         <button
@@ -189,10 +189,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {/* Header */}
           <div className="px-8 pt-10 pb-6 text-center">
-            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mx-auto mb-4 border border-blue-100/50">
+            <div className="w-12 h-12 bg-medical-50 rounded-2xl flex items-center justify-center text-medical-600 mx-auto mb-4 border border-medical-100/50">
               <ShieldCheck size={24} />
             </div>
-            <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight mb-1">
+            <h2 className="font-display text-xl md:text-2xl font-bold text-ink-800 tracking-tight leading-tight mb-1">
               {mode === 'login' ? (step === 'email' ? 'Welcome Back' : 'Enter Password') : 
                mode === 'assistant-login' ? 'Assistant Portal' : (
                 signupStep === 'EMAIL' ? 'Verify Your Email' :
@@ -260,11 +260,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Email Address</label>
                     <div className="relative group">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-600 transition-colors" size={16} />
                       <input
                         type="email"
                         placeholder="your@email.com"
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         autoFocus
@@ -275,18 +275,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                     type="submit"
                     fullWidth
                     disabled={isLoading || !loginEmail.includes('@')}
-                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all"
+                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all"
                   >
                     {isLoading ? 'Checking...' : 'Continue'}
                   </Button>
                   <div className="text-center">
-                    <button type="button" onClick={() => switchMode('signup')} className="text-[13px] font-bold text-slate-400 hover:text-blue-600 transition-colors">
-                      Don't have an account? <span className="text-blue-600">Sign Up</span>
+                    <button type="button" onClick={() => switchMode('signup')} className="text-[13px] font-bold text-slate-400 hover:text-medical-600 transition-colors">
+                      Don't have an account? <span className="text-medical-600">Sign Up</span>
                     </button>
                   </div>
                   <div className="text-center">
-                    <button type="button" onClick={() => switchMode('assistant-login')} className="text-[12px] font-bold text-slate-400 hover:text-blue-600 transition-colors">
-                      Clinic Assistant? <span className="text-blue-600">Login here</span>
+                    <button type="button" onClick={() => switchMode('assistant-login')} className="text-[12px] font-bold text-slate-400 hover:text-medical-600 transition-colors">
+                      Clinic Assistant? <span className="text-medical-600">Login here</span>
                     </button>
                   </div>
                 </form>
@@ -295,25 +295,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Password</label>
                     <div className="relative group">
-                      <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                      <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-600 transition-colors" size={16} />
                       <input
                         type="password"
                         placeholder="••••••••"
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoFocus
                       />
                     </div>
                     <p className="text-[11px] text-slate-400 mt-3 font-bold flex items-center gap-1">
-                      Email: <span className="text-blue-600 font-black tracking-tight">{loginEmail}</span> • <button type="button" onClick={() => setStep('email')} className="text-blue-600 hover:underline">Change</button>
+                      Email: <span className="text-medical-600 font-black tracking-tight">{loginEmail}</span> • <button type="button" onClick={() => setStep('email')} className="text-medical-600 hover:underline">Change</button>
                     </p>
                   </div>
                   <Button
                     type="submit"
                     fullWidth
                     disabled={isLoading || !password}
-                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all"
+                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all"
                   >
                     {isLoading ? 'Verifying...' : 'Login Now'}
                   </Button>
@@ -348,12 +348,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                     <div>
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Email Address</label>
                       <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-600 transition-colors" size={16} />
                         <input
                           required
                           type="email"
                           placeholder="your@email.com"
-                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                           value={signupEmail}
                           onChange={e => setSignupEmail(e.target.value)}
                           autoFocus
@@ -364,15 +364,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       type="submit"
                       fullWidth
                       disabled={isLoading || !signupEmail.includes('@')}
-                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all"
+                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all"
                     >
                       {isLoading ? (
                         <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Sending Code...</span>
                       ) : 'Send Verification Code'}
                     </Button>
                     <div className="text-center">
-                      <button type="button" onClick={() => switchMode('login')} className="text-[13px] font-bold text-slate-400 hover:text-blue-600 transition-colors">
-                        Already have an account? <span className="text-blue-600">Login</span>
+                      <button type="button" onClick={() => switchMode('login')} className="text-[13px] font-bold text-slate-400 hover:text-medical-600 transition-colors">
+                        Already have an account? <span className="text-medical-600">Login</span>
                       </button>
                     </div>
                   </form>
@@ -388,19 +388,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                         type="text"
                         maxLength={6}
                         placeholder="000000"
-                        className="w-full text-center text-3xl font-black tracking-[16px] py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all placeholder:text-slate-200 placeholder:tracking-[16px]"
+                        className="w-full text-center text-3xl font-stat font-bold tracking-[16px] py-4 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none transition-all placeholder:text-slate-200 placeholder:tracking-[16px]"
                         value={otpCode}
                         onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         autoFocus
                       />
                       <div className="flex items-center justify-between mt-3">
                         <p className="text-[11px] text-slate-400 font-bold">
-                          Sent to <span className="text-blue-600">{signupEmail}</span>
+                          Sent to <span className="text-medical-600">{signupEmail}</span>
                         </p>
                         <button
                           type="button"
                           onClick={() => { sendOTP(signupEmail); setError(null); }}
-                          className="text-[11px] font-bold text-blue-600 hover:underline"
+                          className="text-[11px] font-bold text-medical-600 hover:underline"
                         >
                           Resend Code
                         </button>
@@ -410,7 +410,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       type="submit"
                       fullWidth
                       disabled={isLoading || otpCode.length !== 6}
-                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all"
+                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all"
                     >
                       {isLoading ? (
                         <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Verifying...</span>
@@ -434,11 +434,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       <div className="col-span-2">
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Full Name</label>
                         <div className="relative group">
-                          <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-600 transition-colors" size={16} />
                           <input
                             required
                             placeholder="Enter Name"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                             value={signupData.name}
                             onChange={e => setSignupData({ ...signupData, name: e.target.value })}
                             autoFocus
@@ -448,12 +448,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Age</label>
                         <div className="relative group">
-                          <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                          <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-600 transition-colors" size={16} />
                           <input
                             required
                             type="number"
                             placeholder="Age"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                             value={signupData.age}
                             onChange={e => setSignupData({ ...signupData, age: e.target.value })}
                           />
@@ -462,7 +462,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Gender</label>
                         <select
-                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base cursor-pointer appearance-none transition-all"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base cursor-pointer appearance-none transition-all"
                           value={signupData.gender}
                           onChange={e => setSignupData({ ...signupData, gender: e.target.value as Gender })}
                         >
@@ -475,11 +475,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                     <div>
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Mobile Number <span className="text-slate-300">(Optional)</span></label>
                       <div className="relative group">
-                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-600 transition-colors" size={16} />
                         <input
                           type="tel"
                           placeholder="017xxxxxxxx"
-                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                           value={signupData.phone}
                           onChange={e => setSignupData({ ...signupData, phone: e.target.value })}
                         />
@@ -488,12 +488,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                     <div>
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Password</label>
                       <div className="relative group">
-                        <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                        <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-600 transition-colors" size={16} />
                         <input
                           required
                           type="password"
                           placeholder="••••••••"
-                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                           value={signupData.password}
                           onChange={e => setSignupData({ ...signupData, password: e.target.value })}
                         />
@@ -503,13 +503,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       type="submit"
                       fullWidth
                       disabled={isLoading}
-                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-blue-500/10 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98] transition-all mt-2"
+                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all mt-2"
                     >
                       {isLoading ? 'Creating...' : 'Create Account'}
                     </Button>
                     <div className="text-center space-y-3">
-                      <button type="button" onClick={() => switchMode('login')} className="text-[13px] font-bold text-slate-400 hover:text-blue-600 transition-colors">
-                        Already have an account? <span className="text-blue-600">Login</span>
+                      <button type="button" onClick={() => switchMode('login')} className="text-[13px] font-bold text-slate-400 hover:text-medical-600 transition-colors">
+                        Already have an account? <span className="text-medical-600">Login</span>
                       </button>
                       <div className="pt-2">
                         <button type="button" onClick={onClose} className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-colors">
@@ -533,7 +533,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       type="tel"
                       required
                       placeholder="+880..."
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                       value={loginPhone}
                       onChange={e => setLoginPhone(e.target.value)}
                     />
@@ -547,7 +547,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       required
                       type="password"
                       placeholder="••••••••"
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                     />

@@ -262,28 +262,28 @@ export const DoctorPracticeSettings: React.FC = () => {
         <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Practice Settings</h1>
-                    <p className="text-slate-500 font-bold">Manage your consultation chambers, fees, and weekly schedule.</p>
+                    <h1 className="text-3xl md:text-4xl font-display font-black text-ink-800 tracking-tight">Practice Settings</h1>
+                    <p className="text-ink-500 font-bold">Manage your consultation chambers, fees, and weekly schedule.</p>
                 </div>
             </div>
 
             {/* PENDING CHAMBER REQUESTS */}
             {chamberRequests.filter(r => r.status === 'pending').length > 0 && (
                 <div className="space-y-3">
-                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                    <h2 className="text-xl font-display font-black text-ink-800 flex items-center gap-2">
                         <Clock size={20} className="text-orange-500" /> Pending Requests
                     </h2>
                     {chamberRequests.filter(r => r.status === 'pending').map(req => (
                         <div key={req.id} className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-between gap-4">
                             <div>
-                                <p className="font-black text-slate-900">{req.hospital?.name}</p>
-                                {req.branch && <p className="text-xs text-slate-500 font-medium">{req.branch.name}</p>}
-                                {req.sector && <p className="text-xs text-slate-500 font-medium">{req.sector.name}</p>}
-                                <p className="text-xs text-slate-400 font-medium mt-1">{req.hospital?.address}</p>
+                                <p className="font-black text-ink-800">{req.hospital?.name}</p>
+                                {req.branch && <p className="text-xs text-ink-500 font-medium">{req.branch.name}</p>}
+                                {req.sector && <p className="text-xs text-ink-500 font-medium">{req.sector.name}</p>}
+                                <p className="text-xs text-ink-500 font-medium mt-1">{req.hospital?.address}</p>
                             </div>
                             <div className="shrink-0 text-right">
-                                <span className="px-3 py-1.5 bg-orange-100 text-orange-700 text-xs font-black rounded-full uppercase tracking-wider">⏳ Pending Approval</span>
-                                <p className="text-xs text-slate-400 font-medium mt-1">Fee: ৳{req.proposed_fee}</p>
+                                <span className="px-3 py-1.5 bg-orange-100 text-orange-700 text-xs font-black rounded-full uppercase tracking-wider">Pending Approval</span>
+                                <p className="text-xs text-ink-500 font-medium mt-1">Fee: ৳{req.proposed_fee}</p>
                             </div>
                         </div>
                     ))}
@@ -293,12 +293,12 @@ export const DoctorPracticeSettings: React.FC = () => {
             {/* REJECTED REQUESTS */}
             {chamberRequests.filter(r => r.status === 'rejected').length > 0 && (
                 <div className="space-y-3">
-                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                    <h2 className="text-xl font-display font-black text-ink-800 flex items-center gap-2">
                         <X size={20} className="text-red-500" /> Rejected Requests
                     </h2>
                     {chamberRequests.filter(r => r.status === 'rejected').map(req => (
                         <div key={req.id} className="p-4 bg-red-50 border border-red-100 rounded-2xl">
-                            <p className="font-black text-slate-900">{req.hospital?.name}</p>
+                            <p className="font-black text-ink-800">{req.hospital?.name}</p>
                             {req.note && <p className="text-xs text-red-600 font-bold mt-1">Reason: {req.note}</p>}
                             <span className="mt-1 inline-block px-3 py-1 bg-red-100 text-red-700 text-xs font-black rounded-full">Rejected</span>
                         </div>
@@ -309,11 +309,11 @@ export const DoctorPracticeSettings: React.FC = () => {
             {/* CHAMBERS LIST */}
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-black text-slate-800">Your Chambers</h2>
+                    <h2 className="text-xl font-display font-black text-ink-800">Your Chambers</h2>
                     {!showAddForm && (
                         <Button
                             onClick={() => setShowAddForm(true)}
-                            className="bg-teal-600 hover:bg-teal-700 h-10 px-4 rounded-xl text-xs font-black flex items-center gap-2"
+                            className="bg-teal-600 hover:bg-teal-700 h-10 px-4 rounded-ds-sm text-xs font-black flex items-center gap-2"
                         >
                             <Plus size={16} /> Add Chamber
                         </Button>
@@ -321,9 +321,9 @@ export const DoctorPracticeSettings: React.FC = () => {
                 </div>
 
                 {settings.chambers.length === 0 ? (
-                    <div className="p-20 bg-white border-2 border-dashed border-slate-100 rounded-[32px] text-center shadow-soft">
+                    <div className="p-20 bg-white border-2 border-dashed border-slate-100 rounded-ds-xl text-center shadow-ds-soft">
                         <Hospital size={48} className="text-slate-200 mx-auto mb-4" />
-                        <p className="text-slate-400 font-bold">No chambers added yet. Start by adding your first hospital or clinic.</p>
+                        <p className="text-ink-500 font-bold">No chambers added yet. Start by adding your first hospital or clinic.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -352,15 +352,15 @@ export const DoctorPracticeSettings: React.FC = () => {
             {/* ADD/EDIT CHAMBER FORM MODAL */}
             {showAddForm && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-premium border border-slate-100 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300 relative">
+                    <div className="bg-white rounded-ds-xl p-8 md:p-12 shadow-premium border border-slate-100 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300 relative">
                         <div className="flex justify-between items-center mb-10">
                             <div className="space-y-1">
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                                <h2 className="text-2xl font-display font-black text-ink-800 tracking-tight">
                                     {editingChamberId ? 'Edit Chamber Configuration' : 'Setup New Chamber'}
                                 </h2>
-                                <p className="text-sm font-bold text-slate-400">Please provide accurate information for patient booking.</p>
+                                <p className="text-sm font-bold text-ink-500">Please provide accurate information for patient booking.</p>
                             </div>
-                            <button onClick={resetForm} className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+                            <button onClick={resetForm} className="w-12 h-12 flex items-center justify-center bg-ink-50 text-ink-500 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
                                 <X size={24} />
                             </button>
                         </div>
@@ -370,7 +370,7 @@ export const DoctorPracticeSettings: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* HOSPITAL SELECTOR */}
                                 <div className="md:col-span-2 space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <Hospital size={14} className="text-medical-500" /> Hospital / Clinic
                                         {selectedHospitalId && (
                                             <span className="ml-2 px-2 py-0.5 bg-green-50 text-green-600 text-[9px] font-black rounded-full uppercase tracking-wider">Registered Hospital Linked</span>
@@ -385,7 +385,7 @@ export const DoctorPracticeSettings: React.FC = () => {
                                             value={hospitalSearchQuery}
                                             onChange={e => searchHospitals(e.target.value)}
                                             placeholder="Search registered hospitals… or type custom name below"
-                                            className="w-full pl-12 pr-5 py-4 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                            className="w-full pl-12 pr-5 py-4 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
                                         />
                                         {selectedHospitalId && (
                                             <button type="button" onClick={() => { setSelectedHospitalId(undefined); setHospitalSearchQuery(''); setFormData(p => ({ ...p, hospitalName: '', address: '' })); }}
@@ -398,15 +398,15 @@ export const DoctorPracticeSettings: React.FC = () => {
                                                 {hospitalSearchResults.map(h => (
                                                     <button key={h.id} type="button"
                                                         onClick={() => selectHospital(h)}
-                                                        className="w-full text-left px-5 py-3 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0">
-                                                        <p className="font-bold text-slate-900 text-sm">{h.name}</p>
-                                                        <p className="text-xs text-slate-400 font-medium">{h.address}</p>
+                                                        className="w-full text-left px-5 py-3 hover:bg-medical-50 transition-colors border-b border-slate-50 last:border-0">
+                                                        <p className="font-bold text-ink-800 text-sm">{h.name}</p>
+                                                        <p className="text-xs text-ink-500 font-medium">{h.address}</p>
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-[10px] text-slate-400 font-bold ml-1">
+                                    <p className="text-[10px] text-ink-500 font-bold ml-1">
                                         Select a registered hospital to send a join request. Or fill in manually below for a custom chamber.
                                     </p>
                                 </div>
@@ -416,13 +416,13 @@ export const DoctorPracticeSettings: React.FC = () => {
                                     <>
                                         {branches.length > 0 && (
                                             <div className="space-y-3">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                                    <GitBranch size={14} className="text-blue-500" /> Select Branch (optional)
+                                                <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                    <GitBranch size={14} className="text-medical-500" /> Select Branch (optional)
                                                 </label>
                                                 <select
                                                     value={selectedBranchId}
                                                     onChange={e => { setSelectedBranchId(e.target.value); setSelectedSectorId(''); }}
-                                                    className="w-full p-4 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all"
+                                                    className="w-full p-4 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
                                                 >
                                                     <option value="">Hospital-wide (no specific branch)</option>
                                                     {branches.map(b => <option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
@@ -431,28 +431,28 @@ export const DoctorPracticeSettings: React.FC = () => {
                                         )}
                                         {sectors.filter(s => !selectedBranchId || s.branch_id === selectedBranchId || !s.branch_id).length > 0 && (
                                             <div className="space-y-3">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                                     <Tag size={14} className="text-purple-500" /> Select Sector (optional)
                                                 </label>
                                                 <select
                                                     value={selectedSectorId}
                                                     onChange={e => setSelectedSectorId(e.target.value)}
-                                                    className="w-full p-4 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 focus:bg-white transition-all"
+                                                    className="w-full p-4 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 focus:bg-white transition-all"
                                                 >
                                                     <option value="">No specific sector</option>
                                                     {sectors.filter(s => !selectedBranchId || s.branch_id === selectedBranchId || !s.branch_id).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                 </select>
                                             </div>
                                         )}
-                                        <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
-                                            <p className="text-xs font-black text-blue-700">Request Mode Active</p>
-                                            <p className="text-xs text-blue-600 font-medium mt-1">Clicking Save will submit a join request to the hospital admin. Your chamber will be created once approved.</p>
+                                        <div className="p-4 bg-medical-50 border border-medical-100 rounded-2xl">
+                                            <p className="text-xs font-black text-medical-700">Request Mode Active</p>
+                                            <p className="text-xs text-medical-600 font-medium mt-1">Clicking Save will submit a join request to the hospital admin. Your chamber will be created once approved.</p>
                                         </div>
                                     </>
                                 )}
 
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <Hospital size={14} className="text-medical-500" /> Hospital / Clinic Name
                                     </label>
                                     <input
@@ -461,11 +461,11 @@ export const DoctorPracticeSettings: React.FC = () => {
                                         value={formData.hospitalName}
                                         onChange={(e) => { setFormData({ ...formData, hospitalName: e.target.value }); if (selectedHospitalId) setSelectedHospitalId(undefined); }}
                                         placeholder="e.g., Evercare Hospital, Dhaka"
-                                        className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                        className="w-full p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <MapPin size={14} className="text-medical-500" /> Full Address
                                     </label>
                                     <input
@@ -474,11 +474,11 @@ export const DoctorPracticeSettings: React.FC = () => {
                                         value={formData.address}
                                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                         placeholder="e.g., Plot 81, Block E, Bashundhara"
-                                        className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                        className="w-full p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <CreditCard size={14} className="text-medical-500" /> Normal Consultation Fee (৳)
                                     </label>
                                     <input
@@ -486,11 +486,11 @@ export const DoctorPracticeSettings: React.FC = () => {
                                         type="number"
                                         value={formData.feeNormal}
                                         onChange={(e) => setFormData({ ...formData, feeNormal: parseInt(e.target.value) })}
-                                        className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                        className="w-full p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <CreditCard size={14} className="text-medical-500" /> Report / Follow-up Fee (৳)
                                     </label>
                                     <input
@@ -498,14 +498,14 @@ export const DoctorPracticeSettings: React.FC = () => {
                                         type="number"
                                         value={formData.feeReport}
                                         onChange={(e) => setFormData({ ...formData, feeReport: parseInt(e.target.value) })}
-                                        className="w-full p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                        className="w-full p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
                                     />
                                 </div>
                             </div>
 
                             {/* CONSULTATION DURATION */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                     <Clock size={14} className="text-medical-500" /> Time Per Patient (minutes)
                                 </label>
                                 <div className="flex items-center gap-3">
@@ -516,7 +516,7 @@ export const DoctorPracticeSettings: React.FC = () => {
                                         step={5}
                                         value={formData.consultationDurationMinutes}
                                         onChange={(e) => setFormData({ ...formData, consultationDurationMinutes: parseInt(e.target.value) || 0 })}
-                                        className="w-32 p-5 rounded-[20px] border border-slate-100 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                        className="w-32 p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
                                     />
                                     <div className="text-sm text-slate-500 font-medium">
                                         {formData.consultationDurationMinutes > 0
@@ -529,7 +529,7 @@ export const DoctorPracticeSettings: React.FC = () => {
 
                             {/* WEEKLY SCHEDULE */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 ml-1">Weekly Schedule</h3>
+                                <h3 className="text-sm font-display font-black text-ink-800 uppercase tracking-widest border-b border-slate-100 pb-2 ml-1">Weekly Schedule</h3>
 
                                 <div className="space-y-3">
                                     {DAYS.map(day => (
@@ -544,13 +544,13 @@ export const DoctorPracticeSettings: React.FC = () => {
                                                     })}
                                                     className="w-5 h-5 rounded-lg border-slate-200 text-teal-600 focus:ring-teal-500"
                                                 />
-                                                <span className={`text-sm font-black ${scheduleState[day].active ? 'text-teal-700' : 'text-slate-500'}`}>{DAY_LABELS[day]}</span>
+                                                <span className={`text-sm font-black ${scheduleState[day].active ? 'text-teal-700' : 'text-ink-500'}`}>{DAY_LABELS[day]}</span>
                                             </label>
 
                                             {scheduleState[day].active && (
                                                 <div className="flex-1 grid grid-cols-3 gap-3 animate-fade-in">
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Start</label>
+                                                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-tighter">Start</label>
                                                         <input
                                                             type="time"
                                                             value={scheduleState[day].startTime}
@@ -562,7 +562,7 @@ export const DoctorPracticeSettings: React.FC = () => {
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">End</label>
+                                                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-tighter">End</label>
                                                         <input
                                                             type="time"
                                                             value={scheduleState[day].endTime}
@@ -574,7 +574,7 @@ export const DoctorPracticeSettings: React.FC = () => {
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Limit</label>
+                                                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-tighter">Limit</label>
                                                         <input
                                                             type="number"
                                                             value={scheduleState[day].dailyLimit}
@@ -593,13 +593,13 @@ export const DoctorPracticeSettings: React.FC = () => {
                             </div>
 
                             <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row gap-4">
-                                <Button type="submit" disabled={isSaving} className="bg-medical-600 hover:bg-medical-500 text-white flex-1 h-16 rounded-[20px] font-black text-sm shadow-xl shadow-medical-100 uppercase tracking-widest gap-2">
+                                <Button type="submit" disabled={isSaving} className="bg-medical-600 hover:bg-medical-500 text-white flex-1 h-16 rounded-ds-lg font-black text-sm shadow-xl shadow-medical-100 uppercase tracking-widest gap-2">
                                     {requestMode && selectedHospitalId && !editingChamberId
                                         ? <><Send size={20} /> {isSaving ? 'Sending Request...' : 'Send Join Request'}</>
                                         : <><Save size={20} /> {editingChamberId ? 'Update Configuration' : isSaving ? 'Saving...' : 'Save & Active Chamber'}</>
                                     }
                                 </Button>
-                                <Button type="button" variant="outline" onClick={resetForm} className="h-16 px-10 rounded-[20px] font-black text-sm border-slate-200 text-slate-500 hover:bg-slate-50">
+                                <Button type="button" variant="outline" onClick={resetForm} className="h-16 px-10 rounded-ds-lg font-black text-sm border-slate-200 text-ink-500 hover:bg-ink-50">
                                     Cancel
                                 </Button>
                             </div>

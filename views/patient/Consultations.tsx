@@ -65,7 +65,7 @@ export const Consultations: React.FC<ConsultationsProps> = ({ onNavigate }) => {
    if (isLoading) {
       return (
          <div className="flex flex-col items-center justify-center py-32 space-y-4 font-sans">
-            <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+            <div className="w-12 h-12 border-4 border-medical-600/20 border-t-medical-600 rounded-full animate-spin"></div>
             <p className="text-slate-400 font-bold animate-pulse uppercase tracking-[0.2em] text-[10px]">Loading Health Records</p>
          </div>
       );
@@ -74,22 +74,21 @@ export const Consultations: React.FC<ConsultationsProps> = ({ onNavigate }) => {
    return (
       <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-24 px-2 font-sans">
          <div className="flex justify-between items-end mb-2 pt-4">
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Consultation History</h1>
-            <div className="text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded-md border border-slate-100 shadow-sm mb-1">ID: #P-8832</div>
+            <h1 className="font-display text-2xl font-bold text-ink-800 tracking-tight">Consultation History</h1>
+            <div className="text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded-md border border-slate-100 shadow-ds-card mb-1">ID: #P-8832</div>
          </div>
 
          <div className="space-y-8">
             {/* Active Follow Up Section */}
             <div>
                <div className="relative group">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-green-400 to-teal-500 rounded-[2rem] blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-                  <GlassCard className="p-6 md:p-8 relative border-0 ring-1 ring-slate-100/50 bg-white/80 backdrop-blur-xl rounded-[2.5rem]">
+                  <GlassCard className="p-6 md:p-8 relative border-0 ring-1 ring-slate-100/50 bg-white/80 backdrop-blur-xl rounded-ds-xl">
                      {upcomingApp ? (
                         <>
                            <div className="flex justify-between items-start mb-6">
                               <div className="flex flex-col">
                                  <span className="text-[11px] font-black text-green-600 uppercase tracking-[0.15em] mb-1.5">Upcoming</span>
-                                 <span className="text-2xl font-black text-slate-800 tracking-tight">Next Follow-up</span>
+                                 <span className="font-display text-2xl font-black text-ink-800 tracking-tight">Next Follow-up</span>
                               </div>
                               <div className="bg-green-50/80 text-green-700 px-4 py-2 rounded-2xl text-[13px] font-black border border-green-100/50 flex items-center gap-2.5 shadow-sm">
                                  <Calendar size={16} strokeWidth={3} />
@@ -98,9 +97,9 @@ export const Consultations: React.FC<ConsultationsProps> = ({ onNavigate }) => {
                            </div>
 
                            <div className="flex items-center gap-5 mt-2 border-t border-slate-50 pt-6">
-                              <img src={upcomingApp.imageUrl} className="w-16 h-16 rounded-[1.25rem] object-cover bg-slate-100 ring-4 ring-white shadow-md" alt="Doctor" />
+                              <img src={upcomingApp.imageUrl} className="w-16 h-16 rounded-ds-md object-cover bg-slate-100 ring-4 ring-white shadow-md" alt="Doctor" />
                               <div className="flex-1">
-                                 <h3 className="font-black text-slate-900 text-lg leading-tight">{upcomingApp.doctorName}</h3>
+                                 <h3 className="font-black text-ink-800 text-lg leading-tight">{upcomingApp.doctorName}</h3>
                                  <p className="text-[13px] text-teal-600 font-black uppercase tracking-wide mt-1">{upcomingApp.specialty}</p>
                                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 mt-1.5">
                                     <MapPin size={12} className="text-slate-300" /> {upcomingApp.location}
@@ -109,7 +108,7 @@ export const Consultations: React.FC<ConsultationsProps> = ({ onNavigate }) => {
                            </div>
 
                            {upcomingApp.note && (
-                              <div className="mt-6 bg-slate-50/50 p-4 rounded-[1.5rem] border border-slate-100/50">
+                              <div className="mt-6 bg-slate-50/50 p-4 rounded-ds-md border border-slate-100/50">
                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Doctor's Note</p>
                                  <p className="text-[13px] text-slate-600 italic font-medium leading-relaxed">
                                     "{upcomingApp.note}"
@@ -122,7 +121,7 @@ export const Consultations: React.FC<ConsultationsProps> = ({ onNavigate }) => {
                            <div className="flex justify-between items-start mb-4">
                               <div className="flex flex-col text-left">
                                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 opacity-50">No Activity</span>
-                                 <span className="text-2xl font-black text-slate-300 tracking-tight">No Upcoming Visit</span>
+                                 <span className="font-display text-2xl font-black text-slate-300 tracking-tight">No Upcoming Visit</span>
                               </div>
                               <div className="bg-slate-50 text-slate-300 px-4 py-2 rounded-2xl text-[13px] font-black border border-slate-100 flex items-center gap-2.5">
                                  <Calendar size={16} />
@@ -145,27 +144,27 @@ export const Consultations: React.FC<ConsultationsProps> = ({ onNavigate }) => {
                         <GlassCard
                            key={app.id}
                            onClick={() => onNavigate('/patient/rx')}
-                           className="p-5 flex items-center justify-between group cursor-pointer hover:border-blue-400 transition-all hover:shadow-xl hover:shadow-blue-500/5 active:scale-[0.98] border-slate-100/50 shadow-sm rounded-[2rem]"
+                           className="p-5 flex items-center justify-between group cursor-pointer hover:border-medical-400 transition-all hover:shadow-ds-soft active:scale-[0.98] border-slate-100/50 shadow-ds-card rounded-ds-xl"
                         >
                            <div className="flex items-center gap-5">
-                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black shadow-lg transition-all transform group-hover:scale-110 ${i % 2 === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-700' : 'bg-gradient-to-br from-slate-400 to-slate-500'}`}>
+                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black shadow-lg transition-all transform group-hover:scale-110 ${i % 2 === 0 ? 'bg-medical-600' : 'bg-slate-400'}`}>
                                  <User size={24} strokeWidth={2.5} />
                               </div>
                               <div>
-                                 <h4 className="font-black text-slate-900 text-[15px]">{app.doctorName}</h4>
+                                 <h4 className="font-black text-ink-800 text-[15px]">{app.doctorName}</h4>
                                  <p className="text-[12px] text-slate-500 font-bold mt-0.5">{app.date} • {app.specialty}</p>
                               </div>
                            </div>
                            <div className="flex items-center gap-4">
-                              <span className="hidden md:inline text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 group-hover:border-blue-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all uppercase tracking-widest">View Prescription</span>
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 group-hover:bg-blue-50 transition-all">
-                                 <ArrowRight size={20} className="text-slate-300 group-hover:text-blue-500 transition-all" />
+                              <span className="hidden md:inline text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 group-hover:border-medical-100 group-hover:bg-medical-50 group-hover:text-medical-600 transition-all uppercase tracking-widest">View Prescription</span>
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 group-hover:bg-medical-50 transition-all">
+                                 <ArrowRight size={20} className="text-slate-300 group-hover:text-medical-500 transition-all" />
                               </div>
                            </div>
                         </GlassCard>
                      ))
                   ) : (
-                     <div className="text-center py-20 bg-white/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
+                     <div className="text-center py-20 bg-white/50 rounded-ds-xl border-2 border-dashed border-slate-100">
                         <Stethoscope size={48} className="mx-auto text-slate-200 mb-4" />
                         <p className="text-slate-400 font-black uppercase tracking-widest text-[11px]">No medical history found</p>
                      </div>

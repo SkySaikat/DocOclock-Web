@@ -168,11 +168,11 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
             <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
                <Activity size={40} />
             </div>
-            <h2 className="text-2xl font-black text-slate-800">No Active Queue</h2>
+            <h2 className="font-display text-2xl font-black text-ink-800">No Active Queue</h2>
             <p className="text-slate-500">You don't have any appointments scheduled for today.</p>
             <button
                onClick={() => window.location.href = '/patient/home'}
-               className="text-blue-600 font-black flex items-center gap-2 mx-auto"
+               className="text-medical-600 font-black flex items-center gap-2 mx-auto"
             >
                Book a Doctor <ArrowRight size={18} />
             </button>
@@ -183,11 +183,11 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
    if (queueSessionStatus === 'NOT_STARTED') {
       return (
          <div className="max-w-md mx-auto py-16 text-center space-y-8 px-4 animate-fade-in">
-            <div className={`w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto shadow-soft border transition-all duration-700 ${isDoctorArrived ? 'bg-green-50 text-green-600 border-green-100 scale-110 shadow-green-100' : 'bg-medical-50 text-medical-600 border-medical-100'}`}>
+            <div className={`w-24 h-24 rounded-ds-xl flex items-center justify-center mx-auto shadow-ds-soft border transition-all duration-700 ${isDoctorArrived ? 'bg-green-50 text-green-600 border-green-100 scale-110 shadow-green-100' : 'bg-medical-50 text-medical-600 border-medical-100'}`}>
                {isDoctorArrived ? <User size={40} className="animate-bounce-soft" /> : <Clock size={40} className="animate-pulse" />}
             </div>
             <div className="space-y-2">
-               <h2 className={`text-3xl font-black tracking-tight leading-tight ${isDoctorArrived ? 'text-green-600' : 'text-slate-900'}`}>
+               <h2 className={`font-display text-3xl font-black tracking-tight leading-tight ${isDoctorArrived ? 'text-green-600' : 'text-ink-800'}`}>
                   {isDoctorArrived ? "Doctor Arrived" : "Session starting soon"}
                </h2>
                <p className="text-slate-500 font-bold max-w-[280px] mx-auto leading-relaxed">
@@ -197,10 +197,10 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                </p>
             </div>
 
-            <div className="bg-white p-8 rounded-[32px] shadow-premium border border-slate-50 space-y-6">
+            <div className="bg-white p-8 rounded-ds-xl shadow-ds-soft border border-slate-50 space-y-6">
                <div className="flex flex-col items-center">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Your Position</p>
-                  <div className="w-20 h-20 bg-medical-600 text-white rounded-2xl flex items-center justify-center text-3xl font-black shadow-xl shadow-medical-100">
+                  <div className="w-20 h-20 bg-medical-600 text-white rounded-2xl flex items-center justify-center font-stat text-3xl font-black shadow-xl shadow-medical-100">
                      #{myApp.serialNumber}
                   </div>
                </div>
@@ -208,7 +208,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
                   <div className="text-left">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Reach By</p>
-                     <p className="text-sm font-black text-slate-800">15m Early</p>
+                     <p className="text-sm font-black text-ink-800">15m Early</p>
                   </div>
                   <div className="text-right">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Est. Consult</p>
@@ -229,12 +229,12 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
             </div>
 
             {sessionMeta.status === 'BREAK' ? (
-               <div className="p-5 bg-blue-50 border border-blue-100 rounded-[1.5rem] text-blue-700 text-sm font-black flex items-center justify-center gap-3 shadow-xl shadow-blue-50">
+               <div className="p-5 bg-medical-50 border border-medical-100 rounded-ds-lg text-medical-700 text-sm font-black flex items-center justify-center gap-3 shadow-xl shadow-medical-50">
                   <Clock size={20} className="animate-pulse" />
                   Doctor is on a short break (~{Number(sessionMeta.delayMinutes) || 0} minutes)
                </div>
             ) : sessionMeta.status === 'DELAYED' && (
-               <div className="p-5 bg-orange-600 text-white rounded-[1.5rem] text-sm font-black flex items-center justify-center gap-3 shadow-xl shadow-orange-200 animate-pulse">
+               <div className="p-5 bg-orange-600 text-white rounded-ds-lg text-sm font-black flex items-center justify-center gap-3 shadow-xl shadow-orange-200 animate-pulse">
                   <AlertCircle size={20} />
                   Doctor may be delayed by {Number(sessionMeta.delayMinutes) || 0} minutes
                </div>
@@ -242,7 +242,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
 
             <button
                onClick={() => window.location.reload()}
-               className="text-blue-600 font-black flex items-center gap-2 mx-auto hover:underline"
+               className="text-medical-600 font-black flex items-center gap-2 mx-auto hover:underline"
             >
                <RefreshCw size={18} /> Refresh Status
             </button>
@@ -263,7 +263,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
    return (
       <div className="max-w-4xl mx-auto space-y-4 pb-10 px-4 md:px-0 animate-fade-in">
          <div className="text-center space-y-0.5">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Live Tracker</h1>
+            <h1 className="font-display text-2xl font-black text-ink-800 tracking-tight">Live Tracker</h1>
             <p className="text-slate-500 font-bold text-[9px] uppercase tracking-[0.2em]">{myApp.doctorName} • Real-time status</p>
          </div>
 
@@ -271,7 +271,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
             <div className="absolute -top-10 -left-10 w-40 h-40 bg-medical-400/20 blur-[80px] rounded-full"></div>
             <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-teal-400/20 blur-[80px] rounded-full"></div>
 
-            <div className="bg-white rounded-[40px] overflow-hidden shadow-premium border border-slate-50 relative z-10 transition-all duration-500">
+            <div className="bg-white rounded-ds-xl overflow-hidden shadow-ds-soft border border-slate-50 relative z-10 transition-all duration-500">
                <div className="bg-slate-50/50 border-b border-slate-100 p-4 px-8 flex justify-between items-center">
                   <div className="flex items-center gap-3">
                      <span className="relative flex h-2.5 w-2.5">
@@ -290,22 +290,22 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                <div className="p-6 md:p-8 text-center bg-white">
                   {isMyTurn ? (
                      <div className="py-8 space-y-10 animate-bounce-soft">
-                        <div className="w-28 h-28 bg-medical-600 text-white rounded-[32px] flex items-center justify-center mx-auto shadow-premium ring-8 ring-medical-50">
+                        <div className="w-28 h-28 bg-medical-600 text-white rounded-ds-xl flex items-center justify-center mx-auto shadow-premium ring-8 ring-medical-50">
                            <Activity size={56} />
                         </div>
                         <div className="space-y-2">
-                           <h2 className="text-4xl font-black text-slate-900 tracking-tight">Consulting Now</h2>
+                           <h2 className="font-display text-4xl font-black text-ink-800 tracking-tight">Consulting Now</h2>
                            <p className="text-medical-600 font-black text-sm uppercase tracking-[0.2em] animate-pulse">It's your turn</p>
                         </div>
                      </div>
                   ) : sessionMeta.status === 'BREAK' ? (
                      <div className="py-6 space-y-10 animate-fade-in">
-                        <div className="p-10 bg-slate-50/50 rounded-[40px] border border-slate-100 flex flex-col items-center gap-8 relative overflow-hidden group">
+                        <div className="p-10 bg-slate-50/50 rounded-ds-xl border border-slate-100 flex flex-col items-center gap-8 relative overflow-hidden group">
                            <div className="w-24 h-24 bg-white text-medical-600 rounded-3xl flex items-center justify-center shadow-premium border border-slate-50 group-hover:scale-110 transition-transform duration-700">
                               <Clock size={48} className="animate-pulse" />
                            </div>
                            <div className="text-center relative z-10 space-y-2">
-                              <h2 className="text-3xl font-black text-slate-900 tracking-tight">Doctor on Break</h2>
+                              <h2 className="font-display text-3xl font-black text-ink-800 tracking-tight">Doctor on Break</h2>
                               <p className="text-medical-500 font-black text-xs uppercase tracking-widest">Will resume shortly</p>
                            </div>
                            {Number(sessionMeta.delayMinutes) > 0 && (
@@ -318,7 +318,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                         <div className="flex justify-center">
                            <div className="flex flex-col items-center gap-4 relative">
                               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Your Serial No.</p>
-                              <div className="w-24 h-24 bg-white rounded-[24px] flex items-center justify-center shadow-premium text-5xl font-black text-slate-900 ring-1 ring-slate-100">
+                              <div className="w-24 h-24 bg-white rounded-ds-lg flex items-center justify-center shadow-premium font-stat text-5xl font-black text-ink-800 ring-1 ring-slate-100">
                                  {myApp.serialNumber}
                               </div>
                            </div>
@@ -338,14 +338,14 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                            <div className="relative flex justify-between items-center">
                               <div className="flex flex-col items-center gap-3">
                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Serving</p>
-                                 <div className="w-16 h-16 bg-white border-2 border-slate-50 rounded-2xl flex items-center justify-center shadow-premium text-2xl font-black text-slate-700">
+                                 <div className="w-16 h-16 bg-white border-2 border-slate-50 rounded-2xl flex items-center justify-center shadow-premium font-stat text-2xl font-black text-slate-700">
                                     {currentServing?.serialNumber || stats.servingToken}
                                  </div>
                               </div>
 
                               <div className="flex flex-col items-center gap-3">
                                  <p className="text-[9px] font-black text-medical-600 uppercase tracking-widest">You</p>
-                                 <div className="w-24 h-24 bg-medical-600 rounded-[28px] flex items-center justify-center shadow-premium text-4xl font-black text-white ring-8 ring-medical-50">
+                                 <div className="w-24 h-24 bg-medical-600 rounded-ds-xl flex items-center justify-center shadow-premium font-stat text-4xl font-black text-white ring-8 ring-medical-50">
                                     {myApp.serialNumber}
                                  </div>
                                  <div className="absolute -bottom-8 w-max text-center">
@@ -358,18 +358,18 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                         </div>
 
                         <div className="space-y-1 pt-4">
-                           <h2 className="text-4xl font-black text-slate-900 tracking-tight">{stats.patientsAhead} <span className="text-slate-400 text-2xl">Ahead</span></h2>
+                           <h2 className="font-stat text-4xl font-black text-ink-800 tracking-tight">{stats.patientsAhead} <span className="font-sans text-slate-400 text-2xl">Ahead</span></h2>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                           <div className="bg-slate-50 px-6 py-5 rounded-[24px] border border-slate-100 flex flex-col items-center text-center">
+                           <div className="bg-slate-50 px-6 py-5 rounded-ds-lg border border-slate-100 flex flex-col items-center text-center">
                               <Clock size={16} className="text-slate-400 mb-2" />
-                              <p className="text-xl font-black text-slate-900 leading-none">{stats.waitTimeMinutes}<span className="text-xs ml-0.5 text-slate-400">m</span></p>
+                              <p className="font-stat text-xl font-black text-ink-800 leading-none">{stats.waitTimeMinutes}<span className="font-sans text-xs ml-0.5 text-slate-400">m</span></p>
                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Wait Time</p>
                            </div>
-                           <div className="bg-medical-50 px-6 py-5 rounded-[24px] border border-medical-100 flex flex-col items-center text-center">
+                           <div className="bg-medical-50 px-6 py-5 rounded-ds-lg border border-medical-100 flex flex-col items-center text-center">
                               <Smartphone size={16} className="text-medical-500 mb-2" />
-                              <p className="text-xl font-black text-medical-600 leading-none">{stats.arrivalTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
+                              <p className="font-stat text-xl font-black text-medical-600 leading-none">{stats.arrivalTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
                               <p className="text-[8px] font-black text-medical-400 uppercase tracking-widest mt-1">Reach Clinic</p>
                            </div>
                         </div>

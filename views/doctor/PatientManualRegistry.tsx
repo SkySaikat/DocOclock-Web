@@ -217,8 +217,8 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Accessing Registry...</p>
+                <Loader2 className="w-8 h-8 text-medical-500 animate-spin" />
+                <p className="text-xs font-black text-ink-500 uppercase tracking-widest">Accessing Registry...</p>
             </div>
         );
     }
@@ -230,104 +230,104 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => onNavigate('/doctor/dashboard')}
-                        className="w-9 h-9 bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-95"
+                        className="w-9 h-9 bg-white rounded-ds-sm shadow-ds-card flex items-center justify-center text-ink-500 hover:text-ink-800 transition-all active:scale-95"
                     >
                         <ChevronLeft size={18} />
                     </button>
                     <div>
-                        <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">Manual Enrollment</h1>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Registry / Walk-in Patient</p>
+                        <h1 className="font-display text-xl font-black text-ink-800 tracking-tight leading-none">Manual Enrollment</h1>
+                        <p className="text-[8px] font-black text-ink-500 uppercase tracking-widest mt-1">Registry / Walk-in Patient</p>
                     </div>
                 </div>
 
-                <div className="bg-teal-50/50 border border-teal-100/30 rounded-xl px-3 py-1.5 flex items-center gap-2 max-w-[150px]">
-                    <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse shrink-0" />
-                    <span className="text-[9px] font-black text-teal-600 uppercase tracking-tight truncate">
+                <div className="bg-medical-50 border border-medical-100 rounded-ds-sm px-3 py-1.5 flex items-center gap-2 max-w-[150px]">
+                    <div className="w-1.5 h-1.5 rounded-full bg-medical-500 animate-pulse shrink-0" />
+                    <span className="text-[9px] font-black text-medical-600 uppercase tracking-tight truncate">
                         {selectedChamber?.hospitalName || "Today's Session"}
                     </span>
                 </div>
             </div>
 
             {/* Reserved Registry Section - Integrated here */}
-            <div className="mb-4 bg-white rounded-3xl border border-slate-200/50 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-2 duration-500">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 bg-slate-50/10">
+            <div className="mb-4 bg-white rounded-ds-lg shadow-ds-card overflow-hidden animate-in fade-in slide-in-from-top-2 duration-500">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-teal-50 text-teal-600 rounded-lg flex items-center justify-center shadow-sm">
+                        <div className="w-8 h-8 bg-medical-50 text-medical-600 rounded-ds-sm flex items-center justify-center">
                             <UserCheck size={16} />
                         </div>
                         <div>
-                            <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter block leading-none">Reserved Registry</span>
-                            <span className="text-[9px] font-bold text-slate-400 block mt-0.5">Slots at end of capacity</span>
+                            <span className="text-[10px] font-black text-ink-800 uppercase tracking-tighter block leading-none">Reserved Registry</span>
+                            <span className="text-[9px] font-bold text-ink-500 block mt-0.5">Slots at end of capacity</span>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5 p-0.5 bg-white border border-slate-200/40 rounded-full shadow-sm">
+                        <div className="flex items-center gap-1.5 p-0.5 bg-white border border-ink-200 rounded-full shadow-ds-pill">
                             <button
                                 type="button"
                                 onClick={() => handleSaveReservedCount(Math.max(0, reservedSlotsCount - 1))}
                                 disabled={isSavingReserved}
-                                className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200/60 rounded-full text-slate-500 hover:text-teal-600 transition-all active:scale-95 disabled:opacity-50"
+                                className="w-8 h-8 flex items-center justify-center bg-white border border-ink-200 rounded-full text-ink-500 hover:text-medical-600 transition-all active:scale-95 disabled:opacity-50"
                             >
                                 <Minus size={12} />
                             </button>
                             <div className="px-2 text-center min-w-[32px]">
-                                <span className="font-black text-xs text-slate-900 leading-none">{reservedSlotsCount}</span>
-                                <span className="text-[8px] font-black text-slate-400 ml-0.5 uppercase tracking-tighter">Slots</span>
+                                <span className="font-black text-xs text-ink-800 leading-none">{reservedSlotsCount}</span>
+                                <span className="text-[8px] font-black text-ink-500 ml-0.5 uppercase tracking-tighter">Slots</span>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => handleSaveReservedCount(reservedSlotsCount + 1)}
                                 disabled={isSavingReserved || (selectedChamber ? reservedSlotsCount >= selectedChamber.dailyBookingLimit : false)}
-                                className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200/60 rounded-full text-slate-500 hover:text-teal-600 transition-all active:scale-95 disabled:opacity-50"
+                                className="w-8 h-8 flex items-center justify-center bg-white border border-ink-200 rounded-full text-ink-500 hover:text-medical-600 transition-all active:scale-95 disabled:opacity-50"
                             >
                                 <Plus size={12} />
                             </button>
                         </div>
 
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:block">
-                            End Serials: <span className="text-teal-600">{(selectedChamber?.dailyBookingLimit || 30) - reservedSlotsCount + 1} - {selectedChamber?.dailyBookingLimit || 30}</span>
+                        <div className="text-[10px] font-black text-ink-500 uppercase tracking-widest hidden sm:block">
+                            End Serials: <span className="text-medical-600">{(selectedChamber?.dailyBookingLimit || 30) - reservedSlotsCount + 1} - {selectedChamber?.dailyBookingLimit || 30}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <form onSubmit={handleBooking} className="mt-4 space-y-3">
-                <div className="bg-white rounded-[2rem] border border-slate-200/50 shadow-[0_10px_30px_rgba(0,0,0,0.02)] p-6 md:p-8">
+                <div className="bg-white rounded-ds-lg shadow-ds-soft p-6 md:p-8">
                     {/* Visible & Editable Serial Number - Moved to Top */}
                     <div className="mb-6">
-                        <div className="bg-teal-50/30 rounded-2xl p-4 border border-teal-100/50">
+                        <div className="bg-medical-50 rounded-ds-md p-4 border border-medical-100">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">
-                                    <label className="block text-[11px] font-black text-teal-700 uppercase tracking-[0.2em]">Serial</label>
-                                    <p className="text-[8px] font-bold text-slate-400 tracking-tight leading-none italic">Assigned automatically (Editable)</p>
+                                    <label className="block text-[11px] font-black text-medical-700 uppercase tracking-[0.2em]">Serial</label>
+                                    <p className="text-[8px] font-bold text-ink-500 tracking-tight leading-none italic">Assigned automatically (Editable)</p>
                                 </div>
                                 <div className="relative group w-20">
                                     <input
                                         type="number"
                                         value={formData.serialNumber}
                                         onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
-                                        className="w-full px-3 py-2 bg-white border border-teal-100 rounded-xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-black text-teal-600 text-center text-base transition-all shadow-sm"
+                                        className="w-full px-3 py-2 bg-white border border-medical-100 rounded-ds-sm focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 outline-none font-black text-medical-600 text-center text-base transition-all shadow-ds-input"
                                     />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <h3 className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] mb-6 border-b border-slate-50 pb-3">Patient Particulars</h3>
+                    <h3 className="text-[9px] font-black text-ink-400 uppercase tracking-[0.2em] mb-6 border-b border-ink-100 pb-3">Patient Particulars</h3>
 
                     <div className="space-y-4">
                         {/* Full Name */}
                         <div className="space-y-1.5">
-                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name</label>
+                            <label className="block text-[9px] font-black text-ink-500 uppercase tracking-widest px-1">Full Name</label>
                             <div className="relative group">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-teal-600 transition-colors" size={16} />
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-300 group-focus-within:text-medical-600 transition-colors" size={16} />
                                 <input
                                     type="text"
                                     required
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-teal-500/30 focus:ring-4 focus:ring-teal-500/5 outline-none font-bold text-slate-800 text-sm transition-all placeholder:text-slate-300"
+                                    className="w-full pl-11 pr-4 py-3 bg-ink-50 border border-transparent rounded-ds-sm focus:bg-white focus:border-medical-500/30 focus:ring-4 focus:ring-medical-500/5 outline-none font-bold text-ink-800 text-sm transition-all placeholder:text-ink-300"
                                     placeholder="Enter patient name"
                                 />
                             </div>
@@ -335,15 +335,15 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
 
                         {/* Phone Number */}
                         <div className="space-y-1.5">
-                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Phone Number</label>
+                            <label className="block text-[9px] font-black text-ink-500 uppercase tracking-widest px-1">Phone Number</label>
                             <div className="relative group">
-                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-teal-600 transition-colors" size={16} />
+                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-300 group-focus-within:text-medical-600 transition-colors" size={16} />
                                 <input
                                     type="tel"
                                     required
                                     value={formData.phone}
                                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-teal-500/30 focus:ring-4 focus:ring-teal-500/5 outline-none font-bold text-slate-800 text-sm transition-all placeholder:text-slate-300"
+                                    className="w-full pl-11 pr-4 py-3 bg-ink-50 border border-transparent rounded-ds-sm focus:bg-white focus:border-medical-500/30 focus:ring-4 focus:ring-medical-500/5 outline-none font-bold text-ink-800 text-sm transition-all placeholder:text-ink-300"
                                     placeholder="01XXXXXXXXX"
                                 />
                             </div>
@@ -352,14 +352,14 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
                         <div className="grid grid-cols-2 gap-4">
                             {/* Age */}
                             <div className="space-y-1.5">
-                                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Age</label>
+                                <label className="block text-[9px] font-black text-ink-500 uppercase tracking-widest px-1">Age</label>
                                 <div className="relative group">
-                                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-teal-600 transition-colors" size={14} />
+                                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-300 group-focus-within:text-medical-600 transition-colors" size={14} />
                                     <input
                                         type="number"
                                         value={formData.age}
                                         onChange={e => setFormData({ ...formData, age: e.target.value })}
-                                        className="w-full pl-11 px-4 py-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-teal-500/30 focus:ring-4 focus:ring-teal-500/5 outline-none font-bold text-slate-800 text-sm transition-all placeholder:text-slate-200"
+                                        className="w-full pl-11 px-4 py-3 bg-ink-50 border border-transparent rounded-ds-sm focus:bg-white focus:border-medical-500/30 focus:ring-4 focus:ring-medical-500/5 outline-none font-bold text-ink-800 text-sm transition-all placeholder:text-ink-300"
                                         placeholder="Enter age"
                                     />
                                 </div>
@@ -367,16 +367,16 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
 
                             {/* Gender Selection */}
                             <div className="space-y-1.5">
-                                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Gender</label>
-                                <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100">
+                                <label className="block text-[9px] font-black text-ink-500 uppercase tracking-widest px-1">Gender</label>
+                                <div className="flex bg-ink-50 p-1 rounded-ds-sm border border-ink-100">
                                     {['Male', 'Female'].map((g) => (
                                         <button
                                             key={g}
                                             type="button"
                                             onClick={() => setFormData({ ...formData, gender: g as Gender })}
-                                            className={`flex-1 py-2 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${formData.gender === g
-                                                ? 'bg-white text-teal-600 shadow-sm'
-                                                : 'text-slate-400'
+                                            className={`flex-1 py-2 rounded-ds-sm font-black text-[9px] uppercase tracking-widest transition-all ${formData.gender === g
+                                                ? 'bg-white text-medical-600 shadow-ds-card'
+                                                : 'text-ink-400'
                                                 }`}
                                         >
                                             {g}
@@ -392,7 +392,7 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
                     <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full h-14 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-black text-base shadow-xl shadow-teal-500/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                        className="w-full h-14 rounded-full bg-medical-500 hover:bg-medical-600 text-white font-display font-black text-base shadow-md shadow-medical-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
                         {isSubmitting ? (
                             <>
@@ -410,8 +410,8 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
             </form>
 
             {successMessage && (
-                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white px-6 py-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 shadow-2xl">
-                    <CheckCircle2 size={18} className="text-teal-400" />
+                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] bg-navy-900 text-white px-6 py-4 rounded-ds-md flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 shadow-2xl">
+                    <CheckCircle2 size={18} className="text-medical-400" />
                     <div className="flex flex-col">
                         <p className="font-black text-[10px] uppercase tracking-wider leading-none">Registered Successfully</p>
                         <p className="text-[8px] font-bold opacity-60 mt-1 uppercase">Added to Queue</p>

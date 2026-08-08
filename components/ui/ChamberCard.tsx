@@ -24,14 +24,14 @@ export const ChamberCard: React.FC<ChamberCardProps> = ({
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     return (
-        <div className="bg-white rounded-[28px] p-6 md:p-8 shadow-soft border border-slate-100 hover:shadow-premium hover:-translate-y-1 transition-all duration-300 group">
+        <div className="bg-white rounded-ds-lg p-6 md:p-8 shadow-ds-soft hover:shadow-premium hover:-translate-y-1 transition-all duration-300 group">
             <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-medical-50 text-medical-600 flex items-center justify-center shrink-0 shadow-sm border border-medical-100">
                         <Hospital size={24} />
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">{chamber.hospitalName}</h3>
+                        <h3 className="font-display text-xl font-black text-ink-800 tracking-tight leading-none mb-1">{chamber.hospitalName}</h3>
                         <p className="text-xs font-bold text-slate-400 flex items-center gap-1">
                             <MapPin size={12} /> {chamber.location}
                         </p>
@@ -81,7 +81,7 @@ export const ChamberCard: React.FC<ChamberCardProps> = ({
                         onClick={onSelect}
                         variant="outline"
                         fullWidth
-                        className="h-14 rounded-2xl border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white font-black text-xs uppercase tracking-widest transition-all shadow-md group"
+                        className="h-14 rounded-full border-2 border-medical-500 text-medical-500 hover:bg-medical-500 hover:text-white font-display font-black text-xs uppercase tracking-widest transition-all shadow-md group"
                     >
                         Select Chamber
                         <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />

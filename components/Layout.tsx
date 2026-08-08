@@ -23,20 +23,20 @@ const Logo = () => (
   <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="logoGradient" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#0EA5E9" />
-        <stop offset="1" stopColor="#14B8A6" />
+        <stop stopColor="#88BEFF" />
+        <stop offset="1" stopColor="#2E8CFF" />
       </linearGradient>
     </defs>
     <path d="M30 35 C 30 20, 70 20, 70 35" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" />
     <circle cx="50" cy="50" r="35" stroke="url(#logoGradient)" strokeWidth="4" strokeOpacity="0.3" fill="white" />
     <path d="M20 50 C 20 80, 50 85, 50 85" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" />
     <circle cx="50" cy="85" r="6" fill="url(#logoGradient)" />
-    <path d="M50 50 L 35 40" stroke="#0F172A" strokeWidth="4" strokeLinecap="round" />
-    <path d="M50 50 L 65 40" stroke="#0F172A" strokeWidth="4" strokeLinecap="round" />
-    <circle cx="50" cy="50" r="4" fill="#0F172A" />
+    <path d="M50 50 L 35 40" stroke="#171717" strokeWidth="4" strokeLinecap="round" />
+    <path d="M50 50 L 65 40" stroke="#171717" strokeWidth="4" strokeLinecap="round" />
+    <circle cx="50" cy="50" r="4" fill="#171717" />
     <g transform="translate(70, 20)">
-      <rect x="0" y="8" width="24" height="6" rx="3" fill="#38BDF8" />
-      <rect x="9" y="-1" width="6" height="24" rx="3" fill="#38BDF8" />
+      <rect x="0" y="8" width="24" height="6" rx="3" fill="#2E8CFF" />
+      <rect x="9" y="-1" width="6" height="24" rx="3" fill="#2E8CFF" />
     </g>
   </svg>
 );
@@ -81,7 +81,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
           {/* Brand Logo */}
           <div className="flex items-center gap-3 cursor-pointer group shrink-0" onClick={() => onNavigate('/')}>
             <Logo />
-            <span className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-teal-600">
+            <span className="font-display text-2xl font-bold tracking-tight text-ink-800">
               DocOclock
             </span>
           </div>
@@ -90,17 +90,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
           <div className="hidden md:flex items-center gap-6 lg:gap-8">
             {isPublic && (
               <>
-                <button onClick={() => onNavigate('/for-doctors')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 transition-colors">
+                <button onClick={() => onNavigate('/for-doctors')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 transition-colors">
                   <BriefcaseMedical size={18} /> For Doctors
                 </button>
                 <div ref={dropdownRef} className="relative">
-                  <Button onClick={() => setIsLoginDropdownOpen(!isLoginDropdownOpen)} className="gap-2 px-6 font-black h-11 rounded-xl shadow-lg shadow-blue-100">
+                  <Button onClick={() => setIsLoginDropdownOpen(!isLoginDropdownOpen)} className="gap-2 px-6 font-black h-11 shadow-lg shadow-medical-100">
                     Login <ChevronDown size={16} className={`transition-transform ${isLoginDropdownOpen ? 'rotate-180' : ''}`} />
                   </Button>
                   {isLoginDropdownOpen && (
                     <div className="absolute top-full right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-fade-in z-[60]">
                       <button onClick={() => { onLoginClick?.(UserRole.PATIENT); setIsLoginDropdownOpen(false); }} className="w-full text-left p-4 hover:bg-slate-50 flex items-center gap-3 font-bold text-slate-700">
-                        <User size={18} className="text-blue-500" /> Patient Portal
+                        <User size={18} className="text-medical-500" /> Patient Portal
                       </button>
                       <button onClick={() => { onNavigate('/doctor-login'); setIsLoginDropdownOpen(false); }} className="w-full text-left p-4 hover:bg-slate-50 flex items-center gap-3 font-bold text-slate-700 border-t border-slate-50">
                         <Stethoscope size={18} className="text-teal-500" /> Doctor Portal
@@ -113,19 +113,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
             {isPatient && (
               <>
-                <button onClick={() => onNavigate('/patient/home')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
+                <button onClick={() => onNavigate('/patient/home')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-medical-50 transition-all">
                   <Home size={18} /> Home
                 </button>
                 <button onClick={() => onNavigate('/patient/medicine-tracker')} className="font-bold text-slate-600 hover:text-indigo-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-indigo-50 transition-all">
                   <Pill size={18} /> Meds
                 </button>
-                <button onClick={() => onNavigate('/patient/appointments')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
+                <button onClick={() => onNavigate('/patient/appointments')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-medical-50 transition-all">
                   <Calendar size={18} /> Appointments
                 </button>
-                <button onClick={() => onNavigate('/patient/prescriptions')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
+                <button onClick={() => onNavigate('/patient/prescriptions')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-medical-50 transition-all">
                   <FileText size={18} /> Rx
                 </button>
-                <button onClick={() => onNavigate('/patient/more')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-blue-50 transition-all">
+                <button onClick={() => onNavigate('/patient/more')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-medical-50 transition-all">
                   <UserCircle size={18} /> Profile
                 </button>
                 <NotificationBell recipientId={profile?.id} onNavigate={onNavigate} />
@@ -136,13 +136,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
               <div className="flex items-center gap-4 lg:gap-6">
                 {isDoctor && !browseMode && (
                   <>
-                    <button onClick={() => onNavigate('/doctor/dashboard')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
+                    <button onClick={() => onNavigate('/doctor/dashboard')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-medical-50 transition-all">
                       <LayoutDashboard size={18} /> Dashboard
                     </button>
-                    <button onClick={() => onNavigate('/doctor/serial-manager')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
+                    <button onClick={() => onNavigate('/doctor/serial-manager')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-medical-50 transition-all">
                       <Users size={18} /> Queue
                     </button>
-                    <button onClick={() => onNavigate('/doctor/prescription')} className="font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-blue-50 transition-all">
+                    <button onClick={() => onNavigate('/doctor/prescription')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-medical-50 transition-all">
                       <FileText size={18} /> RX
                     </button>
                   </>
@@ -153,9 +153,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                 {isDoctor && !browseMode && <div ref={doctorDropdownRef} className="relative ml-2">
                   <button
                     onClick={() => setIsDoctorProfileOpen(!isDoctorProfileOpen)}
-                    className="flex items-center gap-3 pl-3 pr-2 py-1.5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-blue-50 hover:border-blue-100 transition-all group"
+                    className="flex items-center gap-3 pl-3 pr-2 py-1.5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-medical-50 hover:border-medical-100 transition-all group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-500/20 overflow-hidden">
+                    <div className="w-8 h-8 rounded-xl bg-medical-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-medical-500/20 overflow-hidden">
                       {profile?.image ? <img src={profile.image} alt="" className="w-full h-full object-cover" /> : <User size={16} />}
                     </div>
                     <div className="text-left hidden lg:block">
@@ -217,13 +217,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                         {onBrowsePublicSite && (
                           <button
                             onClick={() => { onBrowsePublicSite(); setIsDoctorProfileOpen(false); }}
-                            className="w-full flex items-center gap-3 p-3 hover:bg-blue-50/60 rounded-2xl transition-all text-slate-700 group"
+                            className="w-full flex items-center gap-3 p-3 hover:bg-medical-50/60 rounded-2xl transition-all text-slate-700 group"
                           >
-                            <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:border-blue-100 transition-all">
+                            <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-medical-600 group-hover:border-medical-100 transition-all">
                               <Globe size={18} />
                             </div>
                             <div className="text-left">
-                              <p className="font-black text-[13px] leading-tight group-hover:text-blue-700">View Website</p>
+                              <p className="font-black text-[13px] leading-tight group-hover:text-medical-700">View Website</p>
                               <p className="text-[10px] text-slate-400 font-bold">Browse as patient</p>
                             </div>
                           </button>
@@ -304,7 +304,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                 <div className="grid gap-3">
                   <button
                     onClick={() => { onLoginClick?.(UserRole.PATIENT); setIsMobileMenuOpen(false); }}
-                    className="w-full p-4 rounded-[16px] bg-blue-600 text-white flex items-center gap-4 group transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                    className="w-full p-4 rounded-[16px] bg-medical-600 text-white flex items-center gap-4 group transition-all active:scale-95 shadow-lg shadow-medical-500/20"
                   >
                     <div className="bg-white/20 p-2 rounded-lg">
                       <User size={18} />
@@ -317,9 +317,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
                   <button
                     onClick={() => { onNavigate('/doctor-login'); setIsMobileMenuOpen(false); }}
-                    className="w-full p-4 rounded-[16px] bg-white border border-slate-200 text-slate-900 flex items-center gap-4 hover:border-blue-600 transition-all active:scale-95"
+                    className="w-full p-4 rounded-[16px] bg-white border border-slate-200 text-slate-900 flex items-center gap-4 hover:border-medical-600 transition-all active:scale-95"
                   >
-                    <div className="bg-slate-50 p-2 rounded-lg text-blue-600">
+                    <div className="bg-slate-50 p-2 rounded-lg text-medical-600">
                       <Stethoscope size={18} />
                     </div>
                     <div className="text-left">
@@ -340,7 +340,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                     { icon: ShieldCheck, label: 'Privacy Policy' }
                   ].map((item, i) => (
                     <button key={i} className="w-full flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors text-slate-600 group">
-                      <item.icon size={16} className="text-slate-400 group-hover:text-blue-600" />
+                      <item.icon size={16} className="text-slate-400 group-hover:text-medical-600" />
                       <span className="text-sm font-bold">{item.label}</span>
                     </button>
                   ))}
@@ -368,11 +368,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
       {/* BROWSE MODE BANNER — shown when admin/doctor views the public site */}
       {browseMode && onReturnToDashboard && (
         <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md text-white pl-4 pr-2 py-2 rounded-2xl shadow-2xl border border-white/10 text-sm whitespace-nowrap">
-          <Globe size={14} className="text-blue-400 shrink-0" />
+          <Globe size={14} className="text-medical-400 shrink-0" />
           <span className="font-bold text-slate-300 text-xs">Viewing as visitor</span>
           <button
             onClick={onReturnToDashboard}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-black transition-colors"
+            className="flex items-center gap-1.5 bg-medical-600 hover:bg-medical-700 text-white px-3 py-1.5 rounded-xl text-xs font-black transition-colors"
           >
             <ArrowLeft size={12} /> Dashboard
           </button>
@@ -389,8 +389,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             <button onClick={() => onNavigate('/doctor/serial-manager')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
               <Users size={20} /> <span className="scale-90">Queue</span>
             </button>
-            <button onClick={() => onNavigate('/doctor/manual-booking')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-blue-400 hover:text-blue-300 transition-all">
-              <PlusCircle size={22} className="shadow-lg shadow-blue-500/20" /> <span className="scale-90">Enroll</span>
+            <button onClick={() => onNavigate('/doctor/manual-booking')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-medical-400 hover:text-medical-300 transition-all">
+              <PlusCircle size={22} className="shadow-lg shadow-medical-500/20" /> <span className="scale-90">Enroll</span>
             </button>
             <button onClick={() => onNavigate('/doctor/prescription')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
               <FileText size={20} /> <span className="scale-90">Rx</span>
@@ -419,7 +419,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                   onClick={() => onNavigate(item.path)}
                   className="relative flex-1 flex flex-col items-center justify-center min-h-[48px] min-w-[48px] transition-all duration-300 group"
                 >
-                  <div className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all duration-500 ${isActive ? 'bg-blue-50/60 shadow-sm shadow-blue-500/5 text-blue-600' : 'text-slate-400'}`}>
+                  <div className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all duration-500 ${isActive ? 'bg-medical-50/60 shadow-sm shadow-medical-500/5 text-medical-600' : 'text-slate-400'}`}>
                     <item.icon
                       size={isActive ? 19 : 18}
                       className={`transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}

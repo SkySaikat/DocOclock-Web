@@ -83,22 +83,22 @@ export const HospitalManager: React.FC = () => {
     setRejectNote('');
   };
 
-  const inputCls = "w-full p-3 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all text-sm";
-  const labelCls = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5";
+  const inputCls = "w-full p-3 rounded-ds-sm border border-ink-200 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-500 focus:bg-white transition-all text-sm";
+  const labelCls = "block text-[10px] font-black text-ink-400 uppercase tracking-widest mb-1.5";
 
   return (
     <div className="space-y-6">
       {/* Sub-tab switcher */}
-      <div className="flex gap-2 bg-slate-100 p-1 rounded-2xl w-fit">
+      <div className="flex gap-2 bg-ink-100 p-1 rounded-2xl w-fit">
         <button
           onClick={() => setActiveSubTab('hospitals')}
-          className={`px-5 py-2 rounded-xl text-sm font-black transition-all ${activeSubTab === 'hospitals' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          className={`px-5 py-2 rounded-xl text-sm font-black transition-all ${activeSubTab === 'hospitals' ? 'bg-white text-medical-600 shadow-sm' : 'text-ink-500 hover:text-ink-800'}`}
         >
           Hospitals ({allHospitals.length})
         </button>
         <button
           onClick={() => setActiveSubTab('requests')}
-          className={`px-5 py-2 rounded-xl text-sm font-black transition-all relative ${activeSubTab === 'requests' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          className={`px-5 py-2 rounded-xl text-sm font-black transition-all relative ${activeSubTab === 'requests' ? 'bg-white text-medical-600 shadow-sm' : 'text-ink-500 hover:text-ink-800'}`}
         >
           Chamber Requests
           {customChamberRequests.length > 0 && (
@@ -113,10 +113,10 @@ export const HospitalManager: React.FC = () => {
       {activeSubTab === 'hospitals' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-black text-slate-800">Registered Hospitals</h3>
+            <h3 className="text-lg font-display font-black text-ink-700">Registered Hospitals</h3>
             <button
               onClick={() => setShowCreateHospital(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black rounded-xl transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-medical-500 hover:bg-medical-600 text-white text-sm font-black rounded-full transition-all"
             >
               <Plus size={16} /> New Hospital
             </button>
@@ -124,8 +124,8 @@ export const HospitalManager: React.FC = () => {
 
           {/* Create Hospital Form */}
           {showCreateHospital && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4">
-              <h4 className="font-black text-slate-800">Create New Hospital</h4>
+            <div className="bg-ink-50 border border-ink-200 rounded-ds-md p-6 space-y-4">
+              <h4 className="font-display font-black text-ink-700">Create New Hospital</h4>
               <form onSubmit={handleCreateHospital} className="space-y-4">
                 <div>
                   <label className={labelCls}>Hospital Name</label>
@@ -140,8 +140,8 @@ export const HospitalManager: React.FC = () => {
                   <input className={inputCls} placeholder="Phone / email" value={hospForm.contact_info} onChange={e => setHospForm(p => ({ ...p, contact_info: e.target.value }))} />
                 </div>
                 <div className="flex gap-3">
-                  <button type="submit" disabled={saving} className="px-5 py-2 bg-blue-600 text-white text-sm font-black rounded-xl disabled:opacity-50">{saving ? 'Creating...' : 'Create Hospital'}</button>
-                  <button type="button" onClick={() => setShowCreateHospital(false)} className="px-5 py-2 bg-slate-200 text-slate-700 text-sm font-black rounded-xl">Cancel</button>
+                  <button type="submit" disabled={saving} className="px-5 py-2 bg-medical-500 text-white text-sm font-black rounded-full disabled:opacity-50">{saving ? 'Creating...' : 'Create Hospital'}</button>
+                  <button type="button" onClick={() => setShowCreateHospital(false)} className="px-5 py-2 bg-ink-200 text-ink-700 text-sm font-black rounded-full">Cancel</button>
                 </div>
               </form>
             </div>
@@ -149,25 +149,25 @@ export const HospitalManager: React.FC = () => {
 
           {/* Hospital List */}
           {allHospitals.length === 0 ? (
-            <div className="text-center py-16 text-slate-400">
+            <div className="text-center py-16 text-ink-400">
               <Building2 size={48} className="mx-auto mb-3 opacity-30" />
               <p className="font-bold">No hospitals yet. Create your first hospital above.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {allHospitals.map(h => (
-                <div key={h.id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                <div key={h.id} className="bg-white border border-ink-100 rounded-2xl overflow-hidden shadow-ds-card">
                   <button
-                    className="w-full p-5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
+                    className="w-full p-5 flex items-center justify-between text-left hover:bg-ink-50 transition-colors"
                     onClick={() => setExpandedHospital(expandedHospital === h.id ? null : h.id)}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                        <Building2 size={22} className="text-blue-600" />
+                      <div className="w-12 h-12 bg-medical-50 rounded-xl flex items-center justify-center">
+                        <Building2 size={22} className="text-medical-600" />
                       </div>
                       <div>
-                        <p className="font-black text-slate-900">{h.name}</p>
-                        <p className="text-xs text-slate-400 font-medium flex items-center gap-1 mt-0.5">
+                        <p className="font-black text-ink-800">{h.name}</p>
+                        <p className="text-xs text-ink-400 font-medium flex items-center gap-1 mt-0.5">
                           <MapPin size={10} /> {h.address}
                         </p>
                       </div>
@@ -175,33 +175,33 @@ export const HospitalManager: React.FC = () => {
                     <div className="flex items-center gap-4">
                       <div className="hidden md:flex gap-4 text-center">
                         <div>
-                          <p className="text-lg font-black text-blue-600">{h.branch_count}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">Branches</p>
+                          <p className="text-lg font-stat font-black text-medical-600">{h.branch_count}</p>
+                          <p className="text-[10px] text-ink-400 font-bold uppercase">Branches</p>
                         </div>
                         <div>
-                          <p className="text-lg font-black text-teal-600">{h.doctor_count}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">Doctors</p>
+                          <p className="text-lg font-stat font-black text-teal-600">{h.doctor_count}</p>
+                          <p className="text-[10px] text-ink-400 font-bold uppercase">Doctors</p>
                         </div>
                       </div>
-                      {expandedHospital === h.id ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                      {expandedHospital === h.id ? <ChevronUp size={18} className="text-ink-400" /> : <ChevronDown size={18} className="text-ink-400" />}
                     </div>
                   </button>
 
                   {expandedHospital === h.id && (
-                    <div className="border-t border-slate-100 p-5 space-y-4 bg-slate-50/50">
+                    <div className="border-t border-ink-100 p-5 space-y-4 bg-ink-50/50">
                       {/* Admin info */}
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Hospital Admin</p>
+                          <p className="text-xs font-black text-ink-400 uppercase tracking-widest mb-1">Hospital Admin</p>
                           {h.owner ? (
-                            <p className="font-bold text-slate-800">{h.owner.full_name} <span className="text-slate-400 font-medium">— {h.owner.email}</span></p>
+                            <p className="font-bold text-ink-700">{h.owner.full_name} <span className="text-ink-400 font-medium">— {h.owner.email}</span></p>
                           ) : (
                             <p className="text-sm text-orange-500 font-bold">No admin assigned</p>
                           )}
                         </div>
                         <button
                           onClick={() => { setShowAssignAdmin(h.id); setAdminForm({ email: '', full_name: '', password: '' }); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-black rounded-xl"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-medical-500 text-white text-xs font-black rounded-full"
                         >
                           <Mail size={12} /> {h.owner ? 'Reassign Admin' : 'Assign Admin'}
                         </button>
@@ -209,8 +209,8 @@ export const HospitalManager: React.FC = () => {
 
                       {/* Assign Admin Form */}
                       {showAssignAdmin === h.id && (
-                        <form onSubmit={handleAssignAdmin} className="bg-white rounded-xl p-4 border border-blue-100 space-y-3">
-                          <p className="text-xs font-black text-blue-700 uppercase tracking-widest">Assign Hospital Admin</p>
+                        <form onSubmit={handleAssignAdmin} className="bg-white rounded-xl p-4 border border-medical-100 space-y-3">
+                          <p className="text-xs font-black text-medical-600 uppercase tracking-widest">Assign Hospital Admin</p>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className={labelCls}>Full Name</label>
@@ -226,18 +226,18 @@ export const HospitalManager: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white text-xs font-black rounded-xl disabled:opacity-50">{saving ? 'Saving...' : 'Assign'}</button>
-                            <button type="button" onClick={() => setShowAssignAdmin(null)} className="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-black rounded-xl">Cancel</button>
+                            <button type="submit" disabled={saving} className="px-4 py-2 bg-medical-500 text-white text-xs font-black rounded-full disabled:opacity-50">{saving ? 'Saving...' : 'Assign'}</button>
+                            <button type="button" onClick={() => setShowAssignAdmin(null)} className="px-4 py-2 bg-ink-200 text-ink-700 text-xs font-black rounded-full">Cancel</button>
                           </div>
                         </form>
                       )}
 
                       {/* Branch actions */}
                       <div className="flex justify-between items-center">
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Branches</p>
+                        <p className="text-xs font-black text-ink-400 uppercase tracking-widest">Branches</p>
                         <button
                           onClick={() => { setShowAddBranch(h.id); setBranchForm({ name: '', address: '', contact_info: '' }); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white text-xs font-black rounded-xl"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white text-xs font-black rounded-full"
                         >
                           <GitBranch size={12} /> Add Branch
                         </button>
@@ -261,8 +261,8 @@ export const HospitalManager: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button type="submit" disabled={saving} className="px-4 py-2 bg-teal-600 text-white text-xs font-black rounded-xl disabled:opacity-50">{saving ? 'Adding...' : 'Add Branch'}</button>
-                            <button type="button" onClick={() => setShowAddBranch(null)} className="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-black rounded-xl">Cancel</button>
+                            <button type="submit" disabled={saving} className="px-4 py-2 bg-teal-600 text-white text-xs font-black rounded-full disabled:opacity-50">{saving ? 'Adding...' : 'Add Branch'}</button>
+                            <button type="button" onClick={() => setShowAddBranch(null)} className="px-4 py-2 bg-ink-200 text-ink-700 text-xs font-black rounded-full">Cancel</button>
                           </div>
                         </form>
                       )}

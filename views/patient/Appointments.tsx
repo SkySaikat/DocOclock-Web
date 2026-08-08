@@ -132,14 +132,14 @@ const StatusTabs: React.FC<{
    current: string;
    onChange: (s: 'all' | 'upcoming' | 'completed' | 'cancelled') => void;
 }> = ({ current, onChange }) => (
-   <div className="bg-white p-1 rounded-2xl border border-slate-100 shadow-sm w-full">
+   <div className="bg-white p-1 rounded-ds-md border border-slate-100 shadow-ds-card w-full">
       <div className="grid grid-cols-4 gap-1">
          {(['all', 'upcoming', 'completed', 'cancelled'] as const).map((status) => (
             <button
                key={status}
                onClick={() => onChange(status)}
                className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-tight transition-all text-center ${current === status
-                  ? 'bg-slate-900 text-white shadow-md'
+                  ? 'bg-medical-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
                   }`}
             >
@@ -155,14 +155,14 @@ const TimeFilters: React.FC<{
    current: string;
    onChange: (t: 'today' | 'week' | 'month' | 'year' | 'all') => void;
 }> = ({ current, onChange }) => (
-   <div className="bg-white p-1 rounded-2xl border border-slate-100 shadow-sm w-full">
+   <div className="bg-white p-1 rounded-ds-md border border-slate-100 shadow-ds-card w-full">
       <div className="grid grid-cols-5 gap-1">
          {(['today', 'week', 'month', 'year', 'all'] as const).map((time) => (
             <button
                key={time}
                onClick={() => onChange(time)}
                className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-tight transition-all text-center ${current === time
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-medical-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
                   }`}
             >
@@ -184,12 +184,12 @@ const CancelModal: React.FC<{
    if (!isOpen) return null;
    return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-         <GlassCard className="max-w-md w-full p-8 space-y-6 shadow-2xl scale-in-center">
+         <GlassCard className="max-w-md w-full p-8 space-y-6 shadow-ds-soft scale-in-center">
             <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto border border-red-100 shadow-inner">
                <AlertCircle size={32} />
             </div>
             <div className="text-center space-y-2 pb-2">
-               <h3 className="text-3xl font-black text-slate-900 tracking-tight">Cancel Appointment</h3>
+               <h3 className="font-display text-3xl font-black text-ink-800 tracking-tight">Cancel Appointment</h3>
                <p className="text-slate-500 font-bold text-lg">
                   Are you sure you want to cancel this appointment?<br />
                   <span className="text-red-500">This action cannot be undone.</span>
@@ -197,8 +197,9 @@ const CancelModal: React.FC<{
             </div>
             <div className="flex flex-col gap-3">
                <Button
+                  variant="danger"
                   fullWidth
-                  className="h-16 rounded-2xl font-black bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100 text-lg"
+                  className="h-16 font-black text-lg"
                   onClick={onConfirm}
                >
                   Confirm Cancel
@@ -206,7 +207,7 @@ const CancelModal: React.FC<{
                <Button
                   variant="outline"
                   fullWidth
-                  className="h-16 rounded-2xl font-black border-slate-200 text-slate-500 text-lg"
+                  className="h-16 font-black border-slate-200 text-slate-500 text-lg"
                   onClick={onClose}
                >
                   Keep Appointment
@@ -245,7 +246,7 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate, override
          {/* Header */}
          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="space-y-0.5">
-               <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">My Appointments</h1>
+               <h1 className="font-display text-4xl font-black text-ink-800 tracking-tight leading-tight">My Appointments</h1>
                <p className="text-slate-500 font-bold text-base tracking-tight">Track your serials and history.</p>
             </div>
          </div>
@@ -294,11 +295,11 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate, override
                ))}
             </div>
          ) : (
-            <div className="py-24 text-center bg-white rounded-[32px] border border-slate-100 shadow-premium animate-in fade-in zoom-in duration-500">
-               <div className="w-20 h-20 bg-medical-50 text-medical-500 rounded-[24px] flex items-center justify-center mx-auto mb-6">
+            <div className="py-24 text-center bg-white rounded-ds-xl border border-slate-100 shadow-ds-soft animate-in fade-in zoom-in duration-500">
+               <div className="w-20 h-20 bg-medical-50 text-medical-500 rounded-ds-lg flex items-center justify-center mx-auto mb-6">
                   {statusFilter === 'all' ? <Calendar size={40} /> : <Filter size={40} />}
                </div>
-               <h3 className="text-2xl font-black text-slate-800 tracking-tight">
+               <h3 className="font-display text-2xl font-black text-ink-800 tracking-tight">
                   {statusFilter === 'all' ? 'No appointments' : `No ${statusFilter} appointments`}
                </h3>
                <p className="text-slate-400 font-bold mt-2 max-w-xs mx-auto text-sm">
@@ -307,7 +308,7 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate, override
                      : `There are no consultations matching "${statusFilter}" for this period.`}
                </p>
                <Button
-                  className="mt-8 px-10 h-14 rounded-2xl bg-medical-600 hover:bg-medical-500 text-white shadow-lg shadow-medical-100 text-sm font-black uppercase tracking-widest"
+                  className="mt-8 px-10 h-14 text-sm font-black uppercase tracking-widest"
                   onClick={() => statusFilter === 'all' ? onNavigate('/patient/home') : setStatusFilter('all')}
                >
                   {statusFilter === 'all' ? 'Find a Doctor' : 'Clear Filters'}

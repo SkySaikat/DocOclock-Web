@@ -149,9 +149,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-6 bg-teal-500 rounded-full"></div>
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">Today's Overview</h3>
+              <h3 className="font-display text-xs font-black text-ink-800 uppercase tracking-[0.2em]">Today's Overview</h3>
             </div>
-            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full border border-slate-200/50">
+            <div className="text-[10px] font-black text-ink-500 uppercase tracking-widest bg-ink-100 px-3 py-1 rounded-full border border-slate-200/50">
               Live Updates
             </div>
           </div>
@@ -159,14 +159,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
           <div className="grid gap-4">
             {/* Row 1: Primary (Full-width) */}
             <div className="w-full">
-              <div className="bg-white border border-slate-100 rounded-[2rem] p-8 flex items-center justify-between group hover:border-teal-200 transition-all shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)] relative overflow-hidden">
+              <div className="bg-white border border-slate-100 rounded-ds-xl p-8 flex items-center justify-between group hover:border-teal-200 transition-all shadow-ds-soft relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
                 <div className="space-y-1 relative z-10">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2 flex items-center gap-2">
+                  <p className="text-[10px] font-black text-ink-500 uppercase tracking-[0.15em] mb-2 flex items-center gap-2">
                     <TrendingUp size={12} className="text-teal-500" /> Total Earnings
                   </p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl font-black text-slate-900 tracking-tighter">
+                    <span className="font-stat text-5xl font-bold text-ink-800 tracking-tighter">
                       {isResolving ? <div className="w-24 h-12 bg-slate-50 animate-pulse rounded-xl" /> : `৳${revenueTotal}`}
                     </span>
                     {!isResolving && <span className="text-xs font-black text-teal-600 uppercase tracking-widest bg-teal-50 px-3 py-1 rounded-lg">Today</span>}
@@ -180,28 +180,28 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
 
             {/* Row 2: Secondary (2 Columns) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white border border-slate-100 rounded-[2rem] p-7 flex flex-col justify-between hover:border-teal-200 transition-all shadow-[0_10px_40px_-15px_rgba(0,0,0,0.02)] relative overflow-hidden group">
+              <div className="bg-white border border-slate-100 rounded-ds-xl p-7 flex flex-col justify-between hover:border-teal-200 transition-all shadow-ds-card relative overflow-hidden group">
                 <div className="absolute top-0 left-0 w-1 h-full bg-slate-200 group-hover:bg-teal-500 transition-colors"></div>
                 <div className="flex items-center justify-between mb-6">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Appointments</p>
+                  <p className="text-[9px] font-black text-ink-500 uppercase tracking-widest">Appointments</p>
                   <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-teal-50 group-hover:text-teal-500 transition-all">
                     <Users size={16} />
                   </div>
                 </div>
-                <h4 className="text-4xl font-black text-slate-900 tracking-tighter">
+                <h4 className="font-stat text-4xl font-bold text-ink-800 tracking-tighter">
                   {isResolving ? <div className="w-12 h-10 bg-slate-50 animate-pulse rounded-lg" /> : totalPatients}
                 </h4>
               </div>
 
-              <div className="bg-white border border-slate-100 rounded-[2rem] p-7 flex flex-col justify-between hover:border-teal-200 transition-all shadow-[0_10px_40px_-15px_rgba(0,0,0,0.02)] relative overflow-hidden group">
+              <div className="bg-white border border-slate-100 rounded-ds-xl p-7 flex flex-col justify-between hover:border-teal-200 transition-all shadow-ds-card relative overflow-hidden group">
                 <div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>
                 <div className="flex items-center justify-between mb-6">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Waiting List</p>
+                  <p className="text-[9px] font-black text-ink-500 uppercase tracking-widest">Waiting List</p>
                   <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
                     <Clock size={16} />
                   </div>
                 </div>
-                <h4 className="text-4xl font-black text-slate-900 tracking-tighter">
+                <h4 className="font-stat text-4xl font-bold text-ink-800 tracking-tighter">
                   {isResolving ? <div className="w-12 h-10 bg-slate-50 animate-pulse rounded-lg" /> : waitingCount}
                   <span className="ml-2 text-[10px] text-orange-500 uppercase tracking-widest font-black">Active</span>
                 </h4>
@@ -210,23 +210,23 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
 
             {/* Row 3: Support (2 Columns - Smaller) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50/40 border border-slate-100/80 rounded-[1.5rem] p-5 flex items-center gap-5 hover:bg-white hover:border-teal-100 transition-all transition-duration-500 group">
+              <div className="bg-slate-50/40 border border-slate-100/80 rounded-ds-lg p-5 flex items-center gap-5 hover:bg-white hover:border-teal-100 transition-all transition-duration-500 group">
                 <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-teal-500 shadow-sm group-hover:scale-110 transition-transform">
                   <UserCheck size={18} />
                 </div>
                 <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Completed</p>
-                  <p className="text-2xl font-black text-slate-800 leading-none mt-1.5">{finishedCount}</p>
+                  <p className="text-[8px] font-black text-ink-500 uppercase tracking-widest leading-none">Completed</p>
+                  <p className="font-stat text-2xl font-bold text-ink-800 leading-none mt-1.5">{finishedCount}</p>
                 </div>
               </div>
 
-              <div className="bg-slate-50/40 border border-slate-100/80 rounded-[1.5rem] p-5 flex items-center gap-5 hover:bg-white hover:border-red-100 transition-all transition-duration-500 group">
+              <div className="bg-slate-50/40 border border-slate-100/80 rounded-ds-lg p-5 flex items-center gap-5 hover:bg-white hover:border-red-100 transition-all transition-duration-500 group">
                 <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 group-hover:text-red-400 shadow-sm group-hover:scale-110 transition-transform">
                   <X size={18} />
                 </div>
                 <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Cancelled</p>
-                  <p className="text-2xl font-black text-slate-800 leading-none mt-1.5">{cancelledCount}</p>
+                  <p className="text-[8px] font-black text-ink-500 uppercase tracking-widest leading-none">Cancelled</p>
+                  <p className="font-stat text-2xl font-bold text-ink-800 leading-none mt-1.5">{cancelledCount}</p>
                 </div>
               </div>
             </div>
