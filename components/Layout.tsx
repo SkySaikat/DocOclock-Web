@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserRole } from '../types';
-import { LogOut, Menu, X, Users, Home, FileText, Calendar, Activity, Gift, MoreHorizontal, User, ChevronDown, Stethoscope, BriefcaseMedical, BarChart2, ClipboardList, LayoutDashboard, Pill, UserCircle, PlusCircle, ShieldCheck, Settings, Wallet, Globe, ArrowLeft } from 'lucide-react';
+import { LogOut, Menu, X, Users, Home, FileText, Calendar, Activity, Gift, MoreHorizontal, User, ChevronDown, Stethoscope, BriefcaseMedical, BarChart2, ClipboardList, LayoutDashboard, Pill, UserCircle, PlusCircle, ShieldCheck, Settings, Wallet, Globe, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../AuthContext';
 import { Footer } from './Footer';
@@ -12,6 +12,7 @@ interface LayoutProps {
   onLogout?: () => void;
   onNavigate: (path: string) => void;
   onLoginClick?: (role: UserRole) => void;
+  onRegisterClick?: () => void;
   hideMobileBottomNav?: boolean;
   currentPath?: string;
   browseMode?: boolean;
@@ -41,19 +42,14 @@ const Logo = () => (
   </svg>
 );
 
-export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, onNavigate, onLoginClick, hideMobileBottomNav, currentPath, browseMode, onBrowsePublicSite, onReturnToDashboard }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, onNavigate, onLoginClick, onRegisterClick, hideMobileBottomNav, currentPath, browseMode, onBrowsePublicSite, onReturnToDashboard }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoginDropdownOpen, setIsLoginDropdownOpen] = useState(false);
   const [isDoctorProfileOpen, setIsDoctorProfileOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const doctorDropdownRef = useRef<HTMLDivElement>(null);
   const { profile } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsLoginDropdownOpen(false);
-      }
       if (doctorDropdownRef.current && !doctorDropdownRef.current.contains(event.target as Node)) {
         setIsDoctorProfileOpen(false);
       }
@@ -77,7 +73,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
       {/* NAVBAR (TOP) - Added safe area top padding */}
       <nav className="fixed top-0 w-full z-50 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 pointer-events-none">
-        <div className="glass-panel max-w-7xl mx-auto rounded-[24px] px-6 py-3 flex justify-between items-center h-14 shadow-premium pointer-events-auto border-medical-100/50">
+        <div className={`max-w-7xl mx-auto px-6 py-3 flex justify-between items-center h-14 rounded-full pointer-events-auto ${isPublic ? 'bg-white shadow-ds-pill' : 'glass-panel shadow-premium border-medical-100/50'}`}>
           {/* Brand Logo */}
           <div className="flex items-center gap-3 cursor-pointer group shrink-0" onClick={() => onNavigate('/')}>
             <Logo />
@@ -90,24 +86,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
           <div className="hidden md:flex items-center gap-6 lg:gap-8">
             {isPublic && (
               <>
-                <button onClick={() => onNavigate('/for-doctors')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 transition-colors">
-                  <BriefcaseMedical size={18} /> For Doctors
+                <button onClick={() => onNavigate('/for-doctors')} className="font-medium text-ink-800 hover:text-medical-600 flex items-center gap-2 transition-colors">
+                  <BriefcaseMedical size={16} /> For Doctors
                 </button>
-                <div ref={dropdownRef} className="relative">
-                  <Button onClick={() => setIsLoginDropdownOpen(!isLoginDropdownOpen)} className="gap-2 px-6 font-black h-11 shadow-lg shadow-medical-100">
-                    Login <ChevronDown size={16} className={`transition-transform ${isLoginDropdownOpen ? 'rotate-180' : ''}`} />
-                  </Button>
-                  {isLoginDropdownOpen && (
-                    <div className="absolute top-full right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-fade-in z-[60]">
-                      <button onClick={() => { onLoginClick?.(UserRole.PATIENT); setIsLoginDropdownOpen(false); }} className="w-full text-left p-4 hover:bg-slate-50 flex items-center gap-3 font-bold text-slate-700">
-                        <User size={18} className="text-medical-500" /> Patient Portal
-                      </button>
-                      <button onClick={() => { onNavigate('/doctor-login'); setIsLoginDropdownOpen(false); }} className="w-full text-left p-4 hover:bg-slate-50 flex items-center gap-3 font-bold text-slate-700 border-t border-slate-50">
-                        <Stethoscope size={18} className="text-teal-500" /> Doctor Portal
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button onClick={() => onLoginClick?.(UserRole.PATIENT)} className="font-medium text-ink-800 hover:text-medical-600 transition-colors">
+                  Login
+                </button>
+                <Button variant="gradient" onClick={() => onRegisterClick?.()} className="gap-2 pl-5 pr-3 h-11 font-display">
+                  Register <ArrowRight size={14} />
+                </Button>
               </>
             )}
 

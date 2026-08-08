@@ -267,9 +267,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                         <span>BMDC Verified Doctors</span>
                      </div>
 
-                     <h1 className="font-display text-4xl md:text-6xl font-black tracking-tight text-white leading-[1.1] mb-6">
-                        Healthcare, <br />
-                        <span className="text-medical-400">Simplified.</span>
+                     <h1 className="font-display text-4xl md:text-[52px] font-bold tracking-tight text-white leading-[1.08] mb-6">
+                        Your Time, Your Health,<br />
+                        <span className="text-medical-400">Fully Controlled.</span>
                      </h1>
 
                      <p className="text-sm md:text-base text-slate-400 font-medium mb-10 max-w-lg leading-relaxed">
@@ -324,8 +324,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
             <div className="py-12 md:py-20 flex flex-col md:flex-row gap-12 items-center">
                <div className="flex-1 space-y-4">
                   <h2 className="font-display text-3xl md:text-4xl font-black text-ink-800 tracking-tight leading-tight">
-                     Your Time. Your Health. <br />
-                     <span className="text-medical-600">Fully Controlled.</span>
+                     Built for Trust, <br />
+                     <span className="text-medical-600">Designed for Speed.</span>
                   </h2>
                   <p className="text-slate-500 font-medium leading-relaxed max-w-md">
                      DocOclock brings transparency to clinical visits. Track your live queue status from anywhere and access verified healthcare instantly.
@@ -350,25 +350,45 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                </div>
             </div>
 
-            {/* TRUST METRICS SECTION - STRUCTURED & PREMIUM */}
-            <div className="mb-12">
-               <div className="bg-slate-50/50 rounded-ds-lg border border-slate-100 p-8 md:p-10">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
-                     {[
-                        { icon: Users, label: "Specialists", value: "1.7K+", color: "text-medical-600", bg: "bg-medical-100/50" },
-                        { icon: ShieldCheck, label: "Verified", value: "100%", color: "text-emerald-600", bg: "bg-emerald-100/50" },
-                        { icon: Clock, label: "Live Queue", value: "24/7", color: "text-indigo-600", bg: "bg-indigo-100/50" },
-                        { icon: Heart, label: "Success Rate", value: "99%", color: "text-rose-600", bg: "bg-rose-100/50" }
-                     ].map((stat, i) => (
-                        <div key={i} className="flex flex-col items-center text-center group">
-                           <div className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-300`}>
-                              <stat.icon size={22} />
-                           </div>
-                           <h4 className="font-stat text-2xl md:text-3xl font-black text-ink-800 leading-none mb-2 tracking-tight">{stat.value}</h4>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">{stat.label}</p>
+            {/* TRUST METRICS — Dococlock "Values" pattern: big number + subtitle, divided row */}
+            <div className="mb-12 py-10 border-y border-ink-100 flex flex-wrap justify-center gap-x-4 gap-y-8">
+               {[
+                  { value: '15+', label: 'Years of Combined Experience' },
+                  { value: '5,000+', label: 'Happy Patients' },
+                  { value: '100%', label: 'BMDC Verified Doctors' },
+                  { value: '24/7', label: 'Live Queue Tracking' },
+               ].map((stat, i, arr) => (
+                  <React.Fragment key={stat.label}>
+                     <div className="flex flex-col items-center gap-3 px-6 text-center">
+                        <span className="text-ink-900 font-medium text-5xl md:text-[56px] leading-none">{stat.value}</span>
+                        <span className="text-ink-500 text-xs md:text-sm font-medium max-w-[160px] leading-snug">{stat.label}</span>
+                     </div>
+                     {i < arr.length - 1 && <div className="hidden sm:block w-px bg-ink-100 self-stretch" />}
+                  </React.Fragment>
+               ))}
+            </div>
+
+            {/* HOW IT WORKS — process cards */}
+            <div className="mb-14">
+               <h2 className="font-display text-[28px] md:text-[32px] font-bold text-ink-800 text-center tracking-tight mb-10">
+                  Simplifying Healthcare, From Booking to Consultation
+               </h2>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                     { icon: Search, title: 'Discover', desc: 'Find the right specialist based on category, location and expertise.' },
+                     { icon: Calendar, title: 'Book Instantly', desc: 'Reserve your serial in seconds — no phone calls, no waiting rooms.' },
+                     { icon: Activity, title: 'Track Live', desc: 'Watch your queue position update in real time and arrive right on cue.' },
+                  ].map((step) => (
+                     <div key={step.title} className="bg-white rounded-ds-lg p-8 flex flex-col gap-6 shadow-ds-card">
+                        <div className="space-y-3">
+                           <h3 className="font-display text-xl font-bold text-ink-800">{step.title}</h3>
+                           <p className="text-sm text-ink-500 leading-relaxed">{step.desc}</p>
                         </div>
-                     ))}
-                  </div>
+                        <div className="h-40 rounded-ds-md bg-medical-50 flex items-center justify-center text-medical-500">
+                           <step.icon size={48} strokeWidth={1.5} />
+                        </div>
+                     </div>
+                  ))}
                </div>
             </div>
 
@@ -466,6 +486,30 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                onCategoryClick={handleCategoryClick}
                selectedSpecialty={selectedSpecialty}
             />
+
+            {/* CLOSING CTA — anonymous visitors only */}
+            {!userRole && (
+               <section className="py-12 mb-4">
+                  <div className="bg-navy-900 rounded-ds-lg p-10 md:p-16 text-center">
+                     <h2 className="font-display text-2xl md:text-4xl font-bold text-white leading-tight mb-4 max-w-2xl mx-auto">
+                        Healthcare made simple with smarter appointment scheduling.
+                     </h2>
+                     <p className="text-[#93d3fd] text-sm md:text-base font-medium mb-8">
+                        Join 5,000+ patients already using DocOclock.
+                     </p>
+                     <Button
+                        variant="gradient"
+                        className="h-14 px-10 mx-auto"
+                        onClick={() => {
+                           searchContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                           searchInputRef.current?.focus();
+                        }}
+                     >
+                        Get Started
+                     </Button>
+                  </div>
+               </section>
+            )}
 
             {/* DOCTOR PARTNERSHIP Section - Refined */}
             {!isPatient && (

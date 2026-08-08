@@ -85,6 +85,7 @@ const App: React.FC = () => {
 
   // Auth & Modal State
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginModalMode, setLoginModalMode] = useState<'login' | 'signup'>('login');
   const [pendingAction, setPendingAction] = useState<'NONE' | 'BOOKING'>('NONE');
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -176,8 +177,14 @@ const App: React.FC = () => {
     if (role === UserRole.DOCTOR) {
       navigate('/doctor-login');
     } else {
+      setLoginModalMode('login');
       setIsLoginModalOpen(true);
     }
+  };
+
+  const openRegisterModal = () => {
+    setLoginModalMode('signup');
+    setIsLoginModalOpen(true);
   };
 
   const handleSavePrescription = (newRx: any) => {
@@ -393,6 +400,7 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       onNavigate={navigate}
       onLoginClick={openLoginModal}
+      onRegisterClick={openRegisterModal}
       hideMobileBottomNav={currentPath === '/patient/profile'}
       currentPath={currentPath}
       browseMode={browsePublicSite}
@@ -403,7 +411,12 @@ const App: React.FC = () => {
         {renderView()}
       </Suspense>
       {isLoginModalOpen && (
-        <LoginModal onClose={() => { setIsLoginModalOpen(false); setPendingAction('NONE'); }} onLoginSuccess={handleLoginSuccess} onDoctorLoginClick={() => { setIsLoginModalOpen(false); navigate('/doctor-login'); }} />
+        <LoginModal
+          initialMode={loginModalMode}
+          onClose={() => { setIsLoginModalOpen(false); setPendingAction('NONE'); }}
+          onLoginSuccess={handleLoginSuccess}
+          onDoctorLoginClick={() => { setIsLoginModalOpen(false); navigate('/doctor-login'); }}
+        />
       )}
     </Layout>
   );

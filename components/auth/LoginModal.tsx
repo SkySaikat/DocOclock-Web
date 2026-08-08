@@ -12,12 +12,13 @@ interface LoginModalProps {
   onClose: () => void;
   onLoginSuccess: (role: UserRole, email?: string) => void;
   onDoctorLoginClick: () => void;
+  initialMode?: 'login' | 'signup';
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess, onDoctorLoginClick }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess, onDoctorLoginClick, initialMode = 'login' }) => {
   const { login, signup, setProfile, setUserRole } = useAuth();
   const { signInWithGoogle, findOrCreateGooglePatient, isConfigured: googleConfigured } = useGoogleAuth();
-  const [mode, setMode] = useState<'login' | 'signup' | 'assistant-login'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'assistant-login'>(initialMode);
   const [step, setStep] = useState<'email' | 'password'>('email');
 
   // Login State
@@ -187,8 +188,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* Login / Register Tabs */}
+          {mode !== 'assistant-login' && !successMessage && (
+            <div className="flex items-end gap-8 px-8 pt-8 border-b-2 border-ink-100">
+              {(['login', 'signup'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => switchMode(tab)}
+                  className={`pb-3 text-[15px] font-display font-semibold border-b-2 -mb-0.5 transition-colors ${
+                    mode === tab
+                      ? 'text-ink-800 border-medical-500'
+                      : 'text-ink-400 border-transparent hover:text-ink-600'
+                  }`}
+                >
+                  {tab === 'login' ? 'Login' : 'Register'}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Header */}
-          <div className="px-8 pt-10 pb-6 text-center">
+          <div className="px-8 pt-8 pb-6 text-center">
             <div className="w-12 h-12 bg-medical-50 rounded-2xl flex items-center justify-center text-medical-600 mx-auto mb-4 border border-medical-100/50">
               <ShieldCheck size={24} />
             </div>
