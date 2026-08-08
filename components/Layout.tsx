@@ -20,6 +20,16 @@ interface LayoutProps {
   onReturnToDashboard?: () => void;
 }
 
+// Exact Figma navbar tags (Doctor / Hospital / Lab&Diagnostic / Blogs / About us / Contact us)
+const MARKETING_NAV_LINKS: { label: string; path: string }[] = [
+  { label: 'Doctor', path: '/for-doctors' },
+  { label: 'Hospital', path: '/hospitals' },
+  { label: 'Lab&Diagnostic', path: '/lab-diagnostics' },
+  { label: 'Blogs', path: '/blogs' },
+  { label: 'About us', path: '/about-us' },
+  { label: 'Contact us', path: '/contact-us' },
+];
+
 const Logo = () => (
   <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -82,19 +92,34 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             </span>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8">
+          {/* Desktop Navigation — exact Figma navbar tags */}
+          <div className="hidden lg:flex items-center gap-[44px]">
+            {isPublic && MARKETING_NAV_LINKS.map(link => (
+              <button
+                key={link.path}
+                onClick={() => onNavigate(link.path)}
+                className="font-normal text-[16px] leading-none text-ink-800 hover:text-medical-600 transition-colors whitespace-nowrap"
+              >
+                {link.label}
+              </button>
+            ))}
+          </div>
+          <div className="hidden md:flex items-center gap-5">
             {isPublic && (
               <>
-                <button onClick={() => onNavigate('/for-doctors')} className="font-medium text-ink-800 hover:text-medical-600 flex items-center gap-2 transition-colors">
-                  <BriefcaseMedical size={16} /> For Doctors
-                </button>
-                <button onClick={() => onLoginClick?.(UserRole.PATIENT)} className="font-medium text-ink-800 hover:text-medical-600 transition-colors">
+                <button onClick={() => onLoginClick?.(UserRole.PATIENT)} className="font-normal text-[16px] text-ink-800 hover:text-medical-600 transition-colors">
                   Login
                 </button>
-                <Button variant="gradient" onClick={() => onRegisterClick?.()} className="gap-2 pl-5 pr-3 h-11 font-display">
-                  Register <ArrowRight size={14} />
-                </Button>
+                <button
+                  onClick={() => onRegisterClick?.()}
+                  className="inline-flex items-center rounded-full text-white overflow-hidden"
+                  style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
+                >
+                  <span className="pl-4 pr-0 text-[16px] font-display">Register</span>
+                  <span className="flex items-center justify-center px-[18px] py-4">
+                    <ArrowRight size={14} />
+                  </span>
+                </button>
               </>
             )}
 
@@ -240,7 +265,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
           {/* Mobile UI Controls */}
           {isPublic && (
-            <button className="md:hidden text-slate-700 p-2" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            <button className="lg:hidden text-slate-700 p-2" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
               {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
           )}
@@ -261,7 +286,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
       {/* MOBILE PREMIUM DRAWER (Contextual Sidebar) */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[100] md:hidden">
+        <div className="fixed inset-0 z-[100] lg:hidden">
           {/* Backdrop Blur & Overlay */}
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
@@ -285,10 +310,30 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
             {/* Drawer Content */}
             <div className="flex-1 overflow-y-auto py-6 px-6 space-y-8">
+              {/* Navigation — exact Figma navbar tags */}
+              <div className="space-y-1">
+                {MARKETING_NAV_LINKS.map(link => (
+                  <button
+                    key={link.path}
+                    onClick={() => { onNavigate(link.path); setIsMobileMenuOpen(false); }}
+                    className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-ink-800 font-medium text-[15px] transition-colors"
+                  >
+                    {link.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Account Section */}
-              <div className="space-y-4">
+              <div className="space-y-4 pt-4 border-t border-slate-50">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Switch Account</h3>
                 <div className="grid gap-3">
+                  <button
+                    onClick={() => { onRegisterClick?.(); setIsMobileMenuOpen(false); }}
+                    className="w-full p-4 rounded-[16px] text-white flex items-center justify-center gap-2 font-display font-semibold active:scale-95 transition-all"
+                    style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
+                  >
+                    Register <ArrowRight size={16} />
+                  </button>
                   <button
                     onClick={() => { onLoginClick?.(UserRole.PATIENT); setIsMobileMenuOpen(false); }}
                     className="w-full p-4 rounded-[16px] bg-medical-600 text-white flex items-center gap-4 group transition-all active:scale-95 shadow-lg shadow-medical-500/20"

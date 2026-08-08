@@ -31,6 +31,13 @@ const DoctorProfileEditor = lazy(() => import('./views/doctor/DoctorProfileEdito
 const AssistantLayout = lazy(() => import('./views/assistant/AssistantLayout').then(m => ({ default: m.AssistantLayout })));
 const AssistantDashboard = lazy(() => import('./views/assistant/AssistantDashboard').then(m => ({ default: m.AssistantDashboard })));
 
+// Marketing Views (public nav pages)
+const AboutUsPage = lazy(() => import('./views/marketing/AboutUsPage').then(m => ({ default: m.AboutUsPage })));
+const ContactUsPage = lazy(() => import('./views/marketing/ContactUsPage').then(m => ({ default: m.ContactUsPage })));
+const BlogsPage = lazy(() => import('./views/marketing/BlogsPage').then(m => ({ default: m.BlogsPage })));
+const HospitalsPage = lazy(() => import('./views/marketing/HospitalsPage').then(m => ({ default: m.HospitalsPage })));
+const LabDiagnosticsPage = lazy(() => import('./views/marketing/LabDiagnosticsPage').then(m => ({ default: m.LabDiagnosticsPage })));
+
 // Admin Views
 const AdminLogin = lazy(() => import('./views/admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
 const SuperAdminDashboard = lazy(() => import('./views/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
@@ -202,7 +209,7 @@ const App: React.FC = () => {
 
     // Allow all non-patient roles to browse the public site
     if (browsePublicSite && (isSuperAdmin || isHospitalAdmin || isBranchManager || isDoctor || isAssistant)) {
-      return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={undefined} focusSearchTrigger={focusSearchTrigger} />;
+      return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={undefined} focusSearchTrigger={focusSearchTrigger} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
     }
 
     if (isSuperAdmin) {
@@ -271,8 +278,13 @@ const App: React.FC = () => {
     switch (true) {
       case currentPath === '/':
       case currentPath === '/patient/home':
-        return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} focusSearchTrigger={focusSearchTrigger} />;
+        return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} focusSearchTrigger={focusSearchTrigger} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
       case currentPath === '/for-doctors': return <DoctorLanding onNavigate={navigate} />;
+      case currentPath === '/hospitals': return <HospitalsPage />;
+      case currentPath === '/lab-diagnostics': return <LabDiagnosticsPage />;
+      case currentPath === '/blogs': return <BlogsPage />;
+      case currentPath === '/about-us': return <AboutUsPage />;
+      case currentPath === '/contact-us': return <ContactUsPage />;
       case currentPath === '/patient/profile':
       case isDoctorProfilePath:
         return (selectedDoctor || doctorIdFromPath) ? (
@@ -285,14 +297,14 @@ const App: React.FC = () => {
             onLoginRequest={() => { setPendingAction('BOOKING'); setIsLoginModalOpen(true); }} 
             onNavigate={navigate} 
           />
-        ) : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} focusSearchTrigger={focusSearchTrigger} />;
-      case currentPath === '/patient/appointments': return isPatient ? <Appointments onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case currentPath === '/patient/rewards': return isPatient ? <Rewards /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case currentPath === '/patient/more': return isPatient ? <More onNavigate={navigate} onLogout={handleLogout} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case currentPath === '/patient/prescriptions': return isPatient ? <Prescriptions onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case currentPath === '/patient/consultations': return isPatient ? <Consultations onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case currentPath === '/patient/medicine-tracker': return isPatient ? <MedicineTracker /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
-      case currentPath === '/live-serial': return isPatient ? <LiveSerial appointmentId={activeAppointmentId} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} />;
+        ) : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} focusSearchTrigger={focusSearchTrigger} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
+      case currentPath === '/patient/appointments': return isPatient ? <Appointments onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
+      case currentPath === '/patient/rewards': return isPatient ? <Rewards /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
+      case currentPath === '/patient/more': return isPatient ? <More onNavigate={navigate} onLogout={handleLogout} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
+      case currentPath === '/patient/prescriptions': return isPatient ? <Prescriptions onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
+      case currentPath === '/patient/consultations': return isPatient ? <Consultations onNavigate={navigate} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
+      case currentPath === '/patient/medicine-tracker': return isPatient ? <MedicineTracker /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
+      case currentPath === '/live-serial': return isPatient ? <LiveSerial appointmentId={activeAppointmentId} /> : <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
       case currentPath === '/patient/doctors': return <DoctorSearch onNavigate={navigate} onSelectDoctor={handleSelectDoctor} initialCategory={selectedSearchCategory} />;
 
       case currentPath === '/admin-login': return <AdminLogin onNavigate={navigate} />;
@@ -371,7 +383,7 @@ const App: React.FC = () => {
           </div>
         </div>
       );
-      default: return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} focusSearchTrigger={focusSearchTrigger} />;
+      default: return <Home onNavigate={navigate} onSelectDoctor={handleSelectDoctor} userRole={userRole} focusSearchTrigger={focusSearchTrigger} onLoginClick={() => openLoginModal(UserRole.PATIENT)} onRegisterClick={openRegisterModal} />;
     }
   };
 
