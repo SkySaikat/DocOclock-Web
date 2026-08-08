@@ -18,24 +18,24 @@ export const AssistantLayout = ({ children, currentPath, onNavigate }: Assistant
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-ink-50 flex">
       {/* Sidebar */}
-      <div className="w-64 bg-white border-r border-slate-100 flex flex-col hidden md:flex h-screen sticky top-0">
-        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20 text-white font-black text-xl">
+      <div className="w-64 bg-white border-r border-ink-100 flex flex-col hidden md:flex h-screen sticky top-0">
+        <div className="p-6 border-b border-ink-100 flex items-center gap-3">
+          <div className="w-10 h-10 bg-medical-500 rounded-ds-sm flex items-center justify-center shadow-lg shadow-medical-500/20 text-white font-black text-xl">
             DA
           </div>
           <div>
-            <h1 className="font-black text-slate-900 leading-tight">DocOclock</h1>
-            <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-600">Assistant Portal</p>
+            <h1 className="font-display font-black text-ink-800 leading-tight">DocOclock</h1>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-medical-500">Assistant Portal</p>
           </div>
         </div>
 
         <div className="flex-1 p-4 space-y-2 overflow-y-auto">
           <button
             onClick={() => onNavigate('/assistant/dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              currentPath === '/assistant/dashboard' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-ds-sm font-bold transition-all ${
+              currentPath === '/assistant/dashboard' ? 'bg-medical-50 text-medical-500' : 'text-ink-500 hover:bg-ink-50 hover:text-ink-800'
             }`}
           >
             <LayoutDashboard size={20} />
@@ -44,8 +44,8 @@ export const AssistantLayout = ({ children, currentPath, onNavigate }: Assistant
 
           <button
             onClick={() => onNavigate('/assistant/appointments')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              currentPath === '/assistant/appointments' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-ds-sm font-bold transition-all ${
+              currentPath === '/assistant/appointments' ? 'bg-medical-50 text-medical-500' : 'text-ink-500 hover:bg-ink-50 hover:text-ink-800'
             }`}
           >
             <User size={20} />
@@ -54,8 +54,8 @@ export const AssistantLayout = ({ children, currentPath, onNavigate }: Assistant
 
           <button
             onClick={() => onNavigate('/assistant/queue')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              currentPath === '/assistant/queue' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-ds-sm font-bold transition-all ${
+              currentPath === '/assistant/queue' ? 'bg-medical-50 text-medical-500' : 'text-ink-500 hover:bg-ink-50 hover:text-ink-800'
             }`}
           >
             <Clock size={20} />
@@ -63,19 +63,19 @@ export const AssistantLayout = ({ children, currentPath, onNavigate }: Assistant
           </button>
         </div>
 
-        <div className="p-4 border-t border-slate-100">
+        <div className="p-4 border-t border-ink-100">
           <div className="mb-4 flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600">
+            <div className="w-10 h-10 rounded-full bg-ink-100 flex items-center justify-center font-bold text-ink-600">
               {profile?.name?.charAt(0)}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-bold text-slate-900 truncate">{profile?.name}</p>
-              <p className="text-xs text-slate-500 truncate">{profile?.phone}</p>
+              <p className="text-sm font-bold text-ink-800 truncate">{profile?.name}</p>
+              <p className="text-xs text-ink-500 truncate">{profile?.phone}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-rose-600 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors"
+            className="flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-rose-600 bg-rose-50 rounded-ds-sm hover:bg-rose-100 transition-colors"
           >
             <LogOut size={16} /> Logout
           </button>
