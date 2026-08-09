@@ -108,12 +108,12 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                   <img src="/assets/figma/hero-doctor.png" alt="" className="w-full h-full object-cover object-top" />
                </div>
 
-               <div className="absolute left-4 right-4 md:left-[130px] md:right-auto top-8 md:top-[314px] md:w-[480px] flex flex-col gap-4 md:gap-6 items-start z-10">
+               <div className="absolute left-4 right-4 md:left-[130px] md:right-auto top-8 md:top-[280px] md:w-[580px] flex flex-col gap-4 md:gap-6 items-start z-10">
                   <span className="bg-white/20 px-3 py-2 rounded-full text-white text-[14px] tracking-[0.28px]">
                      Welcome to Dococlock
                   </span>
-                  <h1 className="font-sans font-medium text-white text-[36px] md:text-[68px] leading-[1.1] md:leading-[1.05] tracking-[0.5px] md:tracking-[1.36px]">
-                     {isPatient ? <>Welcome back.<br />Your Health.<br />Fully Controlled.</> : <>Your Time.Your Health. <br />Fully Controlled.</>}
+                  <h1 className="font-sans font-medium text-white text-[36px] md:text-[68px] leading-[1.1] md:leading-[1.05] tracking-[0.5px] md:tracking-[1.36px] whitespace-nowrap">
+                     {isPatient ? <>Welcome back.<br />Your Health.<br />Fully Controlled.</> : <>Your Time.Your<br />Health.<br />Fully Controlled.</>}
                   </h1>
                   <button
                      onClick={handleHeroCta}
@@ -187,11 +187,11 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                         <div
                            key={doc.id}
                            onClick={() => onSelectDoctor?.(doc)}
-                           className="w-full max-w-[384px] rounded-[24px] overflow-hidden shadow-[0px_-8px_20px_0px_rgba(0,0,0,0.05)] cursor-pointer"
+                           className="w-[384px] max-w-full shrink-0 rounded-[24px] overflow-hidden shadow-[0px_-8px_20px_0px_rgba(0,0,0,0.05)] cursor-pointer"
                         >
                            <div className="relative h-[405px] bg-medical-50">
                               {doc.imageUrl ? (
-                                 <img src={doc.imageUrl} alt={doc.name} className="w-full h-full object-cover" />
+                                 <img src={doc.imageUrl} alt={doc.name} className="absolute inset-0 w-full h-full object-cover" />
                               ) : (
                                  <div className="w-full h-full flex items-center justify-center text-medical-300 font-display font-bold text-5xl">{doc.name.charAt(0)}</div>
                               )}
