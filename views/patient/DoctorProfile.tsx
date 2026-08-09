@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Doctor, Chamber, UserRole, Relationship, Appointment } from '../../types';
-import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { MapPin, Clock, Calendar, ArrowLeft, Star, GraduationCap, AlertCircle, CheckCircle, X, ChevronRight, Briefcase, Award, Users, Heart, Share2, Send, Loader2 } from 'lucide-react';
 import { getCurrentSession, bookAppointment, fetchDoctorReviews, submitDoctorReview, createNotification } from '../../storage';
@@ -25,6 +24,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
   const { autoSync, isConnected: calConnected } = useGoogleCalendar();
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [confirmedApp, setConfirmedApp] = useState<Appointment | null>(null);
+  const [bookingStep, setBookingStep] = useState(1);
 
   const [chambers, setChambers] = useState<any[]>([]);
   const [isLoadingChambers, setIsLoadingChambers] = useState(true);
@@ -136,10 +136,25 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
 
   const handleBookClick = () => {
     if (userRole === UserRole.PATIENT) {
+      setBookingStep(1);
+      setConfirmedApp(null);
       setIsBookingModalOpen(true);
     } else {
       onLoginRequest();
     }
+  };
+
+  const BOOKING_STEPS = [
+    { label: 'Hospital', icon: '/assets/figma/booking-icon-hospital.svg' },
+    { label: 'Appointment', icon: '/assets/figma/booking-icon-appointment.svg' },
+    { label: 'Patient Details', icon: '/assets/figma/booking-icon-patient.svg' },
+    { label: 'Review And Confirm', icon: '/assets/figma/booking-icon-patient.svg' },
+  ];
+
+  const canAdvanceFromStep = (step: number) => {
+    if (step === 1) return !!selectedChamber;
+    if (step === 3) return !isAddingNew || newPatientData.name.trim().length > 0;
+    return true;
   };
 
   const handleConfirmBooking = async () => {
@@ -560,10 +575,10 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
         </div>
       </div>
 
-      {/* BOOKING MODAL (STAYS SAME LOGIC) */}
+      {/* BOOKING MODAL — 4-step wizard matching Figma "Get an Appointment" stepper */}
       {isBookingModalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <GlassCard className="w-full max-w-lg bg-white p-0 overflow-hidden relative max-h-[90vh] overflow-y-auto rounded-ds-xl">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-[560px] bg-[#fdfdfd] p-0 overflow-hidden relative max-h-[90vh] overflow-y-auto rounded-[20px] shadow-[0px_-4px_24px_0px_rgba(0,0,0,0.08)] animate-fade-in-up">
             {confirmedApp ? (
               <div className="p-10 text-center animate-fade-in">
                 <div className="w-24 h-24 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
@@ -581,77 +596,85 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
               </div>
             ) : (
               <>
-                <div className="bg-navy-900 p-8 text-white relative flex justify-between items-center">
-                  <div>
-                    <h3 className="text-[10px] font-black text-medical-300 uppercase tracking-[0.2em] mb-1">Clinic Booking</h3>
-                    <h3 className="font-display text-2xl font-black tracking-tight leading-none">Secure Today's Slot</h3>
+                {/* Blue header banner — exact Figma treatment */}
+                <div className="bg-[#3988ff] relative overflow-hidden pt-9 pb-[68px] px-7">
+                  <img src="/assets/figma/booking-vector25.svg" alt="" className="absolute -top-2 right-6 w-24 opacity-90 pointer-events-none" />
+                  <img src="/assets/figma/booking-vector26.svg" alt="" className="absolute top-8 right-24 w-16 opacity-70 pointer-events-none" />
+                  <div className="relative flex items-start justify-between">
+                    <h3 className="font-sans font-medium text-white text-[28px] sm:text-[32px] tracking-[0.64px] leading-tight max-w-[240px]">Get an Appointment</h3>
+                    <button onClick={() => setIsBookingModalOpen(false)} className="w-10 h-10 bg-white/15 hover:bg-white/25 transition-colors flex items-center justify-center rounded-full shrink-0" aria-label="Close"><X size={18} className="text-white" /></button>
                   </div>
-                  <button onClick={() => setIsBookingModalOpen(false)} className="w-10 h-10 bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center rounded-xl"><X size={20} /></button>
                 </div>
 
-                <div className="p-8 space-y-8">
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Choose Date</label>
-                    <input type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-ink-800 outline-none focus:ring-2 ring-medical-500/20 transition-all cursor-pointer" />
-                  </div>
-
-                  {selectedDate && (
-                    <div className="space-y-4 animate-fade-in-up">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Select Hospital</label>
-                      {availableChambers.length === 0 ? (
-                        <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100 flex items-center gap-4 text-rose-600">
-                          <AlertCircle size={24} className="shrink-0" />
-                          <p className="text-sm font-black">Specialist not available on this date.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {availableChambers.map((c: any) => (
-                            <div key={c.id} onClick={() => setSelectedChamber(c)} className={`p-6 rounded-ds-lg cursor-pointer transition-all border-2 flex items-center justify-between ${selectedChamber?.id === c.id ? 'border-medical-600 bg-medical-50/50' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
-                              <div>
-                                <h4 className="font-black text-ink-800">{c.hospitalName}</h4>
-                                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">{c.schedule[0]?.startTime} - {c.schedule[0]?.endTime}</p>
-                              </div>
-                              <span className="text-lg font-black text-medical-600">৳ {c.feeNormal}</span>
+                {/* Floating stepper card */}
+                <div className="mx-3.5 -mt-14 relative bg-[#f7faff] border-8 border-white rounded-[20px] py-6 px-4 sm:px-6 shadow-[0px_8px_20px_rgba(30,80,180,0.08)]">
+                  <div className="flex items-center w-full">
+                    {BOOKING_STEPS.map((step, i) => {
+                      const idx = i + 1;
+                      const isActive = idx === bookingStep;
+                      const isDone = idx < bookingStep;
+                      const isOn = isActive || isDone;
+                      return (
+                        <React.Fragment key={step.label}>
+                          {i > 0 && <div className={`flex-1 h-px min-w-[8px] transition-colors duration-500 ${idx <= bookingStep ? 'bg-[#3fa2ff]' : 'bg-[#d7e3f5]'}`} />}
+                          <div className="flex flex-col items-center gap-1 shrink-0">
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${isOn ? 'bg-[#3fa2ff] shadow-[0_0_0_4px_rgba(63,162,255,0.15)]' : 'bg-white border border-[#e2eaf5]'} ${isActive ? 'scale-110' : ''}`}>
+                              <img src={step.icon} alt="" className={`w-4 h-4 ${isOn ? 'brightness-0 invert' : 'opacity-50'}`} />
                             </div>
-                          ))}
+                            <p className={`text-[10px] sm:text-[12px] font-medium text-center leading-tight max-w-[74px] transition-colors duration-300 ${isOn ? 'text-[#3fa2ff]' : 'text-[#96a7b8]'}`}>{step.label}</p>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* STEP BODY */}
+                <div className="p-6 sm:p-7 space-y-6 min-h-[240px]">
+                  {bookingStep === 1 && (
+                    <div className="space-y-6 animate-fade-in-up">
+                      <div className="space-y-2.5">
+                        <p className="font-sans text-[15px] text-[#171717]">Choose Date</p>
+                        <input type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium text-[#171717] outline-none focus:ring-2 ring-[#3fa2ff]/30 transition-all cursor-pointer" />
+                      </div>
+
+                      {selectedDate && (
+                        <div className="space-y-2.5 animate-fade-in-up">
+                          <p className="font-sans text-[15px] text-[#171717]">Choose Hospital</p>
+                          {availableChambers.length === 0 ? (
+                            <div className="bg-rose-50 p-5 rounded-[8px] border border-rose-100 flex items-center gap-3 text-rose-600">
+                              <AlertCircle size={20} className="shrink-0" />
+                              <p className="text-sm font-bold">Specialist not available on this date.</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2.5">
+                              {availableChambers.map((c: any) => (
+                                <button
+                                  key={c.id}
+                                  onClick={() => setSelectedChamber(c)}
+                                  className={`w-full text-left bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 flex items-center justify-between transition-all ${selectedChamber?.id === c.id ? 'ring-2 ring-[#3fa2ff]' : 'hover:ring-1 ring-[#d7e3f5]'}`}
+                                >
+                                  <div>
+                                    <h4 className="font-semibold text-[#171717] text-[14px]">{c.hospitalName}</h4>
+                                    <p className="text-[12px] text-[#909090] mt-0.5">{c.schedule[0]?.startTime} - {c.schedule[0]?.endTime}</p>
+                                  </div>
+                                  <span className="text-[15px] font-semibold text-[#2e8cff] shrink-0">৳ {c.feeNormal}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
 
-                  {selectedChamber && (
-                    <div className="space-y-8 pt-4 animate-fade-in-up">
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Patient Details</label>
-                        <select
-                          value={isAddingNew ? 'ADD_NEW' : selectedPatientId}
-                          onChange={e => {
-                            if (e.target.value === 'ADD_NEW') setIsAddingNew(true);
-                            else { setIsAddingNew(false); setSelectedPatientId(e.target.value); }
-                          }}
-                          className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-slate-900 outline-none"
-                        >
-                          {session && <option value={session.id}>{session.name} (Self)</option>}
-                          <option value="ADD_NEW">+ Family Member</option>
-                        </select>
+                  {bookingStep === 2 && selectedChamber && (
+                    <div className="space-y-6 animate-fade-in-up">
+                      <div className="flex items-center justify-between bg-[#f7faff] rounded-[8px] px-4 py-3">
+                        <span className="text-[13px] font-medium text-[#171717]">{(selectedChamber as any).hospitalName}</span>
+                        <span className="text-[12px] text-[#909090]">{selectedDate}</span>
                       </div>
-
-                      {isAddingNew && (
-                        <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 animate-fade-in">
-                          <input placeholder="Full Name" value={newPatientData.name} onChange={e => setNewPatientData({ ...newPatientData, name: e.target.value })} className="w-full h-12 bg-white border border-slate-200 rounded-xl px-4 font-bold outline-none" />
-                          <div className="flex gap-2">
-                            <select className="flex-1 h-12 bg-white border border-slate-200 rounded-xl px-4 font-bold outline-none" onChange={e => setNewPatientData({ ...newPatientData, gender: e.target.value as any })}>
-                              <option>Male</option><option>Female</option>
-                            </select>
-                            <select className="flex-1 h-12 bg-white border border-slate-200 rounded-xl px-4 font-bold outline-none" onChange={e => setNewPatientData({ ...newPatientData, relationship: e.target.value as any })}>
-                              <option>Child</option><option>Spouse</option><option>Parent</option>
-                            </select>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Time Slot Picker — shown only when doctor set consultation duration */}
-                      {(selectedChamber as any).consultationDurationMinutes > 0 && (() => {
+                      {(selectedChamber as any).consultationDurationMinutes > 0 ? (() => {
                         const dur = (selectedChamber as any).consultationDurationMinutes as number;
                         const startTime: string = (selectedChamber as any).schedule[0]?.startTime || '09:00';
                         const endTime: string = (selectedChamber as any).schedule[0]?.endTime || '17:00';
@@ -669,8 +692,8 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                           return { serial: i + 1, time: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`, label: `${h12}:${String(m).padStart(2,'0')} ${period}` };
                         });
                         return (
-                          <div className="space-y-3">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Choose Time Slot</label>
+                          <div className="space-y-2.5">
+                            <p className="font-sans text-[15px] text-[#171717]">Choose Time Slot</p>
                             <div className="grid grid-cols-3 gap-2">
                               {slots.map(slot => {
                                 const taken = takenSerials.has(slot.serial);
@@ -680,24 +703,61 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                                     key={slot.serial}
                                     disabled={taken}
                                     onClick={() => setSelectedTimeSlot(selected ? null : slot)}
-                                    className={`p-3 rounded-2xl border-2 text-center transition-all ${taken ? 'border-slate-100 bg-slate-50 opacity-40 cursor-not-allowed' : selected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white hover:border-slate-200 text-slate-700'}`}
+                                    className={`p-3 rounded-[8px] text-center transition-all ${taken ? 'bg-slate-50 opacity-40 cursor-not-allowed' : selected ? 'bg-[#eaf3ff] ring-2 ring-[#2e8cff] text-[#2e8cff]' : 'bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] hover:ring-1 ring-[#d7e3f5] text-[#171717]'}`}
                                   >
-                                    <p className="text-xs font-black">{slot.label}</p>
-                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5">#{slot.serial}</p>
+                                    <p className="text-xs font-semibold">{slot.label}</p>
+                                    <p className="text-[9px] text-[#909090] mt-0.5">#{slot.serial}</p>
                                     {taken && <p className="text-[8px] font-bold text-rose-400 mt-0.5">Taken</p>}
                                   </button>
                                 );
                               })}
                             </div>
-                            {!selectedTimeSlot && <p className="text-[10px] text-slate-400 font-bold">Select a slot to book a specific time, or skip to get the next available serial.</p>}
+                            {!selectedTimeSlot && <p className="text-[11px] text-[#909090]">Select a slot to book a specific time, or skip to get the next available serial.</p>}
                           </div>
                         );
-                      })()}
+                      })() : (
+                        <div className="bg-[#f7faff] rounded-[8px] p-6 text-center">
+                          <p className="text-sm font-medium text-[#171717]">You'll be assigned the next available serial</p>
+                          <p className="text-[12px] text-[#909090] mt-1">This doctor doesn't use fixed time slots</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                      {/* Visit details */}
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Visit Type</label>
-                        <select value={visitType} onChange={e => setVisitType(e.target.value)} className="w-full h-12 bg-slate-50 border border-slate-100 rounded-2xl px-4 font-bold text-slate-900 outline-none">
+                  {bookingStep === 3 && (
+                    <div className="space-y-6 animate-fade-in-up">
+                      <div className="space-y-2.5">
+                        <p className="font-sans text-[15px] text-[#171717]">Who is this appointment for?</p>
+                        <select
+                          value={isAddingNew ? 'ADD_NEW' : selectedPatientId}
+                          onChange={e => {
+                            if (e.target.value === 'ADD_NEW') setIsAddingNew(true);
+                            else { setIsAddingNew(false); setSelectedPatientId(e.target.value); }
+                          }}
+                          className="w-full bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium text-[#171717] outline-none"
+                        >
+                          {session && <option value={session.id}>{session.name} (Self)</option>}
+                          <option value="ADD_NEW">+ Family Member</option>
+                        </select>
+                      </div>
+
+                      {isAddingNew && (
+                        <div className="p-5 bg-[#f7faff] rounded-[12px] space-y-3 animate-fade-in">
+                          <input placeholder="Full Name" value={newPatientData.name} onChange={e => setNewPatientData({ ...newPatientData, name: e.target.value })} className="w-full bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium outline-none" />
+                          <div className="flex gap-2">
+                            <select className="flex-1 bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium outline-none" onChange={e => setNewPatientData({ ...newPatientData, gender: e.target.value as any })}>
+                              <option>Male</option><option>Female</option>
+                            </select>
+                            <select className="flex-1 bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium outline-none" onChange={e => setNewPatientData({ ...newPatientData, relationship: e.target.value as any })}>
+                              <option>Child</option><option>Spouse</option><option>Parent</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2.5">
+                        <p className="font-sans text-[15px] text-[#171717]">Visit Type</p>
+                        <select value={visitType} onChange={e => setVisitType(e.target.value)} className="w-full bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium text-[#171717] outline-none">
                           <option value="new_patient">New Patient</option>
                           <option value="follow_up">Follow-up</option>
                           <option value="report_discussion">Report Discussion</option>
@@ -705,36 +765,56 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                           <option value="emergency">Emergency</option>
                         </select>
                       </div>
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Chief Complaint <span className="normal-case text-slate-300">(optional)</span></label>
-                        <textarea rows={2} placeholder="e.g. Chest pain, shortness of breath..." value={chiefComplaint} onChange={e => setChiefComplaint(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium text-slate-700 outline-none resize-none focus:border-blue-400 transition-all" />
-                      </div>
-
-                      <div className="bg-slate-50 rounded-[2.5rem] p-5 sm:p-6 border border-slate-100 space-y-4">
-                        <div className="flex justify-between items-center"><span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Consultation Fee</span><span className="font-black text-slate-900">৳ {(selectedChamber as any).feeNormal}</span></div>
-                        {selectedTimeSlot && <div className="flex justify-between items-center"><span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Your Time Slot</span><span className="font-black text-blue-600">{selectedTimeSlot.time} · Serial #{selectedTimeSlot.serial}</span></div>}
-                        <div className="border-t border-slate-200 pt-4 flex justify-between items-center"><span className="text-xs sm:text-sm font-black text-slate-900">Amount to Pay</span><span className="text-xl sm:text-2xl font-black text-blue-600">৳ {(selectedChamber as any).feeNormal}</span></div>
-                      </div>
-
-                      {bookingError && (
-                        <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 text-rose-600 flex items-center gap-3 animate-shake">
-                          <AlertCircle size={20} className="shrink-0" />
-                          <p className="text-[10px] sm:text-sm font-black uppercase tracking-widest">{getBookingErrorMessage(bookingError)}</p>
-                        </div>
-                      )}
-
-                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2">
-                        <Button fullWidth variant="outline" className="h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest order-2 sm:order-1" onClick={() => setIsBookingModalOpen(false)}>Cancel</Button>
-                        <Button fullWidth className="h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest bg-blue-600 text-white order-1 sm:order-2" onClick={handleConfirmBooking} disabled={isBooking}>
-                          {isBooking ? "Finalizing..." : "Confirm Securely"}
-                        </Button>
+                      <div className="space-y-2.5">
+                        <p className="font-sans text-[15px] text-[#171717]">Chief Complaint <span className="text-[#909090] text-[12px]">(optional)</span></p>
+                        <textarea rows={2} placeholder="e.g. Chest pain, shortness of breath..." value={chiefComplaint} onChange={e => setChiefComplaint(e.target.value)} className="w-full px-4 py-3 bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] text-sm font-medium text-[#171717] outline-none resize-none focus:ring-2 ring-[#3fa2ff]/30 transition-all" />
                       </div>
                     </div>
                   )}
+
+                  {bookingStep === 4 && selectedChamber && (
+                    <div className="space-y-5 animate-fade-in-up">
+                      <p className="font-sans text-[15px] text-[#171717] mb-1">Review And Confirm</p>
+                      <div className="bg-[#f7faff] rounded-[16px] p-5 space-y-3.5">
+                        <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Doctor</span><span className="font-semibold text-[#171717] text-[13px]">{doctor.name}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Hospital</span><span className="font-semibold text-[#171717] text-[13px]">{(selectedChamber as any).hospitalName}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Date</span><span className="font-semibold text-[#171717] text-[13px]">{selectedDate}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Patient</span><span className="font-semibold text-[#171717] text-[13px]">{isAddingNew ? newPatientData.name || '—' : session?.name}</span></div>
+                        {selectedTimeSlot && <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Time Slot</span><span className="font-semibold text-[#2e8cff] text-[13px]">{selectedTimeSlot.time} · Serial #{selectedTimeSlot.serial}</span></div>}
+                        <div className="border-t border-[#e2eaf5] pt-3.5 flex justify-between items-center"><span className="text-[13px] font-semibold text-[#171717]">Amount to Pay</span><span className="text-xl font-bold text-[#2e8cff]">৳ {(selectedChamber as any).feeNormal}</span></div>
+                      </div>
+
+                      {bookingError && (
+                        <div className="p-4 bg-rose-50 rounded-[12px] border border-rose-100 text-rose-600 flex items-center gap-3 animate-shake">
+                          <AlertCircle size={20} className="shrink-0" />
+                          <p className="text-[11px] sm:text-sm font-bold">{getBookingErrorMessage(bookingError)}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer — exact Figma pill buttons */}
+                <div className="flex gap-2 items-center p-4">
+                  <button
+                    onClick={() => bookingStep === 1 ? setIsBookingModalOpen(false) : setBookingStep(s => s - 1)}
+                    className="bg-white hover:bg-slate-50 border border-[#eee] flex items-center justify-center rounded-full shrink-0 w-[110px] h-12 text-[15px] text-[#202020] font-medium transition-colors active:scale-[0.98]"
+                  >
+                    {bookingStep === 1 ? 'Cancel' : 'Back'}
+                  </button>
+                  <button
+                    onClick={() => bookingStep === 4 ? handleConfirmBooking() : (canAdvanceFromStep(bookingStep) && setBookingStep(s => s + 1))}
+                    disabled={!canAdvanceFromStep(bookingStep) || (bookingStep === 4 && isBooking)}
+                    className="bg-[#2e8cff] hover:bg-[#2478e8] flex-1 min-w-0 flex items-center justify-center gap-2 rounded-full h-12 text-[15px] text-white font-medium transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {bookingStep === 4 && isBooking && <Loader2 size={16} className="animate-spin" />}
+                    {bookingStep === 4 ? (isBooking ? 'Finalizing...' : 'Confirm') : 'Continue'}
+                    {bookingStep < 4 && <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" />}
+                  </button>
                 </div>
               </>
             )}
-          </GlassCard>
+          </div>
         </div>
       )}
     </div>

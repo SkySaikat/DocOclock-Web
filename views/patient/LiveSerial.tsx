@@ -261,17 +261,22 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
    const isMyTurn = currentServing?.id === myApp.id;
 
    return (
-      <div className="max-w-4xl mx-auto space-y-4 pb-10 px-4 md:px-0 animate-fade-in">
-         <div className="text-center space-y-0.5">
-            <h1 className="font-display text-2xl font-black text-ink-800 tracking-tight">Live Tracker</h1>
-            <p className="text-slate-500 font-bold text-[9px] uppercase tracking-[0.2em]">{myApp.doctorName} • Real-time status</p>
+      <div className="max-w-4xl mx-auto space-y-0 pb-10 px-4 md:px-0 animate-fade-in">
+         {/* Blue banner header — same visual language as the booking wizard */}
+         <div className="bg-[#3988ff] relative overflow-hidden rounded-t-[20px] pt-8 pb-14 px-7 -mx-4 md:mx-0">
+            <img src="/assets/figma/booking-vector25.svg" alt="" className="absolute -top-2 right-6 w-20 opacity-90 pointer-events-none" />
+            <img src="/assets/figma/booking-vector26.svg" alt="" className="absolute top-7 right-20 w-14 opacity-70 pointer-events-none" />
+            <div className="relative text-center space-y-1">
+               <h1 className="font-sans font-medium text-white text-[28px] sm:text-[32px] tracking-[0.64px]">Live Tracker</h1>
+               <p className="text-white/80 font-bold text-[10px] uppercase tracking-[0.2em]">{myApp.doctorName} • Real-time status</p>
+            </div>
          </div>
 
-         <div className="relative">
-            <div className="absolute -top-10 -left-10 w-40 h-40 bg-medical-400/20 blur-[80px] rounded-full"></div>
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-teal-400/20 blur-[80px] rounded-full"></div>
+         <div className="relative -mt-8">
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-medical-400/20 blur-[80px] rounded-full pointer-events-none"></div>
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-teal-400/20 blur-[80px] rounded-full pointer-events-none"></div>
 
-            <div className="bg-white rounded-ds-xl overflow-hidden shadow-ds-soft border border-slate-50 relative z-10 transition-all duration-500">
+            <div className="bg-white rounded-[20px] overflow-hidden shadow-ds-soft border-4 border-white outline outline-1 outline-slate-50 relative z-10 transition-all duration-500 mx-1">
                <div className="bg-slate-50/50 border-b border-slate-100 p-4 px-8 flex justify-between items-center">
                   <div className="flex items-center gap-3">
                      <span className="relative flex h-2.5 w-2.5">
@@ -282,7 +287,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                         {isMyTurn ? 'Your Consultation' : 'Live Chamber Status'}
                      </span>
                   </div>
-                  <button onClick={() => window.location.reload()} className="text-[10px] font-black text-medical-600 flex items-center gap-2 hover:bg-medical-50 px-3 py-1.5 rounded-full transition-all uppercase tracking-widest">
+                  <button onClick={() => window.location.reload()} className="text-[10px] font-black text-medical-600 flex items-center gap-2 hover:bg-medical-50 active:scale-95 px-3 py-1.5 rounded-full transition-all uppercase tracking-widest">
                      <RefreshCw size={12} /> Sync
                   </button>
                </div>
@@ -362,12 +367,12 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                           <div className="bg-slate-50 px-6 py-5 rounded-ds-lg border border-slate-100 flex flex-col items-center text-center">
+                           <div className="bg-slate-50 px-6 py-5 rounded-ds-lg border border-slate-100 flex flex-col items-center text-center hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300">
                               <Clock size={16} className="text-slate-400 mb-2" />
                               <p className="font-stat text-xl font-black text-ink-800 leading-none">{stats.waitTimeMinutes}<span className="font-sans text-xs ml-0.5 text-slate-400">m</span></p>
                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Wait Time</p>
                            </div>
-                           <div className="bg-medical-50 px-6 py-5 rounded-ds-lg border border-medical-100 flex flex-col items-center text-center">
+                           <div className="bg-medical-50 px-6 py-5 rounded-ds-lg border border-medical-100 flex flex-col items-center text-center hover:border-medical-200 hover:-translate-y-0.5 transition-all duration-300">
                               <Smartphone size={16} className="text-medical-500 mb-2" />
                               <p className="font-stat text-xl font-black text-medical-600 leading-none">{stats.arrivalTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
                               <p className="text-[8px] font-black text-medical-400 uppercase tracking-widest mt-1">Reach Clinic</p>

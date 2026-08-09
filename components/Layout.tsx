@@ -22,7 +22,7 @@ interface LayoutProps {
 
 // Exact Figma navbar tags (Doctor / Hospital / Lab&Diagnostic / Blogs / About us / Contact us)
 const MARKETING_NAV_LINKS: { label: string; path: string }[] = [
-  { label: 'Doctor', path: '/for-doctors' },
+  { label: 'Doctor', path: '/patient/doctors' },
   { label: 'Hospital', path: '/hospitals' },
   { label: 'Lab&Diagnostic', path: '/lab-diagnostics' },
   { label: 'Blogs', path: '/blogs' },
