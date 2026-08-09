@@ -1,152 +1,93 @@
-import React from 'react';
-import { 
-  Activity, Mail, MapPin, Phone, Facebook, 
-  Twitter, Instagram, Linkedin, Search, 
-  Calendar, CreditCard, Clock, FileText, 
-  ChevronRight, Heart, ExternalLink
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 
 export const Footer: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
+  const [email, setEmail] = useState('');
+
   return (
-    <footer className="bg-navy-900 pt-20 pb-10 text-slate-300 overflow-hidden relative">
-      {/* Decorative gradient blob */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-medical-500/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-500/10 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2" />
+    <footer
+      className="relative overflow-hidden flex flex-col items-center gap-[80px] md:gap-[120px] py-16 md:py-[64px]"
+      style={{ backgroundImage: 'linear-gradient(180deg, rgb(48,47,52) 0%, rgb(10,10,10) 100%)' }}
+    >
+      {/* Landscape photo overlay — exact Figma asset, darkened via mix-blend-multiply */}
+      <div className="absolute inset-0 mix-blend-multiply pointer-events-none">
+        <img src="/assets/figma/footer-bg.png" alt="" className="w-full h-full object-cover" />
+      </div>
+      {/* Decorative texture overlay — exact Figma asset */}
+      <div className="absolute -inset-x-1/2 -inset-y-1/3 mix-blend-exclusion pointer-events-none opacity-60">
+        <img src="/assets/figma/footer-texture.svg" alt="" className="w-full h-full object-cover" />
+      </div>
 
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-20">
-          
-          {/* Brand & About */}
-          <div className="space-y-6">
-            <div 
-              className="flex items-center gap-3 cursor-pointer group" 
-              onClick={() => onNavigate('/')}
-            >
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-2 shadow-lg shadow-white/10">
-                <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none">
-                  <path d="M30 35 C 30 20, 70 20, 70 35" stroke="#2E8CFF" strokeWidth="8" strokeLinecap="round" />
-                  <path d="M50 50 L 50 85" stroke="#14B8A6" strokeWidth="8" strokeLinecap="round" />
-                  <circle cx="50" cy="50" r="10" fill="#171717" />
-                </svg>
-              </div>
-              <span className="font-display text-2xl font-bold text-white tracking-tight">
-                DocOclock
-              </span>
+      {/* CTA band */}
+      <div className="relative z-10 flex flex-col items-center gap-7 w-full max-w-[808px] px-6 text-center">
+        <span className="inline-flex items-center gap-2.5 bg-white/10 px-3 py-2 rounded-full">
+          <span className="w-[21px] h-2 rounded-full bg-medical-500" />
+          <span className="text-white text-[14px] font-normal">Join Dococlock</span>
+        </span>
+        <h2 className="font-sans font-normal text-white text-[32px] md:text-[46px] leading-[1.2] md:leading-[58px] tracking-[0.92px]">
+          Healthcare made simple with smarter appointment scheduling.
+        </h2>
+        <p className="text-ink-400 text-[16px] tracking-[0.32px] max-w-[600px]">
+          Book verified doctors, track your live queue, and manage prescriptions — all from one account.
+        </p>
+        <button
+          onClick={() => onNavigate('/patient/doctors')}
+          className="inline-flex items-center rounded-full text-white overflow-hidden mt-2"
+          style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
+        >
+          <span className="pl-6 text-[16px] font-display">Register</span>
+          <span className="flex items-center justify-center px-[18px] py-4">
+            <ArrowRight size={16} />
+          </span>
+        </button>
+      </div>
+
+      {/* Logo/description + newsletter */}
+      <div className="relative z-10 flex flex-col gap-[120px] w-full max-w-[1200px] px-6">
+        <div className="flex flex-col md:flex-row gap-10 md:gap-[80px] items-start justify-between">
+          <div className="flex flex-col gap-7 w-full md:w-[375px] shrink-0">
+            <div className="flex items-center gap-1">
+              <img src="/assets/figma/logo-mark.svg" alt="" className="w-[50px] h-[50px]" />
+              <span className="text-white text-[28px] font-sans">Dococlock</span>
             </div>
-            
-            <p className="text-slate-400 text-sm leading-relaxed font-medium">
-              Transforming healthcare delivery through digital excellence. Find doctors, manage appointments, and access your medical history anytime, anywhere.
+            <p className="text-ink-400 text-[16px] tracking-[0.32px] leading-relaxed">
+              Dococlock is a doctor-appointment platform that helps patients find BMDC-verified doctors,
+              track their live queue position, and manage digital prescriptions in one place.
             </p>
-
-            <div className="flex gap-4">
-              {[Facebook, Twitter, Instagram, Linkedin].map((Icon, i) => (
-                <a 
-                  key={i} 
-                  href="#" 
-                  className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-medical-500 hover:text-white transition-all duration-300"
-                >
-                  <Icon size={18} />
-                </a>
-              ))}
-            </div>
           </div>
-
-          {/* Quick Links */}
-          <div className="space-y-6">
-            <h3 className="font-display text-white font-black text-sm uppercase tracking-widest">Navigation</h3>
-            <ul className="space-y-4">
-              {[
-                { label: 'Find a Doctor', path: '/patient/doctors' },
-                { label: 'Doctor Registration', path: '/for-doctors' },
-                { label: 'Medicine Tracker', path: '/patient/medicine-tracker' },
-                { label: 'Support Center', path: '#' },
-                { label: 'Privacy Policy', path: '#' }
-              ].map((link, i) => (
-                <li key={i}>
-                  <button
-                    onClick={() => onNavigate(link.path)}
-                    className="flex items-center gap-2 text-slate-400 hover:text-medical-400 transition-colors font-bold text-sm"
-                  >
-                    <ChevronRight size={14} /> {link.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* How it Works */}
-          <div className="lg:col-span-2 space-y-6">
-            <h3 className="font-display text-white font-black text-sm uppercase tracking-widest">How It Works</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[
-                { 
-                  icon: Search, 
-                  title: 'Discover', 
-                  desc: 'Find the right specialist based on category and expertise.' 
-                },
-                { 
-                  icon: Calendar, 
-                  title: 'Booking', 
-                  desc: 'Instant appointment or reappointment issued by your doctor.' 
-                },
-                { 
-                  icon: Clock, 
-                  title: 'Live Tracking', 
-                  desc: 'Track if your doctor is on time or late to save your valuable time.' 
-                },
-                { 
-                  icon: FileText, 
-                  title: 'Digital Rx', 
-                  desc: 'Get electronic prescriptions on your email and dashboard instantly.' 
-                }
-              ].map((item, i) => (
-                <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
-                  <div className="w-10 h-10 rounded-lg bg-medical-500/20 flex items-center justify-center text-medical-400 group-hover:bg-medical-500 group-hover:text-white transition-all shrink-0 shadow-lg shadow-medical-500/10">
-                    <item.icon size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-black text-sm mb-1">{item.title}</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed font-bold">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-col gap-7 w-full md:w-[492px] shrink-0">
+            <p className="text-ink-400 text-[16px] tracking-[0.32px]">
+              "Subscribe to receive appointment reminders, health tips, and product updates."
+            </p>
+            <form
+              onSubmit={(e) => { e.preventDefault(); setEmail(''); }}
+              className="bg-white flex items-center justify-between pl-4 pr-1 py-1 rounded-full w-full"
+            >
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email Address"
+                className="flex-1 min-w-0 text-[#2b2929] text-[16px] outline-none bg-transparent"
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center rounded-full text-white shrink-0"
+                style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
+              >
+                <span className="pl-4 text-[16px] font-display">Subscribe</span>
+                <span className="flex items-center justify-center px-[18px] py-4">
+                  <ArrowRight size={16} />
+                </span>
+              </button>
+            </form>
           </div>
         </div>
 
-        {/* Feature Highlights */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-10 border-t border-slate-800/50">
-          <div className="flex items-center gap-4 text-sm font-bold">
-            <div className="w-10 h-10 rounded-full bg-teal-600/20 flex items-center justify-center text-teal-400">
-              <Activity size={20} />
-            </div>
-            <span>Electronic Prescriptions</span>
-          </div>
-          <div className="flex items-center gap-4 text-sm font-bold">
-            <div className="w-10 h-10 rounded-full bg-medical-500/20 flex items-center justify-center text-medical-400">
-              <Clock size={20} />
-            </div>
-            <span>Real-time Doctor Status</span>
-          </div>
-          <div className="flex items-center gap-4 text-sm font-bold">
-            <div className="w-10 h-10 rounded-full bg-indigo-600/20 flex items-center justify-center text-indigo-400">
-              <MapPin size={20} />
-            </div>
-            <span>Access-Anywhere History</span>
-          </div>
-        </div>
-
-        {/* Bottom Bar */}
-        <div className="pt-10 border-t border-slate-800/50 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-            © {new Date().getFullYear()} DocOclock. All rights reserved.
-          </p>
-          <div className="flex items-center gap-8 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
-            <a href="#" className="hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms</a>
-            <a href="#" className="hover:text-white transition-colors">Cookies</a>
-          </div>
-        </div>
+        <p className="text-ink-400 text-[16px] tracking-[0.32px] text-center md:text-left">
+          © {new Date().getFullYear()} Dococlock. All rights reserved.
+        </p>
       </div>
     </footer>
   );
