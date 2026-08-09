@@ -133,18 +133,20 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
             </div>
          </div>
 
-         {/* SPECIALTY ROW — exact Figma node 87:3885 (static wrapped row, generic "gemini-fill"
-             icon substituted with a plain sparkle glyph — the source icon is Google's Gemini
-             logo, not appropriate to ship on this site). */}
-         <div className="bg-white px-6 py-7 flex flex-wrap justify-center gap-x-[72px] gap-y-4 border-b border-ink-100">
-            {SPECIALTY_ROW.map((label, i) => (
-               <span key={i} className="flex items-center gap-4 text-[#868887] text-[18px] leading-7">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-medical-400 shrink-0">
-                     <path d="M12 2L14 10L22 12L14 14L12 22L10 14L2 12L10 10L12 2Z" fill="currentColor" />
-                  </svg>
-                  {label}
-               </span>
-            ))}
+         {/* SPECIALTY ROW — Figma node 87:3885 is a static row, but turned into a continuous
+             auto-scrolling loop per explicit request. Generic "gemini-fill" icon (Google's
+             Gemini logo) substituted with a plain sparkle glyph — not appropriate to ship here. */}
+         <div className="bg-white py-7 border-b border-ink-100 overflow-hidden">
+            <div className="flex w-max animate-marquee">
+               {[...SPECIALTY_ROW, ...SPECIALTY_ROW].map((label, i) => (
+                  <span key={i} className="flex items-center gap-4 text-[#868887] text-[18px] leading-7 px-9 whitespace-nowrap shrink-0">
+                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-medical-400 shrink-0">
+                        <path d="M12 2L14 10L22 12L14 14L12 22L10 14L2 12L10 10L12 2Z" fill="currentColor" />
+                     </svg>
+                     {label}
+                  </span>
+               ))}
+            </div>
          </div>
 
          <div className="max-w-[1200px] mx-auto px-6">

@@ -55,6 +55,7 @@ const Logo = () => (
 export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, onNavigate, onLoginClick, onRegisterClick, hideMobileBottomNav, currentPath, browseMode, onBrowsePublicSite, onReturnToDashboard }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDoctorProfileOpen, setIsDoctorProfileOpen] = useState(false);
+  const [isNavCompact, setIsNavCompact] = useState(false);
   const doctorDropdownRef = useRef<HTMLDivElement>(null);
   const { profile } = useAuth();
 
@@ -66,6 +67,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Navbar shrinks on scroll-down, grows back on scroll-up.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const handleScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY && y > 80) setIsNavCompact(true);
+      else if (y < lastY) setIsNavCompact(false);
+      lastY = y;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const isPublic = !userRole;
@@ -81,13 +95,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
   return (
     <div className="min-h-screen relative font-sans text-slate-800 bg-medical-50">
 
-      {/* NAVBAR (TOP) - Added safe area top padding */}
-      <nav className="fixed top-0 w-full z-50 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 pointer-events-none">
-        <div className={`max-w-7xl mx-auto px-6 py-3 flex justify-between items-center h-14 rounded-full pointer-events-auto ${isPublic ? 'bg-white shadow-ds-pill' : 'glass-panel shadow-premium border-medical-100/50'}`}>
+      {/* NAVBAR (TOP) - Added safe area top padding. Shrinks on scroll-down, grows on scroll-up. */}
+      <nav className={`fixed top-0 w-full z-50 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pointer-events-none transition-[padding] duration-300 ${isNavCompact ? 'pb-2' : 'pb-4'}`}>
+        <div className={`max-w-7xl mx-auto px-6 flex justify-between items-center rounded-full pointer-events-auto transition-all duration-300 ${isNavCompact ? 'h-11 py-2' : 'h-14 py-3'} ${isPublic ? 'bg-white shadow-ds-pill' : 'glass-panel shadow-premium border-medical-100/50'}`}>
           {/* Brand Logo */}
           <div className="flex items-center gap-3 cursor-pointer group shrink-0" onClick={() => onNavigate('/')}>
-            <Logo />
-            <span className="font-display text-2xl font-bold tracking-tight text-ink-800">
+            <div className={`transition-transform duration-300 ${isNavCompact ? 'scale-75' : 'scale-100'}`}>
+              <Logo />
+            </div>
+            <span className={`font-display font-bold tracking-tight text-ink-800 transition-all duration-300 ${isNavCompact ? 'text-lg' : 'text-2xl'}`}>
               DocOclock
             </span>
           </div>

@@ -130,6 +130,25 @@
   .animate-float-3 {
     animation: float3 6s ease-in-out infinite;
   }
+
+  /* Specialty row — continuous auto-scrolling loop, pauses on hover */
+  .animate-marquee {
+    animation: marquee 26s linear infinite;
+  }
+
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes float1 {

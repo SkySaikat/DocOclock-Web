@@ -20,6 +20,7 @@ const DoctorSearch = lazy(() => import('./views/patient/DoctorSearchView').then(
 const DoctorLanding = lazy(() => import('./views/doctor/DoctorLanding').then(m => ({ default: m.DoctorLanding })));
 const DoctorDashboard = lazy(() => import('./views/doctor/Dashboard').then(m => ({ default: m.DoctorDashboard })));
 const DoctorAnalytics = lazy(() => import('./views/doctor/Analytics').then(m => ({ default: m.DoctorAnalytics })));
+const DoctorAppointments = lazy(() => import('./views/doctor/DoctorAppointments').then(m => ({ default: m.DoctorAppointments })));
 const PrescriptionEditor = lazy(() => import('./views/doctor/PrescriptionEditor').then(m => ({ default: m.PrescriptionEditor })));
 const SerialManager = lazy(() => import('./views/doctor/SerialManager').then(m => ({ default: m.SerialManager })));
 const PatientManualRegistry = lazy(() => import('./views/doctor/PatientManualRegistry').then(m => ({ default: m.PatientManualRegistry })));
@@ -242,10 +243,11 @@ const App: React.FC = () => {
           {(() => {
             switch (currentPath) {
               case '/doctor/dashboard': return <DoctorDashboard onNavigate={navigate} />;
-              case '/doctor/analytics': return <DoctorAnalytics />;
+              case '/doctor/analytics': return <DoctorAnalytics onNavigate={navigate} />;
+              case '/doctor/appointments': return <DoctorAppointments onNavigate={navigate} />;
               case '/doctor/serial-manager': return <SerialManager onNavigate={navigate} onStartPrescription={setActiveRxPatient} />;
               case '/doctor/manual-booking': return <PatientManualRegistry onNavigate={navigate} />;
-              case '/doctor/practice-settings': return <DoctorPracticeSettings />;
+              case '/doctor/practice-settings': return <DoctorPracticeSettings onNavigate={navigate} />;
               case '/doctor/profile': return <DoctorMore onNavigate={navigate} onLogout={handleLogout} />;
               case '/doctor/profile-editor': return <DoctorProfileEditor onBack={() => navigate('/doctor/profile')} />;
               case '/doctor/prescription': return (

@@ -10,8 +10,9 @@ import { DoctorStorage, fetchAppointments, fetchDoctorChambers } from '../../sto
 import { Appointment, AppointmentStatus } from '../../types';
 
 import { getLocalISODate } from '../../utils/date';
+import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
 
-export const DoctorAnalytics: React.FC = () => {
+export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> = ({ onNavigate }) => {
    const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'year'>('week');
    const session = DoctorStorage.get();
    const currentDoctorId = session?.id;
@@ -124,6 +125,7 @@ export const DoctorAnalytics: React.FC = () => {
 
    return (
       <div className="space-y-8 pb-10">
+         {onNavigate && <DoctorTabBar currentPath="/doctor/analytics" onNavigate={onNavigate} />}
          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                <div className="flex items-center gap-3 mb-1">

@@ -10,6 +10,7 @@ import { Appointment, AppointmentStatus } from '../../types';
 
 import { getLocalISODate } from '../../utils/date';
 import { compareTimeStrings } from '../../utils/timeComparison';
+import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
 
 interface DoctorDashboardProps {
   onNavigate?: (path: string) => void;
@@ -126,6 +127,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
 
   return (
     <div className="space-y-8 pb-10 animate-fade-in max-w-6xl mx-auto px-4 md:px-0">
+      {onNavigate && <DoctorTabBar currentPath="/doctor/dashboard" onNavigate={onNavigate} />}
 
       {/* SECTION 1: DOCTOR PROFILE HEADER */}
       <div className="space-y-6">

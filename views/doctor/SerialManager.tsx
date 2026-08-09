@@ -16,6 +16,7 @@ import {
 } from '../../storage';
 import { getLocalISODate } from '../../utils/date';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
+import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
 
 interface SerialManagerProps {
    onNavigate: (path: string) => void;
@@ -436,6 +437,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
    return (
       <div className="space-y-4 max-w-6xl mx-auto px-2 md:px-0 pb-20 animate-fade-in">
+         {onNavigate && <DoctorTabBar currentPath="/doctor/serial-manager" onNavigate={onNavigate} />}
          {/* Unified Grid-Based Control Panel */}
          <div className="bg-white border border-slate-200/50 shadow-ds-card rounded-ds-md overflow-hidden">
             {/* Row 1: Context Header */}

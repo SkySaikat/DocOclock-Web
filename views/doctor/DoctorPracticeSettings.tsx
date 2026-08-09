@@ -6,6 +6,7 @@ import { ChamberCard } from '../../components/ui/ChamberCard';
 import { fetchDoctorChambers, saveChamberWithSchedules, deleteChamberFromSupabase, submitChamberRequest, fetchChamberRequests, PracticeChamber, DoctorPracticeSettings as SettingsType, WeeklyDaySchedule, DoctorStorage } from '../../storage';
 import { supabase } from '../../supabase';
 import { AssistantManager } from '../../components/doctor/AssistantManager';
+import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
 
 const DAY_LABELS: Record<number, string> = {
     0: 'Sunday',
@@ -19,7 +20,7 @@ const DAY_LABELS: Record<number, string> = {
 
 const DAYS = [6, 0, 1, 2, 3, 4, 5]; // Starting with Saturday as per local convention
 
-export const DoctorPracticeSettings: React.FC = () => {
+export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => void }> = ({ onNavigate }) => {
     const session = DoctorStorage.get();
     const doctorId = session?.id || '';
 
@@ -260,6 +261,7 @@ export const DoctorPracticeSettings: React.FC = () => {
 
     return (
         <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-fade-in">
+            {onNavigate && <DoctorTabBar currentPath="/doctor/practice-settings" onNavigate={onNavigate} />}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                     <h1 className="text-3xl md:text-4xl font-display font-black text-ink-800 tracking-tight">Practice Settings</h1>
