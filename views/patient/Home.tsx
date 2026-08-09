@@ -292,42 +292,48 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
       });
    }, [doctors, searchTerm, selectedSpecialty]);
 
+   const compactDoctorList = useMemo(() => browseList.slice(0, 8), [browseList]);
+   const doctorFilterPills = ['All', 'Cardiologist', 'Dermatologist', 'Dentist', 'Neurologist', 'Orthopedic'];
+
    return (
       <div className="min-h-screen bg-white font-sans text-ink-800 pb-24">
-         <div className="max-w-4xl mx-auto px-4 sm:px-6">
-            {/* HERO SECTION — literal Figma "Web-Version / Pre-Login-Pages" layout:
-                headline + copy + Register/Login row on the left, image panel on the right. */}
-            <div className="pt-10 pb-16 md:pt-20 md:pb-20">
-               <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
-                  <div className="flex-1 w-full">
-                     <h1 className="font-display text-4xl md:text-[52px] font-normal text-ink-900 leading-[1.08] mb-5">
+         {/* HERO — literal Figma "PreLogin 1" flow: full-bleed brand-blue band, ring motif,
+             "Welcome to Dococlock" eyebrow, headline, Register/Login row, image panel right. */}
+         <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-medical-500 overflow-hidden">
+            <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 1600 700" fill="none">
+               <circle cx="500" cy="350" r="420" stroke="white" strokeWidth="1" />
+               <circle cx="700" cy="150" r="260" stroke="white" strokeWidth="1" />
+            </svg>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-16 md:pt-16 md:pb-24 relative">
+               <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+                  <div className="flex-1 w-full relative z-10">
+                     <span className="inline-block bg-white/15 text-white text-[13px] font-medium px-4 py-2 rounded-full mb-6">
+                        Welcome to Dococlock
+                     </span>
+                     <h1 className="font-display text-4xl md:text-[52px] font-medium text-white leading-[1.1] mb-8">
                         {isPatient ? (
-                           <>Welcome back.<br />Your Health, Fully<br />Controlled.</>
+                           <>Welcome back.<br />Your Health.<br />Fully Controlled.</>
                         ) : (
-                           <>Your Time, Your<br />Health, Fully<br />Controlled.</>
+                           <>Your Time.Your<br />Health.<br />Fully Controlled.</>
                         )}
                      </h1>
-                     <p className="text-ink-500 text-base max-w-md leading-relaxed mb-8">
-                        Healthcare made simple with smarter appointment scheduling. Book verified doctors and track your queue status live.
-                     </p>
                      <div className="flex items-center gap-6">
                         {isPatient ? (
-                           <Button
-                              variant="primary"
-                              className="h-[52px] px-8"
+                           <button
                               onClick={() => {
                                  searchContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                  searchInputRef.current?.focus();
                               }}
+                              className="h-[52px] px-8 rounded-full bg-white text-ink-800 font-display font-semibold inline-flex items-center gap-2 hover:bg-white/90 transition-colors"
                            >
-                              Find a Doctor
-                           </Button>
+                              Find a Doctor <ArrowRight size={16} />
+                           </button>
                         ) : (
                            <>
-                              <Button variant="primary" className="h-[52px] px-8" onClick={() => onRegisterClick?.()}>
-                                 Register
-                              </Button>
-                              <button onClick={() => onLoginClick?.()} className="text-ink-800 text-[16px] font-normal hover:text-medical-600 transition-colors">
+                              <button onClick={() => onRegisterClick?.()} className="h-[52px] px-8 rounded-full bg-white text-ink-800 font-display font-semibold inline-flex items-center gap-2 hover:bg-white/90 transition-colors">
+                                 Register <ArrowRight size={16} />
+                              </button>
+                              <button onClick={() => onLoginClick?.()} className="text-white/90 hover:text-white text-[16px] font-normal transition-colors">
                                  Login
                               </button>
                            </>
@@ -336,17 +342,23 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                   </div>
 
                   {/* Image panel — real content comes from the admin-managed Hero Banner slider */}
-                  <div className="flex-1 w-full">
-                     <div className="relative rounded-ds-xl overflow-hidden shadow-ds-soft h-[320px] md:h-[420px]">
+                  <div className="flex-1 w-full relative z-10">
+                     <div className="relative rounded-ds-xl overflow-hidden shadow-ds-soft h-[320px] md:h-[420px] bg-navy-900/10">
                         <HeroSlider banners={heroBanners} />
                      </div>
                   </div>
                </div>
             </div>
+         </div>
 
-            {/* FIND A DOCTOR — dedicated search (product functionality Figma's marketing
-                frame doesn't include a slot for, since it has no logged-in product screens) */}
-            <div ref={searchContainerRef} className="relative mb-16 md:mb-20">
+         <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+            <SpecialtyMarquee />
+         </div>
+
+         <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            {/* FIND A DOCTOR — dedicated search (real product functionality; Figma's marketing
+                frame has no slot for it since it covers logged-out screens only) */}
+            <div ref={searchContainerRef} className="relative my-16 md:my-20">
                <div className="bg-white flex items-center gap-2 md:gap-3 p-1.5 rounded-ds-md shadow-ds-card border border-ink-100 focus-within:border-medical-400 transition-all duration-300 max-w-2xl mx-auto">
                   <div className="bg-medical-600 text-white p-2.5 md:p-3 rounded-ds-sm shrink-0">
                      <Search size={18} className="md:w-5 md:h-5" />
@@ -386,77 +398,204 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                )}
             </div>
 
-            {/* NEW HIGH-IMPACT ATTENTION SECTION */}
-            <div className="py-12 md:py-20 flex flex-col md:flex-row gap-12 items-center">
-               <div className="flex-1 space-y-4">
-                  <h2 className="font-display text-3xl md:text-4xl font-black text-ink-800 tracking-tight leading-tight">
-                     Built for Trust, <br />
-                     <span className="text-medical-600">Designed for Speed.</span>
-                  </h2>
-                  <p className="text-slate-500 font-medium leading-relaxed max-w-md">
-                     DocOclock brings transparency to clinical visits. Track your live queue status from anywhere and access verified healthcare instantly.
-                  </p>
+            {/* HOW IT WORKS — literal Figma copy + 3 process cards */}
+            <div className="mb-16 md:mb-20">
+               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                  <div>
+                     <span className="flex items-center gap-2 text-[13px] font-bold text-ink-500 uppercase tracking-wide mb-3">
+                        <span className="w-4 h-1 bg-medical-500 rounded-full" /> How it works
+                     </span>
+                     <h2 className="font-display text-[28px] md:text-[36px] font-medium text-ink-900 leading-tight max-w-lg">
+                        Healthcare made simple with smarter appointment scheduling.
+                     </h2>
+                  </div>
+                  <button onClick={() => onNavigate('/patient/doctors')} className="h-12 px-7 rounded-full bg-medical-500 text-white font-display font-semibold inline-flex items-center gap-2 shrink-0 hover:bg-medical-600 transition-colors">
+                     Register <ArrowRight size={14} />
+                  </button>
                </div>
-               <div className="flex-1 w-full max-w-md bg-slate-50/50 rounded-ds-lg border border-slate-100 p-8 space-y-8">
-                  {[
-                     { icon: Activity, title: "Live Queue Tracking", desc: "Know exactly when to enter the chamber." },
-                     { icon: ShieldCheck, title: "BMDC Verified", desc: "Every doctor on our platform is verified." },
-                     { icon: Pill, title: "Digital Prescription", desc: "Archive and access your Rxs anytime." }
-                  ].map((feat, i) => (
-                     <div key={i} className="flex gap-5 items-start">
-                        <div className="bg-white p-2.5 rounded-xl shadow-ds-card border border-slate-100 text-medical-600 shrink-0">
-                           <feat.icon size={20} />
-                        </div>
-                        <div>
-                           <h4 className="text-[15px] font-black text-ink-800 mb-1">{feat.title}</h4>
-                           <p className="text-[13px] text-slate-500 font-medium leading-normal">{feat.desc}</p>
-                        </div>
-                     </div>
-                  ))}
-               </div>
-            </div>
-
-            {/* TRUST METRICS — Dococlock "Values" pattern: big number + subtitle, divided row */}
-            <div className="mb-12 py-10 border-y border-ink-100 flex flex-wrap justify-center gap-x-4 gap-y-8">
-               {[
-                  { value: '15+', label: 'Years of Combined Experience' },
-                  { value: '5,000+', label: 'Happy Patients' },
-                  { value: '100%', label: 'BMDC Verified Doctors' },
-                  { value: '24/7', label: 'Live Queue Tracking' },
-               ].map((stat, i, arr) => (
-                  <React.Fragment key={stat.label}>
-                     <div className="flex flex-col items-center gap-3 px-6 text-center">
-                        <span className="text-ink-900 font-medium text-5xl md:text-[56px] leading-none">{stat.value}</span>
-                        <span className="text-ink-500 text-xs md:text-sm font-medium max-w-[160px] leading-snug">{stat.label}</span>
-                     </div>
-                     {i < arr.length - 1 && <div className="hidden sm:block w-px bg-ink-100 self-stretch" />}
-                  </React.Fragment>
-               ))}
-            </div>
-
-            {/* HOW IT WORKS — process cards */}
-            <div className="mb-14">
-               <h2 className="font-display text-[28px] md:text-[32px] font-bold text-ink-800 text-center tracking-tight mb-10">
-                  Simplifying Healthcare, From Booking to Consultation
-               </h2>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[
-                     { icon: Search, title: 'Discover', desc: 'Find the right specialist based on category, location and expertise.' },
-                     { icon: Calendar, title: 'Book Instantly', desc: 'Reserve your serial in seconds — no phone calls, no waiting rooms.' },
-                     { icon: Activity, title: 'Track Live', desc: 'Watch your queue position update in real time and arrive right on cue.' },
+                     { icon: Search, title: 'Find Specialists', desc: 'Find the right Doctor to guide your healthcare journey.' },
+                     { icon: Calendar, title: 'Get an Appointment', desc: 'Browse top-rated specialists and book your visit instantly.' },
+                     { icon: Clock, title: 'Track Your Live Serial', desc: 'Skip the waiting room and arrive exactly when it’s your turn.' },
                   ].map((step) => (
-                     <div key={step.title} className="bg-white rounded-ds-lg p-8 flex flex-col gap-6 shadow-ds-card">
-                        <div className="space-y-3">
-                           <h3 className="font-display text-xl font-bold text-ink-800">{step.title}</h3>
-                           <p className="text-sm text-ink-500 leading-relaxed">{step.desc}</p>
+                     <div key={step.title} className="bg-white rounded-ds-lg p-6 flex flex-col gap-5 shadow-ds-card">
+                        <div className="space-y-2">
+                           <h3 className="font-display text-lg font-bold text-ink-800">{step.title}</h3>
+                           <p className="text-[13px] text-ink-500 leading-relaxed">{step.desc}</p>
                         </div>
-                        <div className="h-40 rounded-ds-md bg-medical-50 flex items-center justify-center text-medical-500">
-                           <step.icon size={48} strokeWidth={1.5} />
+                        <div className="h-36 rounded-ds-md bg-medical-50 flex items-center justify-center text-medical-400">
+                           <step.icon size={40} strokeWidth={1.5} />
                         </div>
                      </div>
                   ))}
                </div>
             </div>
+
+            {/* MEET OUR MEDICAL EXPERTS — filter pills + compact doctor carousel */}
+            <div className="mb-16 md:mb-20">
+               <div className="text-center mb-8">
+                  <span className="inline-flex items-center gap-2 text-[13px] font-bold text-ink-500 uppercase tracking-wide mb-3">
+                     <span className="w-4 h-1 bg-medical-500 rounded-full" /> Specialists
+                  </span>
+                  <h2 className="font-display text-[28px] md:text-[36px] font-medium text-ink-900 leading-tight">Meet Our Medical Experts</h2>
+               </div>
+               <div className="flex flex-wrap justify-center gap-2 mb-8">
+                  {doctorFilterPills.map((pill) => (
+                     <button
+                        key={pill}
+                        onClick={() => setSelectedSpecialty(pill)}
+                        className={`h-9 px-4 rounded-full text-[13px] font-semibold transition-colors ${selectedSpecialty === pill ? 'bg-medical-500 text-white' : 'bg-ink-50 text-ink-500 hover:bg-ink-100'
+                           }`}
+                     >
+                        {pill}
+                     </button>
+                  ))}
+               </div>
+               {compactDoctorList.length > 0 ? (
+                  <div className="flex gap-5 overflow-x-auto pb-2 hide-scrollbar snap-x">
+                     {compactDoctorList.map((doc) => (
+                        <div key={doc.id} className="snap-start">
+                           <DoctorCard
+                              compact
+                              doctor={{
+                                 name: doc.name,
+                                 specialty: doc.specialty,
+                                 bmdcNumber: doc.bmdcNumber || '',
+                                 rating: doc.rating,
+                                 image: doc.imageUrl,
+                              }}
+                              onClick={() => onSelectDoctor?.(doc)}
+                           />
+                        </div>
+                     ))}
+                  </div>
+               ) : (
+                  <p className="text-center text-sm text-ink-400 font-medium">No doctors found for this specialty yet.</p>
+               )}
+            </div>
+
+            {/* TRANSPARENCY STATEMENT + floating feature badges around a photo */}
+            <div className="mb-16 md:mb-20">
+               <p className="text-center font-display text-xl md:text-2xl text-ink-800 leading-relaxed max-w-2xl mx-auto mb-14">
+                  DocOclock brings transparency to clinical visits. Track your live queue status from anywhere and access verified healthcare instantly.
+               </p>
+               <div className="relative w-full max-w-sm mx-auto h-[280px] mb-14">
+                  <div className="absolute inset-x-8 inset-y-0 rounded-ds-lg bg-medical-50 overflow-hidden" />
+                  <div className="absolute top-0 left-0 bg-white rounded-ds-md shadow-ds-soft p-4 flex flex-col items-center gap-2 w-28 text-center">
+                     <Activity size={18} className="text-medical-500" />
+                     <span className="text-[11px] font-bold text-ink-700 leading-tight">Live Queue Tracking</span>
+                  </div>
+                  <div className="absolute top-2 right-0 bg-white rounded-ds-md shadow-ds-soft p-4 flex flex-col items-center gap-2 w-28 text-center">
+                     <FileText size={18} className="text-medical-500" />
+                     <span className="text-[11px] font-bold text-ink-700 leading-tight">Digital Prescription</span>
+                  </div>
+                  <div className="absolute bottom-0 right-6 bg-white rounded-ds-md shadow-ds-soft p-4 flex flex-col items-center gap-2 w-28 text-center">
+                     <ShieldCheck size={18} className="text-medical-500" />
+                     <span className="text-[11px] font-bold text-ink-700 leading-tight">BMDC Verified</span>
+                  </div>
+               </div>
+               <div className="flex flex-wrap justify-center gap-x-4 gap-y-8">
+                  {[
+                     { value: '15+', label: 'Years Combined Experience' },
+                     { value: '5,000+', label: 'Total Patients Treated' },
+                     { value: '100%', label: 'Patient Satisfaction' },
+                  ].map((stat, i, arr) => (
+                     <React.Fragment key={stat.label}>
+                        <div className="flex flex-col items-center gap-2 px-6 text-center">
+                           <span className="text-ink-900 font-medium text-4xl md:text-5xl leading-none">{stat.value}</span>
+                           <span className="text-ink-500 text-xs font-medium max-w-[150px] leading-snug">{stat.label}</span>
+                        </div>
+                        {i < arr.length - 1 && <div className="hidden sm:block w-px bg-ink-100 self-stretch" />}
+                     </React.Fragment>
+                  ))}
+               </div>
+            </div>
+         </div>
+
+         <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+            <SpecialtyMarquee />
+         </div>
+
+         <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            {/* SIMPLIFYING HEALTHCARE — feature list + doctor-dashboard preview mockup */}
+            <div className="my-16 md:my-20">
+               <div className="text-center mb-10">
+                  <span className="inline-flex items-center gap-2 text-[13px] font-bold text-ink-500 uppercase tracking-wide mb-3">
+                     <span className="w-4 h-1 bg-medical-500 rounded-full" /> Dashboard
+                  </span>
+                  <h2 className="font-display text-[28px] md:text-[36px] font-medium text-ink-900 leading-tight max-w-lg mx-auto">
+                     Simplifying healthcare appointments from booking to consultation.
+                  </h2>
+               </div>
+               <div className="flex flex-col lg:flex-row gap-10 items-center">
+                  <div className="flex-1 w-full space-y-1">
+                     {['Doctor Panel', 'Patient Panel', 'Appointment Management', 'Queue Tracker'].map((label, i) => (
+                        <div key={label} className={`px-5 py-4 rounded-xl text-[15px] font-medium border-b border-ink-50 ${i === 0 ? 'text-ink-900 font-bold bg-medical-50/60' : 'text-ink-400'}`}>
+                           {label}
+                        </div>
+                     ))}
+                  </div>
+                  <div className="flex-1 w-full max-w-md bg-white rounded-ds-lg shadow-ds-soft p-6">
+                     <div className="flex items-center justify-between mb-6">
+                        <span className="font-display font-bold text-ink-800">Queue</span>
+                        <Calendar size={16} className="text-ink-400" />
+                     </div>
+                     <div className="flex items-center gap-4 mb-6">
+                        <div className="w-11 h-11 rounded-full bg-medical-500 text-white flex items-center justify-center font-bold shrink-0">24</div>
+                        <div className="flex-1">
+                           <p className="text-[14px] font-bold text-ink-800">John Doe</p>
+                           <p className="text-[11px] text-ink-400">Serial: 24 &middot; 10:30 am</p>
+                        </div>
+                        <div className="relative w-14 h-14 shrink-0 rounded-full flex items-center justify-center"
+                           style={{ background: 'conic-gradient(#2E8CFF 0deg 260deg, #E5F1FF 260deg 360deg)' }}>
+                           <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[11px] font-bold text-ink-800">18</div>
+                        </div>
+                     </div>
+                     <div className="h-px bg-ink-50 mb-4" />
+                     <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide mb-3">Up Next</p>
+                     <div className="space-y-2">
+                        {['John Doe', 'John Doe'].map((name, i) => (
+                           <div key={i} className="flex items-center gap-3 bg-ink-50/60 rounded-xl px-3 py-2.5">
+                              <div className="w-8 h-8 rounded-full bg-ink-100" />
+                              <span className="text-[13px] font-medium text-ink-700 flex-1">{name}</span>
+                              <span className="text-[11px] font-bold text-ink-400">#{26 + i}</span>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* WHAT OUR PATIENTS SAY — real approved reviews only, never fabricated */}
+            {testimonials.length > 0 && (
+               <div className="mb-16 md:mb-20">
+                  <div className="text-center mb-10">
+                     <span className="inline-flex items-center gap-2 text-[13px] font-bold text-ink-500 uppercase tracking-wide mb-3">
+                        <span className="w-4 h-1 bg-medical-500 rounded-full" /> Testimonials
+                     </span>
+                     <h2 className="font-display text-[28px] md:text-[36px] font-medium text-ink-900 leading-tight">What Our Patients Say</h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     {testimonials.map((t) => (
+                        <div key={t.id} className="bg-white rounded-ds-lg shadow-ds-card p-6 flex flex-col gap-4">
+                           <Quote size={22} className="text-medical-200" />
+                           <p className="text-[14px] text-ink-600 leading-relaxed flex-1">{t.comment}</p>
+                           <div className="flex items-center gap-3 pt-2 border-t border-ink-50">
+                              <div className="w-9 h-9 rounded-full overflow-hidden bg-medical-50 shrink-0">
+                                 {t.patientImage ? (
+                                    <img src={t.patientImage} alt={t.patientName} className="w-full h-full object-cover" />
+                                 ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-medical-400 font-bold text-xs">{t.patientName.charAt(0)}</div>
+                                 )}
+                              </div>
+                              <span className="text-[13px] font-bold text-ink-800">{t.patientName}</span>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            )}
 
             {/* QUICK ACTION CARDS — logged-in patients only */}
             {isPatient && (
