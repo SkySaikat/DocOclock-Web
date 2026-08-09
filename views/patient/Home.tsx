@@ -3,6 +3,7 @@ import { ArrowRight, Star, ChevronDown } from 'lucide-react';
 import { Doctor, UserRole } from '../../types';
 import { fetchDoctors } from '../../storage';
 import { supabase } from '../../supabase';
+import { SectionEyebrowHeader } from '../../components/ui/SectionEyebrowHeader';
 
 interface HomeProps {
    onNavigate: (path: string) => void;
@@ -341,18 +342,6 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    );
 };
 
-const SectionEyebrowHeader: React.FC<{ eyebrow: string; title: string; titleClassName?: string; center?: boolean }> = ({ eyebrow, title, titleClassName = '', center }) => (
-   <div className={`flex flex-col gap-4 ${center ? 'items-center text-center' : 'items-start'}`}>
-      <span className="inline-flex items-center gap-2.5 px-3 py-2 rounded-full">
-         <span className="w-[21px] h-2 rounded-full bg-medical-500" />
-         <span className="text-ink-500 text-[14px]">{eyebrow}</span>
-      </span>
-      <h2 className={`font-display font-normal text-[28px] md:text-[46px] text-[#131215] leading-[1.3] md:leading-[58px] tracking-[0.92px] ${titleClassName}`}>
-         {title}
-      </h2>
-   </div>
-);
-
 // Center photo + 3 floating cards. Each card combines a CSS float animation (outer
 // wrapper) with a JS mouse-parallax offset (inner wrapper) so the two transforms
 // compose instead of fighting over the same property.
@@ -472,7 +461,7 @@ const PanelMockup: React.FC<{ panel: number }> = ({ panel }) => {
                   <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide">Your Serial</p>
                   <p className="font-display font-bold text-3xl text-ink-800">24</p>
                </div>
-               <button className="h-10 px-5 rounded-full bg-medical-500 text-white text-[13px] font-semibold">Track Live</button>
+               <button className="h-10 px-5 rounded-full bg-medical-500 text-white text-[13px] font-semibold hover:bg-medical-600 transition-colors">Track Live</button>
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-ds-card flex-1">
                <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide mb-3">Recent Prescriptions</p>

@@ -32,9 +32,9 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
         return (
             <div
                 onClick={onClick}
-                className="flex-shrink-0 w-[220px] md:w-[240px] group cursor-pointer"
+                className="w-full group cursor-pointer"
             >
-                <div className="relative h-[220px] md:h-[240px] rounded-ds-lg overflow-hidden bg-medical-50">
+                <div className="relative aspect-square rounded-ds-lg overflow-hidden bg-medical-50">
                     {doctor.image ? (
                         <img
                             src={doctor.image}

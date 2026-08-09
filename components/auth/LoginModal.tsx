@@ -284,7 +284,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       <input
                         type="email"
                         placeholder="your@email.com"
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                        className="w-full pl-11 pr-4 py-4 bg-white border border-[#f2f2f2] rounded-2xl focus:border-medical-500 outline-none font-medium text-base transition-colors placeholder:text-ink-400"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         autoFocus
@@ -319,7 +319,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       <input
                         type="password"
                         placeholder="••••••••"
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                        className="w-full pl-11 pr-4 py-4 bg-white border border-[#f2f2f2] rounded-2xl focus:border-medical-500 outline-none font-medium text-base transition-colors placeholder:text-ink-400"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoFocus
@@ -373,7 +373,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                           required
                           type="email"
                           placeholder="your@email.com"
-                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                          className="w-full pl-11 pr-4 py-4 bg-white border border-[#f2f2f2] rounded-2xl focus:border-medical-500 outline-none font-medium text-base transition-colors placeholder:text-ink-400"
                           value={signupEmail}
                           onChange={e => setSignupEmail(e.target.value)}
                           autoFocus
@@ -458,7 +458,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                           <input
                             required
                             placeholder="Enter Name"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                            className="w-full pl-11 pr-4 py-4 bg-white border border-[#f2f2f2] rounded-2xl focus:border-medical-500 outline-none font-medium text-base transition-colors placeholder:text-ink-400"
                             value={signupData.name}
                             onChange={e => setSignupData({ ...signupData, name: e.target.value })}
                             autoFocus
@@ -473,7 +473,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                             required
                             type="number"
                             placeholder="Age"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                            className="w-full pl-11 pr-4 py-4 bg-white border border-[#f2f2f2] rounded-2xl focus:border-medical-500 outline-none font-medium text-base transition-colors placeholder:text-ink-400"
                             value={signupData.age}
                             onChange={e => setSignupData({ ...signupData, age: e.target.value })}
                           />
@@ -499,7 +499,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                         <input
                           type="tel"
                           placeholder="017xxxxxxxx"
-                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                          className="w-full pl-11 pr-4 py-4 bg-white border border-[#f2f2f2] rounded-2xl focus:border-medical-500 outline-none font-medium text-base transition-colors placeholder:text-ink-400"
                           value={signupData.phone}
                           onChange={e => setSignupData({ ...signupData, phone: e.target.value })}
                         />
@@ -513,7 +513,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                           required
                           type="password"
                           placeholder="••••••••"
-                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-ds-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
+                          className="w-full pl-11 pr-4 py-4 bg-white border border-[#f2f2f2] rounded-2xl focus:border-medical-500 outline-none font-medium text-base transition-colors placeholder:text-ink-400"
                           value={signupData.password}
                           onChange={e => setSignupData({ ...signupData, password: e.target.value })}
                         />

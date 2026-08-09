@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShieldCheck, HeartPulse, Users, Clock, Activity } from 'lucide-react';
+import { ShieldCheck, HeartPulse, Users, Clock } from 'lucide-react';
+import { SectionEyebrowHeader } from '../../components/ui/SectionEyebrowHeader';
 
 export const AboutUsPage: React.FC = () => {
   const values = [
@@ -10,15 +11,10 @@ export const AboutUsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-ink-800 pb-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="pt-12 pb-10 text-center">
-          <span className="inline-flex items-center gap-2 bg-medical-500/10 text-medical-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-medical-500/20 mb-6">
-            About Dococlock
-          </span>
-          <h1 className="font-display text-4xl md:text-[48px] font-bold text-ink-900 leading-[1.08] mb-6">
-            Your Time, Your Health,<br />Fully Controlled.
-          </h1>
-          <p className="text-ink-500 text-base max-w-xl mx-auto leading-relaxed">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="pt-12 pb-14 flex flex-col items-center text-center gap-6">
+          <SectionEyebrowHeader eyebrow="About Dococlock" title="Your Time, Your Health, Fully Controlled." center titleClassName="max-w-2xl" />
+          <p className="text-ink-500 text-base max-w-xl leading-relaxed">
             Dococlock brings transparency to clinical visits — patients search and book verified doctors and track their medicines, doctors run a live patient queue and issue prescriptions online, and hospitals manage it all in one platform.
           </p>
         </div>

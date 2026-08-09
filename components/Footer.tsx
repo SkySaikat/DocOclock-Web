@@ -32,7 +32,7 @@ export const Footer: React.FC<{ onNavigate: (path: string) => void }> = ({ onNav
         </p>
         <button
           onClick={() => onNavigate('/patient/doctors')}
-          className="inline-flex items-center rounded-full text-white overflow-hidden mt-2"
+          className="inline-flex items-center rounded-full text-white overflow-hidden mt-2 hover:brightness-105 active:scale-[0.98] transition-all"
           style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
         >
           <span className="pl-6 text-[16px] font-display">Register</span>

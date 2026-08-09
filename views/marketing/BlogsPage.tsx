@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Calendar } from 'lucide-react';
+import { SectionEyebrowHeader } from '../../components/ui/SectionEyebrowHeader';
 import { supabase } from '../../supabase';
 
 interface BlogPost {
@@ -29,10 +30,10 @@ export const BlogsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-ink-800 pb-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="pt-12 pb-10 text-center">
-          <h1 className="font-display text-4xl md:text-[48px] font-bold text-ink-900 leading-[1.08] mb-4">Blogs</h1>
-          <p className="text-ink-500 text-base max-w-xl mx-auto leading-relaxed">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="pt-12 pb-14 flex flex-col items-center text-center gap-6">
+          <SectionEyebrowHeader eyebrow="Dococlock Blog" title="Blogs" center />
+          <p className="text-ink-500 text-base max-w-xl leading-relaxed">
             Guidance on booking smarter, understanding your prescriptions, and getting the most out of Dococlock.
           </p>
         </div>

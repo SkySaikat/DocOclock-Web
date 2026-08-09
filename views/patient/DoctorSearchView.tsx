@@ -1,12 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-    Search, ArrowLeft, SlidersHorizontal, MapPin, 
-    Star, ShieldCheck, ChevronRight, X, Filter 
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, X, ChevronDown } from 'lucide-react';
 import { Doctor } from '../../types';
 import { fetchDoctors } from '../../storage';
 import { DoctorCard } from '../../components/ui/DoctorCard';
-import { Button } from '../../components/ui/Button';
 
 interface DoctorSearchViewProps {
     onNavigate: (path: string) => void;
@@ -14,209 +10,144 @@ interface DoctorSearchViewProps {
     initialCategory?: string;
 }
 
-export const DoctorSearchView: React.FC<DoctorSearchViewProps> = ({ 
-    onNavigate, 
+const SPECIALTIES = ['All', 'Cardiologist', 'Dentist', 'Orthopedics', 'Surgeon', 'Neurologist', 'Dermatologist', 'Pediatrics'];
+const EXPERIENCE_BANDS = [
+    { label: 'Any Experience', test: () => true },
+    { label: 'Less than 1 Year', test: (y: number) => y < 1 },
+    { label: '1 - 5 Years', test: (y: number) => y >= 1 && y <= 5 },
+    { label: '5 - 10 Years', test: (y: number) => y > 5 && y <= 10 },
+    { label: '10+ Years', test: (y: number) => y > 10 },
+];
+
+export const DoctorSearchView: React.FC<DoctorSearchViewProps> = ({
+    onNavigate,
     onSelectDoctor,
     initialCategory = 'All'
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+    const [selectedType, setSelectedType] = useState(initialCategory === 'All' ? 'All' : initialCategory);
+    const [selectedExperience, setSelectedExperience] = useState(0);
+    const [isTypeOpen, setIsTypeOpen] = useState(false);
+    const [isExpOpen, setIsExpOpen] = useState(false);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const categories = [
-        'All', 'General Physician', 'Cardiology', 'Pediatrics', 'Dermatology', 
-        'Internal Medicine', 'Endocrinology', 'Neurology', 'Gastroenterology', 
-        'Orthopedics', 'Oncology', 'Gynecology', 'ENT', 'Psychiatry', 
-        'Ophthalmology', 'Nephrology', 'Pulmonology', 'Hematology'
-    ];
-
     useEffect(() => {
-        const loadDoctors = async () => {
-            setIsLoading(true);
-            try {
-                const data = await fetchDoctors();
-                setDoctors(data);
-            } catch (err) {
-                console.error('Error fetching doctors:', err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadDoctors();
+        fetchDoctors().then(setDoctors).catch((err) => console.error('Error fetching doctors:', err)).finally(() => setIsLoading(false));
     }, []);
 
-    // Strips common medical specialty suffixes to get a comparable stem.
-    // e.g. "Cardiologist" → "cardio", "Cardiology" → "cardio", "Pediatrician" → "pediat"
-    const specialtyStem = (s: string) =>
-        s.toLowerCase().replace(/ologist$|ologist$|ician$|ology$|ics$|ist$|ian$|y$/, '').slice(0, 6);
+    const specialtyStem = (s: string) => s.toLowerCase().replace(/ologist$|ician$|ology$|ics$|ist$|ian$|y$/, '').slice(0, 6);
 
     const filteredDoctors = useMemo(() => {
-        return doctors.filter(doc => {
+        const expBand = EXPERIENCE_BANDS[selectedExperience];
+        return doctors.filter((doc) => {
             const matchesSearch = searchTerm === '' ||
                 doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                doc.specialty.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (doc.chambers || []).some(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-            const matchesCategory = selectedCategory === 'All' ||
-                // Exact or substring match (covers most cases)
-                doc.specialty.toLowerCase().includes(selectedCategory.toLowerCase()) ||
-                selectedCategory.toLowerCase().includes(doc.specialty.toLowerCase()) ||
-                // Stem match: handles "Pediatrician" ↔ "Pediatrics", "Cardiologist" ↔ "Cardiology" etc.
-                specialtyStem(doc.specialty) === specialtyStem(selectedCategory);
-
-            return matchesSearch && matchesCategory;
+                doc.specialty.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesType = selectedType === 'All' ||
+                doc.specialty.toLowerCase().includes(selectedType.toLowerCase()) ||
+                specialtyStem(doc.specialty) === specialtyStem(selectedType);
+            const matchesExperience = expBand.test(doc.experienceYears || 0);
+            return matchesSearch && matchesType && matchesExperience;
         });
-    }, [doctors, searchTerm, selectedCategory]);
+    }, [doctors, searchTerm, selectedType, selectedExperience]);
 
     return (
-        <div className="min-h-screen bg-ink-50/30">
-            {/* Header / Search Fixed */}
-            <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-ink-100 shadow-sm">
-                <div className="max-w-4xl mx-auto px-4 py-4">
-                    <div className="flex items-center gap-4 mb-4">
-                        <button 
-                            onClick={() => onNavigate('/patient/home')}
-                            className="w-10 h-10 rounded-full bg-ink-50 flex items-center justify-center text-ink-600 hover:bg-ink-100 transition-colors"
-                        >
-                            <ArrowLeft size={20} />
-                        </button>
-                        <h1 className="font-display text-xl font-black text-ink-800 tracking-tight">Find Specialists</h1>
+        <div className="min-h-screen bg-white">
+            <div className="max-w-6xl mx-auto px-4 md:px-6 py-10 md:py-16">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                    <div>
+                        <span className="inline-flex items-center gap-2.5 mb-4">
+                            <span className="w-[21px] h-2 rounded-full bg-medical-500" />
+                            <span className="text-ink-500 text-[14px]">Specialists</span>
+                        </span>
+                        <h1 className="font-display font-normal text-[32px] md:text-[46px] text-[#131215] leading-tight tracking-[0.92px]">Find The Right Doctor</h1>
                     </div>
+                    <p className="text-ink-500 text-[15px] max-w-[380px] leading-relaxed">
+                        Dococlock connects patients with verified healthcare professionals, making it easy to find specialists, book appointments, and manage healthcare with a fast, secure, and user-friendly experience.
+                    </p>
+                </div>
 
-                    <div className="flex gap-2">
-                        <div className="flex-1 relative group">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-500 group-focus-within:text-medical-600 transition-colors">
-                                <Search size={18} />
+                {/* Filter row — exact Figma structure: Type / Experience dropdowns + search */}
+                <div className="flex flex-wrap items-center gap-3 mb-10">
+                    <div className="relative">
+                        <button onClick={() => { setIsTypeOpen((v) => !v); setIsExpOpen(false); }} className="h-12 px-5 rounded-full bg-white shadow-ds-card flex items-center gap-2 text-[14px] text-ink-700 font-medium hover:shadow-ds-soft transition-shadow">
+                            Type: {selectedType} <ChevronDown size={14} className={`transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {isTypeOpen && (
+                            <div className="absolute top-[calc(100%+8px)] left-0 bg-white rounded-2xl shadow-ds-soft border border-ink-50 overflow-hidden z-20 w-56">
+                                {SPECIALTIES.map((s) => (
+                                    <button key={s} onClick={() => { setSelectedType(s); setIsTypeOpen(false); }} className="w-full text-left px-5 py-3 text-[14px] text-ink-700 hover:bg-medical-50 transition-colors">{s}</button>
+                                ))}
                             </div>
-                            <input 
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search by name, specialty, or hospital..."
-                                className="w-full h-12 bg-ink-50 border border-ink-100 rounded-ds-md pl-11 pr-4 font-bold text-sm outline-none focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 transition-all"
-                            />
-                            {searchTerm && (
-                                <button 
-                                    onClick={() => setSearchTerm('')}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-500 hover:text-ink-600"
-                                >
-                                    <X size={16} />
-                                </button>
-                            )}
-                        </div>
-                        <button className="w-12 h-12 rounded-ds-md bg-ink-800 text-white flex items-center justify-center hover:bg-ink-700 transition-colors">
-                            <SlidersHorizontal size={20} />
-                        </button>
+                        )}
                     </div>
-
-                    {/* Horizontal Categories */}
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar py-4 -mx-4 px-4 mt-2">
-                        {categories.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
-                                    selectedCategory === cat 
-                                    ? 'bg-medical-600 text-white shadow-lg shadow-medical-500/20' 
-                                    : 'bg-white border border-ink-100 text-ink-500 hover:border-ink-300'
-                                }`}
-                            >
-                                {cat}
+                    <div className="relative">
+                        <button onClick={() => { setIsExpOpen((v) => !v); setIsTypeOpen(false); }} className="h-12 px-5 rounded-full bg-white shadow-ds-card flex items-center gap-2 text-[14px] text-ink-700 font-medium hover:shadow-ds-soft transition-shadow">
+                            Experience: {EXPERIENCE_BANDS[selectedExperience].label} <ChevronDown size={14} className={`transition-transform ${isExpOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {isExpOpen && (
+                            <div className="absolute top-[calc(100%+8px)] left-0 bg-white rounded-2xl shadow-ds-soft border border-ink-50 overflow-hidden z-20 w-56">
+                                {EXPERIENCE_BANDS.map((band, i) => (
+                                    <button key={band.label} onClick={() => { setSelectedExperience(i); setIsExpOpen(false); }} className={`w-full text-left px-5 py-3 text-[14px] transition-colors ${i === selectedExperience ? 'bg-medical-50 text-medical-600 font-semibold' : 'text-ink-700 hover:bg-medical-50'}`}>{band.label}</button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex-1 min-w-[200px] relative">
+                        <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-ink-400" />
+                        <input
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="What are you looking for?"
+                            className="w-full h-12 pl-12 pr-10 rounded-full bg-white shadow-ds-card outline-none text-[14px] text-ink-800 placeholder:text-ink-400"
+                        />
+                        {searchTerm && (
+                            <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700">
+                                <X size={16} />
                             </button>
-                        ))}
+                        )}
                     </div>
                 </div>
-            </div>
 
-            {/* Results */}
-            <div className="max-w-4xl mx-auto px-4 py-8">
+                {/* Results grid — same compact card as the homepage "Meet Our Medical Experts" */}
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 gap-4">
-                        <div className="w-12 h-12 border-4 border-ink-100 border-t-medical-600 rounded-full animate-spin" />
-                        <p className="font-black text-ink-500 uppercase tracking-widest text-xs">Finding Doctors...</p>
+                    <div className="flex flex-col items-center justify-center py-24 gap-4">
+                        <div className="w-10 h-10 border-4 border-ink-100 border-t-medical-500 rounded-full animate-spin" />
+                        <p className="text-ink-400 text-sm">Finding doctors...</p>
                     </div>
                 ) : filteredDoctors.length > 0 ? (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-sm font-black text-ink-500 uppercase tracking-widest">
-                                {filteredDoctors.length} {filteredDoctors.length === 1 ? 'Specialist' : 'Specialists'} Found
-                            </h2>
-                            <div className="flex items-center gap-2 text-medical-600 font-bold text-xs cursor-pointer">
-                                <Filter size={14} />
-                                <span>Sort: Recommended</span>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {filteredDoctors.map(doc => (
-                                <div key={doc.id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div 
-                                        onClick={() => onSelectDoctor(doc)}
-                                        className="bg-white rounded-ds-lg border border-ink-100 p-5 shadow-sm hover:border-medical-200 transition-all group cursor-pointer flex gap-5"
-                                    >
-                                        <div className="w-24 h-32 rounded-ds-md overflow-hidden bg-ink-50 shrink-0 border border-ink-100">
-                                            <img 
-                                                src={doc.imageUrl || doc.image || `https://picsum.photos/200/300?random=${doc.id}`} 
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-                                                alt={doc.name} 
-                                            />
-                                        </div>
-                                        <div className="flex-1 py-1">
-                                            <div className="flex items-center gap-1.5 mb-1.5">
-                                                <span className="px-2 py-0.5 bg-medical-50 text-medical-600 text-[9px] font-black uppercase tracking-widest rounded-md">
-                                                    {doc.specialty}
-                                                </span>
-                                                {doc.rating > 4.5 && (
-                                                    <span className="flex items-center gap-1 text-amber-500 font-black text-[11px]">
-                                                        <Star size={12} fill="currentColor" />
-                                                        {doc.rating}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <h3 className="font-display text-lg font-black text-ink-800 leading-tight group-hover:text-medical-600 transition-colors mb-1">
-                                                {doc.name}
-                                            </h3>
-                                            <p className="text-[10px] font-bold text-ink-500 uppercase tracking-wider mb-4 leading-tight">
-                                                {doc.degrees || 'MBBS, Specialist'}
-                                            </p>
-                                            
-                                            <div className="flex items-center gap-4 border-t border-ink-50 pt-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-black text-ink-800 leading-none">{doc.experienceYears || 10}+ Yrs</span>
-                                                    <span className="text-[8px] font-bold text-ink-500 uppercase mt-1">Experience</span>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-black text-ink-800 leading-none">{doc.totalPatients || '2.5k'}+</span>
-                                                    <span className="text-[8px] font-bold text-ink-500 uppercase mt-1">Patients</span>
-                                                </div>
-                                                <div className="ml-auto">
-                                                    <button className="w-8 h-8 rounded-full bg-ink-800 text-white flex items-center justify-center group-hover:bg-medical-600 transition-colors">
-                                                        <ChevronRight size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
+                        {filteredDoctors.map((doc) => (
+                            <DoctorCard
+                                key={doc.id}
+                                compact
+                                doctor={{
+                                    name: doc.name,
+                                    specialty: doc.specialty,
+                                    bmdcNumber: doc.bmdcNumber || '',
+                                    rating: doc.rating,
+                                    image: doc.imageUrl,
+                                }}
+                                onClick={() => onSelectDoctor(doc)}
+                            />
+                        ))}
                     </div>
                 ) : (
-                    <div className="py-20 text-center animate-in fade-in zoom-in duration-300">
-                        <div className="w-20 h-20 bg-ink-50 rounded-full flex items-center justify-center mx-auto mb-6 text-ink-300">
-                            <Search size={40} />
+                    <div className="py-24 text-center">
+                        <div className="w-16 h-16 bg-ink-50 rounded-full flex items-center justify-center mx-auto mb-5 text-ink-300">
+                            <Search size={28} />
                         </div>
-                        <h3 className="font-display text-xl font-black text-ink-800">No Doctors Found</h3>
-                        <p className="text-ink-500 font-bold mt-2 max-w-xs mx-auto">
-                            We couldn't find any specialists matching "{searchTerm}". Try a different specialty or keyword.
+                        <h3 className="font-display text-xl font-bold text-ink-800">No Doctors Found</h3>
+                        <p className="text-ink-500 mt-2 max-w-xs mx-auto text-sm">
+                            Try a different specialty, experience range, or search term.
                         </p>
-                        <Button 
-                            variant="secondary" 
-                            className="mt-8"
-                            onClick={() => { setSearchTerm(''); setSelectedCategory('All'); }}
+                        <button
+                            onClick={() => { setSearchTerm(''); setSelectedType('All'); setSelectedExperience(0); }}
+                            className="mt-6 h-11 px-6 rounded-full bg-medical-500 text-white text-sm font-semibold hover:bg-medical-600 transition-colors"
                         >
                             Clear All Filters
-                        </Button>
+                        </button>
                     </div>
                 )}
             </div>

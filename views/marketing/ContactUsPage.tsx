@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, Check, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { SectionEyebrowHeader } from '../../components/ui/SectionEyebrowHeader';
 import { supabase } from '../../supabase';
 
 export const ContactUsPage: React.FC = () => {
@@ -31,10 +32,10 @@ export const ContactUsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-ink-800 pb-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="pt-12 pb-10 text-center">
-          <h1 className="font-display text-4xl md:text-[48px] font-bold text-ink-900 leading-[1.08] mb-4">Contact us</h1>
-          <p className="text-ink-500 text-base max-w-xl mx-auto leading-relaxed">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="pt-12 pb-14 flex flex-col items-center text-center gap-6">
+          <SectionEyebrowHeader eyebrow="Get in Touch" title="Contact us" center />
+          <p className="text-ink-500 text-base max-w-xl leading-relaxed">
             Questions about booking, your account, or partnering with Dococlock? Send us a message and we'll get back to you.
           </p>
         </div>

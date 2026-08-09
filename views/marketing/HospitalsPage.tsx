@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, MapPin } from 'lucide-react';
+import { SectionEyebrowHeader } from '../../components/ui/SectionEyebrowHeader';
 import { supabase } from '../../supabase';
 
 interface HospitalRow {
@@ -25,10 +26,10 @@ export const HospitalsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-ink-800 pb-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="pt-12 pb-10 text-center">
-          <h1 className="font-display text-4xl md:text-[48px] font-bold text-ink-900 leading-[1.08] mb-4">Hospitals</h1>
-          <p className="text-ink-500 text-base max-w-xl mx-auto leading-relaxed">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="pt-12 pb-14 flex flex-col items-center text-center gap-6">
+          <SectionEyebrowHeader eyebrow="Our Network" title="Hospitals" center />
+          <p className="text-ink-500 text-base max-w-xl leading-relaxed">
             Partner hospitals and clinics where Dococlock-verified doctors see patients.
           </p>
         </div>

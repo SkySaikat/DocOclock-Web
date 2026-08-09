@@ -103,7 +103,7 @@ export const DoctorAppointments: React.FC<{ onNavigate?: (path: string) => void 
                      placeholder="Search Anything"
                      className="flex-1 min-w-0 outline-none text-[14px] text-ink-800 placeholder:text-ink-400"
                   />
-                  <button className="w-9 h-9 rounded-full bg-ink-50 flex items-center justify-center text-ink-500 shrink-0" aria-label="Filter">
+                  <button className="w-9 h-9 rounded-full bg-ink-50 flex items-center justify-center text-ink-500 shrink-0 hover:bg-ink-100 transition-colors" aria-label="Filter">
                      <Filter size={15} />
                   </button>
                   <div className="flex items-center bg-ink-50 rounded-full p-1 shrink-0">
@@ -129,8 +129,8 @@ export const DoctorAppointments: React.FC<{ onNavigate?: (path: string) => void 
                                  {appt.patientName.charAt(0)}
                               </div>
                               <div className="flex items-center gap-1.5">
-                                 <button className="w-7 h-7 rounded-full bg-ink-50 flex items-center justify-center text-ink-400" aria-label="Message"><Mail size={13} /></button>
-                                 <button className="w-7 h-7 rounded-full bg-ink-50 flex items-center justify-center text-ink-400" aria-label="Open"><ArrowUpRight size={13} /></button>
+                                 <button className="w-7 h-7 rounded-full bg-ink-50 flex items-center justify-center text-ink-400 hover:bg-ink-100 hover:text-ink-600 transition-colors" aria-label="Message"><Mail size={13} /></button>
+                                 <button className="w-7 h-7 rounded-full bg-ink-50 flex items-center justify-center text-ink-400 hover:bg-ink-100 hover:text-ink-600 transition-colors" aria-label="Open"><ArrowUpRight size={13} /></button>
                               </div>
                            </div>
                            <div>
@@ -149,8 +149,8 @@ export const DoctorAppointments: React.FC<{ onNavigate?: (path: string) => void 
                   <div className="flex items-center justify-between mt-6 text-[13px] text-ink-500">
                      <span>Page {page} of {totalPages}</span>
                      <div className="flex gap-2">
-                        <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-4 py-2 rounded-full bg-ink-50 disabled:opacity-40">Prev</button>
-                        <button disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className="px-4 py-2 rounded-full bg-ink-50 disabled:opacity-40">Next</button>
+                        <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-4 py-2 rounded-full bg-ink-50 hover:bg-ink-100 transition-colors disabled:opacity-40 disabled:hover:bg-ink-50">Prev</button>
+                        <button disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className="px-4 py-2 rounded-full bg-ink-50 hover:bg-ink-100 transition-colors disabled:opacity-40 disabled:hover:bg-ink-50">Next</button>
                      </div>
                   </div>
                )}

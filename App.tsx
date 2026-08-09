@@ -46,7 +46,6 @@ const HospitalAdminDashboard = lazy(() => import('./views/hospital-admin/Hospita
 const BranchManagerDashboard = lazy(() => import('./views/branch-manager/BranchManagerDashboard').then(m => ({ default: m.BranchManagerDashboard })));
 import { UserRole, Doctor, Patient } from './types';
 
-import { Activity, ShieldAlert, Lock, User, ArrowRight } from 'lucide-react';
 import { PatientStorage, DoctorStorage } from './storage';
 
 import { useAuth } from './AuthContext';
@@ -311,76 +310,75 @@ const App: React.FC = () => {
 
       case currentPath === '/admin-login': return <AdminLogin onNavigate={navigate} />;
       case currentPath === '/doctor-login': return (
-        <div className="max-w-[400px] mx-auto mt-10 px-4 animate-in fade-in zoom-in-95 duration-300">
-          <div className="bg-white rounded-[24px] shadow-2xl relative overflow-hidden border border-slate-100 flex flex-col">
-            {/* Refined Header (Aligned with Patient Modal) */}
-            <div className="px-8 pt-10 pb-6 text-center">
-              <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 mx-auto mb-4 border border-teal-100/50">
-                <Activity size={24} />
+        <div className="max-w-[1200px] mx-auto my-6 md:my-10 px-4 animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col lg:flex-row">
+            {/* LEFT — login form, exact Figma "Login" node */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-10 px-8 py-14 md:px-16 md:py-20">
+              <div className="w-full max-w-[400px] flex flex-col gap-10">
+                <p className="font-sans font-medium text-2xl text-black text-center">Welcome Back</p>
+
+                {loginError && (
+                  <div className="p-3.5 bg-red-50 border border-red-100 text-red-600 text-[13px] font-medium rounded-xl flex items-start gap-3">
+                    <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[9px]">!</div>
+                    <span className="leading-tight">{loginError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleDoctorLogin} className="flex flex-col gap-8">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-3">
+                      <label className="text-[16px] text-[#262837]">BMDC Number</label>
+                      <input
+                        name="bmdc"
+                        required
+                        placeholder="BMDC-XXXXX"
+                        className="w-full p-4 rounded-2xl border border-[#f2f2f2] outline-none text-[16px] text-ink-800 focus:border-medical-500 transition-colors placeholder:text-ink-400"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <label className="text-[16px] text-[#262837]">Password</label>
+                      <input
+                        name="password"
+                        type="password"
+                        required
+                        placeholder="Type Your Password"
+                        className="w-full p-4 rounded-2xl border border-[#f2f2f2] outline-none text-[16px] text-ink-800 focus:border-medical-500 transition-colors placeholder:text-ink-400"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-medical-500 hover:bg-medical-600 text-white h-14 rounded-full font-display font-medium text-[16px] transition-colors"
+                  >
+                    Login Now
+                  </button>
+                </form>
+
+                <p className="text-center text-[14px] text-ink-500">
+                  New to Dococlock?{' '}
+                  <button onClick={() => navigate('/for-doctors')} className="font-bold text-medical-500 underline underline-offset-2">
+                    Apply for a doctor account
+                  </button>
+                </p>
               </div>
-              <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight mb-1">
-                Doctor Portal
-              </h2>
-              <p className="text-[13px] text-slate-500 font-medium leading-relaxed max-w-[280px] mx-auto">
-                Secure access to your practice dashboard.
-              </p>
             </div>
 
-            {/* Subtle Divider under header */}
-            <div className="w-full h-px bg-slate-100 mb-6" />
-
-            <div className="px-8 pb-10">
-              {loginError && (
-                <div className="mb-6 p-3.5 bg-red-50 border border-red-100 text-red-600 text-[12px] font-bold rounded-xl animate-in shake duration-500 flex items-start gap-3 shadow-sm shadow-red-50">
-                  <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5 font-black text-[9px]">!</div>
-                  <span className="leading-tight">{loginError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleDoctorLogin} className="space-y-5">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">BMDC Number</label>
-                  <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={16} />
-                    <input
-                      name="bmdc"
-                      required
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-teal-500/5 focus:border-teal-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
-                      placeholder="BMDC-XXXXX"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Password</label>
-                  <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" size={16} />
-                    <input
-                      name="password"
-                      type="password"
-                      required
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-teal-500/5 focus:border-teal-500 outline-none font-bold text-base transition-all placeholder:text-slate-300"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-teal-600 to-teal-700 text-white h-12 rounded-xl font-black text-[15px] shadow-lg shadow-teal-500/10 active:scale-[0.98] transition-all"
-                >
-                  Login to Dashboard
-                </button>
-              </form>
-
-              {/* Secondary CTA - Subtle Outlined */}
-              <div className="mt-8 pt-6 border-t border-slate-100/80 text-center">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">New to DocOclock?</p>
-                <button
-                  onClick={() => navigate('/for-doctors')}
-                  className="w-full h-11 border border-slate-200 text-slate-600 hover:text-teal-600 hover:border-teal-500 hover:bg-teal-50/30 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-[13px] group"
-                >
-                  Apply for Doctor Account <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </button>
+            {/* RIGHT — exact Figma brand-blue hero panel */}
+            <div className="hidden lg:flex flex-1 relative bg-[#3988ff] overflow-hidden p-16 flex-col justify-between">
+              <img src="/assets/figma/hero-vector-25.svg" alt="" className="absolute left-0 top-0 w-[482px] h-[503px] pointer-events-none opacity-80" />
+              <img src="/assets/figma/hero-vector-26.svg" alt="" className="absolute left-[-30px] top-[220px] w-[500px] h-[520px] pointer-events-none opacity-80" />
+              <div className="absolute right-0 top-0 h-full w-[55%] overflow-hidden">
+                <img src="/assets/figma/auth-hero-photo.png" alt="" className="w-full h-full object-cover object-top -scale-x-100 opacity-90" />
               </div>
+              <div className="relative z-10 flex flex-col gap-8 max-w-[380px]">
+                <span className="bg-white px-3 py-2 rounded-full text-[#282828] text-[14px] w-fit">Welcome to Dococlock</span>
+                <h2 className="font-sans font-medium text-white text-[44px] leading-[1.1] tracking-[0.5px]">
+                  Your Time.Your<br />Health.<br />Fully Controlled.
+                </h2>
+              </div>
+              <p className="relative z-10 text-[#d7d2d2] text-[16px] max-w-[340px]">
+                Manage your live queue, prescriptions, and patients from one verified doctor account.
+              </p>
             </div>
           </div>
         </div>
