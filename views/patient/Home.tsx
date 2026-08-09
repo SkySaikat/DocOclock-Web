@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Star, ChevronDown } from 'lucide-react';
 import { Doctor, UserRole } from '../../types';
 import { fetchDoctors } from '../../storage';
@@ -19,12 +19,18 @@ const SPECIALTY_ROW = ['Medicine & Nephrology', 'Dental Care', 'Neurology', 'Foo
 const DOCTOR_FILTER_TABS = ['All', 'Cardiologist', 'Dermatologist', 'Dentist', 'Neurologist', 'Orthopedic'];
 
 const PROCESS_CARDS = [
-   { title: 'Find Specialists', desc: 'Find the right Doctor to guide your healthcare journey.' },
-   { title: 'Get an Appointment', desc: 'Browse top-rated specialists and book your visit instantly.' },
-   { title: 'Track Your Live Serial', desc: 'Skip the waiting room and arrive exactly when it’s your turn.' },
+   { title: 'Find Specialists', desc: 'Find the right Doctor to guide your healthcare journey.', image: '/assets/figma/process-card-1.png' },
+   { title: 'Get an Appointment', desc: 'Browse top-rated specialists and book your visit instantly.', image: '/assets/figma/process-card-2.png' },
+   { title: 'Track Your Live Serial', desc: 'Skip the waiting room and arrive exactly when it’s your turn.', image: null as string | null },
 ];
 
 const PANEL_LIST = ['Doctor Panel', 'Patient Panel', 'Appointment Management', 'Queue Tracker'];
+
+const TRANSPARENCY_STATS = [
+   { target: 15, suffix: '+', format: (n: number) => `${n}`, label: 'Years of Combined Experience' },
+   { target: 5000, suffix: '+', format: (n: number) => n.toLocaleString(), label: 'Smiles Transformed' },
+   { target: 100, suffix: '%', format: (n: number) => `${n}`, label: 'Patient Satisfaction' },
+];
 
 const FAQ_ITEMS = [
    {
@@ -53,6 +59,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    const [doctors, setDoctors] = useState<Doctor[]>([]);
    const [selectedSpecialty, setSelectedSpecialty] = useState('All');
    const [openFaq, setOpenFaq] = useState<number>(0);
+   const [activePanel, setActivePanel] = useState(0);
+   const doctorScrollRef = useRef<HTMLDivElement>(null);
    const isPatient = userRole === UserRole.PATIENT;
 
    useEffect(() => {
@@ -105,7 +113,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                <img src="/assets/figma/hero-vector-25.svg" alt="" className="hidden md:block absolute left-0 top-0 w-[482px] h-[503px] pointer-events-none" />
                <img src="/assets/figma/hero-vector-26.svg" alt="" className="hidden md:block absolute left-[224px] top-[202px] w-[687px] h-[713px] pointer-events-none" />
                <div className="absolute right-0 top-0 h-full w-[45%] md:w-[43%] overflow-hidden">
-                  <img src="/assets/figma/hero-doctor.png" alt="" className="w-full h-full object-cover object-top" />
+                  <img src="/assets/figma/hero-doctor.png" alt="" className="w-full h-full object-cover object-top -scale-x-100" />
                </div>
 
                <div className="absolute left-4 right-4 md:left-[130px] md:right-auto top-8 md:top-[280px] md:w-[580px] flex flex-col gap-4 md:gap-6 items-start z-10">
@@ -158,7 +166,20 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                            <h3 className="font-display text-lg font-bold text-ink-800 mb-1">{card.title}</h3>
                            <p className="text-[13px] text-ink-500 leading-relaxed">{card.desc}</p>
                         </div>
-                        <div className="h-36 rounded-2xl bg-medical-50" />
+                        {card.image ? (
+                           <div className="h-36 rounded-2xl bg-medical-50 overflow-hidden">
+                              <img src={card.image} alt="" className="w-full h-full object-cover" />
+                           </div>
+                        ) : (
+                           <div className="flex items-center gap-4">
+                              <div className="flex -space-x-3 shrink-0">
+                                 {['avatar-stack-1', 'avatar-stack-2', 'avatar-stack-3'].map((img) => (
+                                    <img key={img} src={`/assets/figma/${img}.png`} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white" />
+                                 ))}
+                              </div>
+                              <span className="text-[15px] text-ink-800">&lt;15 Min Average Wait Time</span>
+                           </div>
+                        )}
                      </div>
                   ))}
                </div>
@@ -181,13 +202,13 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                      ))}
                   </div>
                </div>
-               <div className="flex flex-wrap justify-center gap-6 w-full">
-                  {filteredDoctors.length > 0 ? (
-                     filteredDoctors.map((doc) => (
+               {filteredDoctors.length > 0 ? (
+                  <div ref={doctorScrollRef} className="flex gap-6 w-full overflow-x-auto pb-2 hide-scrollbar snap-x snap-mandatory scroll-smooth">
+                     {filteredDoctors.map((doc) => (
                         <div
                            key={doc.id}
                            onClick={() => onSelectDoctor?.(doc)}
-                           className="w-[384px] max-w-full shrink-0 rounded-[24px] overflow-hidden shadow-[0px_-8px_20px_0px_rgba(0,0,0,0.05)] cursor-pointer"
+                           className="w-[384px] max-w-[85vw] shrink-0 rounded-[24px] overflow-hidden shadow-[0px_-8px_20px_0px_rgba(0,0,0,0.05)] cursor-pointer snap-start"
                         >
                            <div className="relative h-[405px] bg-medical-50">
                               {doc.imageUrl ? (
@@ -200,7 +221,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                            <div className="p-4 flex items-start justify-between">
                               <div>
                                  <p className="font-display font-medium text-[24px] text-black leading-tight">{doc.name}</p>
-                                 <p className="text-[16px] text-ink-500 leading-[22px]">MBBS, FCPS({doc.specialty.toUpperCase()})</p>
+                                 <p className="text-[16px] text-ink-500 leading-[22px]">{doc.degrees || `MBBS, FCPS(${doc.specialty.toUpperCase()})`}</p>
                               </div>
                               <div className="flex items-center gap-1 shrink-0 pt-1">
                                  <Star size={16} className="text-amber-500 fill-amber-500" />
@@ -208,73 +229,57 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                               </div>
                            </div>
                         </div>
-                     ))
-                  ) : (
-                     <p className="text-ink-400 text-sm py-10">No doctors found for this specialty yet.</p>
-                  )}
-               </div>
+                     ))}
+                  </div>
+               ) : (
+                  <p className="text-ink-400 text-sm py-10">No doctors found for this specialty yet.</p>
+               )}
                <button
-                  onClick={() => onNavigate('/patient/doctors')}
+                  onClick={() => {
+                     const el = doctorScrollRef.current;
+                     if (!el) return;
+                     const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 10;
+                     el.scrollTo({ left: atEnd ? 0 : el.scrollLeft + 410, behavior: 'smooth' });
+                  }}
                   className="w-11 h-11 rounded-full bg-medical-500 text-white flex items-center justify-center hover:bg-medical-600 transition-colors"
-                  aria-label="Browse all doctors"
+                  aria-label="See more doctors"
                >
                   <ArrowRight size={18} />
                </button>
             </div>
 
-            {/* TRANSPARENCY STATEMENT + floating badges + stats — exact Figma node 87:3864 */}
+            {/* TRANSPARENCY STATEMENT + floating/parallax badges + count-up stats — exact Figma node 87:3864 */}
             <div className="py-16 md:py-[96px] flex flex-col items-center gap-16 md:gap-[120px]">
                <p className="font-display text-2xl md:text-[46px] text-[#131215] text-center leading-[1.3] md:leading-[58px] tracking-[0.92px] max-w-[1054px]">
                   DocOclock brings transparency to clinical visits. Track your live queue status from anywhere and access verified healthcare instantly.
                </p>
-               <div className="relative w-full max-w-[803px] h-[380px] md:h-[500px]">
-                  <div className="absolute left-1/2 -translate-x-1/2 top-[8%] w-[42%] h-[85%] rounded-[34px] overflow-hidden">
-                     <img src="/assets/figma/badge-photo-1.png" alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="absolute left-[2%] top-[15%] bg-white rounded-[20px] px-4 py-7 flex flex-col items-center gap-4 w-[190px] shadow-ds-card">
-                     <img src="/assets/figma/icon-queue.svg" alt="" className="w-9 h-9" />
-                     <p className="font-display font-medium text-[20px] text-black text-center">Live Queue Tracking</p>
-                  </div>
-                  <div className="absolute right-[2%] top-0 bg-white rounded-[20px] px-4 py-7 flex flex-col items-center gap-4 w-[190px] shadow-ds-card">
-                     <img src="/assets/figma/icon-prescription.svg" alt="" className="w-9 h-9" />
-                     <p className="font-display font-medium text-[20px] text-black text-center">Digital Prescription</p>
-                  </div>
-                  <div className="absolute right-[10%] bottom-0 bg-white rounded-[20px] px-4 py-7 flex flex-col items-center gap-4 w-[170px] shadow-ds-card">
-                     <img src="/assets/figma/icon-verified.svg" alt="" className="w-7 h-7" />
-                     <p className="font-display font-medium text-[20px] text-black text-center">BMDC Verified</p>
-                  </div>
-               </div>
+               <ParallaxBadgeField />
                <div className="flex flex-wrap justify-center gap-x-[90px] gap-y-8">
-                  {[
-                     { value: '15+', label: 'Years of Combined Experience' },
-                     { value: '5,000+', label: 'Smiles Transformed' },
-                     { value: '100%', label: 'Patient Satisfaction' },
-                  ].map((stat) => (
-                     <div key={stat.label} className="flex flex-col items-center gap-3">
-                        <span className="font-sans font-medium text-[70px] text-black leading-none">{stat.value}</span>
-                        <span className="text-[16px] text-ink-500">{stat.label}</span>
-                     </div>
+                  {TRANSPARENCY_STATS.map((stat) => (
+                     <CountUpStat key={stat.label} {...stat} />
                   ))}
                </div>
             </div>
 
-            {/* SIMPLIFYING HEALTHCARE — exact Figma node 87:3912 */}
+            {/* SIMPLIFYING HEALTHCARE — exact Figma node 87:3912. The source design only had
+                one static image behind this list; made the list clickable so each panel shows
+                its own preview, per your request. */}
             <div className="py-16 md:py-[96px] flex flex-col gap-14">
                <SectionEyebrowHeader eyebrow="How it works" title="Simplifying healthcare appointments from booking to consultation." titleClassName="max-w-[792px]" />
                <div className="flex flex-col lg:flex-row gap-14 items-center">
                   <div className="flex-1 w-full max-w-[570px] flex flex-col gap-5">
                      {PANEL_LIST.map((label, i) => (
-                        <div key={label} className="flex flex-col gap-5">
+                        <button key={label} onClick={() => setActivePanel(i)} className="flex flex-col gap-5 text-left">
                            <div className="flex items-center gap-4 px-2">
-                              {i === 0 && <span className="w-4 h-4 bg-medical-500 shrink-0" />}
-                              <span className={`text-[24px] ${i === 0 ? 'text-black' : 'text-ink-500'}`}>{label}</span>
+                              {activePanel === i && <span className="w-4 h-4 bg-medical-500 shrink-0" />}
+                              <span className={`text-[24px] transition-colors ${activePanel === i ? 'text-black' : 'text-ink-500 hover:text-ink-700'}`}>{label}</span>
                            </div>
-                           <div className="h-px bg-ink-200 w-full" />
-                        </div>
+                           <div className={`h-px w-full transition-colors ${activePanel === i ? 'bg-medical-500' : 'bg-ink-200'}`} />
+                        </button>
                      ))}
                   </div>
                   <div className="flex-1 w-full max-w-[577px] h-[380px] md:h-[552px] rounded-[24px] bg-[#efefef] relative overflow-hidden">
-                     <img src="/assets/figma/dashboard-mockup.png" alt="Dococlock doctor dashboard preview" className="absolute inset-0 w-full h-full object-cover" />
+                     <PanelMockup panel={activePanel} />
                   </div>
                </div>
             </div>
@@ -284,19 +289,23 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
             {testimonials.length > 0 && (
                <div className="py-16 md:py-[96px] flex flex-col gap-14">
                   <SectionEyebrowHeader eyebrow="Testimonials" title="What Our Patients Say" />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-9">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                      {testimonials.map((t) => (
-                        <div key={t.id} className="flex flex-col gap-10">
-                           <p className="text-[24px] text-black tracking-[-0.72px] leading-8">“{t.comment}”</p>
+                        <div
+                           key={t.id}
+                           className="flex flex-col gap-8 p-8 rounded-[24px] shadow-ds-soft"
+                           style={{ background: 'linear-gradient(160deg, #F5FAFF 0%, #FFFFFF 55%)' }}
+                        >
+                           <p className="text-[20px] text-black tracking-[-0.6px] leading-8">“{t.comment}”</p>
                            <div className="flex items-center gap-4">
-                              <div className="w-14 h-14 rounded-full overflow-hidden bg-medical-50 shrink-0">
+                              <div className="w-14 h-14 rounded-full overflow-hidden bg-medical-50 shrink-0 ring-2 ring-white shadow-sm">
                                  {t.patientImage ? (
                                     <img src={t.patientImage} alt={t.patientName} className="w-full h-full object-cover" />
                                  ) : (
                                     <div className="w-full h-full flex items-center justify-center text-medical-400 font-bold text-lg">{t.patientName.charAt(0)}</div>
                                  )}
                               </div>
-                              <span className="text-[24px] text-black tracking-[-0.72px]">{t.patientName}</span>
+                              <span className="text-[18px] text-black tracking-[-0.5px] font-medium">{t.patientName}</span>
                            </div>
                         </div>
                      ))}
@@ -341,3 +350,182 @@ const SectionEyebrowHeader: React.FC<{ eyebrow: string; title: string; titleClas
       </h2>
    </div>
 );
+
+// Center photo + 3 floating cards. Each card combines a CSS float animation (outer
+// wrapper) with a JS mouse-parallax offset (inner wrapper) so the two transforms
+// compose instead of fighting over the same property.
+const ParallaxBadgeField: React.FC = () => {
+   const fieldRef = useRef<HTMLDivElement>(null);
+   const badgeRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+   useEffect(() => {
+      const field = fieldRef.current;
+      if (!field) return;
+      const strengths = [14, 20, 10];
+      const handleMove = (e: MouseEvent) => {
+         const rect = field.getBoundingClientRect();
+         const px = (e.clientX - rect.left) / rect.width - 0.5;
+         const py = (e.clientY - rect.top) / rect.height - 0.5;
+         badgeRefs.current.forEach((el, i) => {
+            if (!el) return;
+            const s = strengths[i] ?? 12;
+            el.style.transform = `translate(${px * s}px, ${py * s}px)`;
+         });
+      };
+      const handleLeave = () => {
+         badgeRefs.current.forEach((el) => { if (el) el.style.transform = 'translate(0,0)'; });
+      };
+      field.addEventListener('mousemove', handleMove);
+      field.addEventListener('mouseleave', handleLeave);
+      return () => {
+         field.removeEventListener('mousemove', handleMove);
+         field.removeEventListener('mouseleave', handleLeave);
+      };
+   }, []);
+
+   const badges = [
+      { icon: '/assets/figma/icon-queue.svg', iconSize: 'w-9 h-9', label: 'Live Queue Tracking', pos: 'left-[2%] top-[15%] w-[190px]', float: 'animate-float-1' },
+      { icon: '/assets/figma/icon-prescription.svg', iconSize: 'w-9 h-9', label: 'Digital Prescription', pos: 'right-[2%] top-0 w-[190px]', float: 'animate-float-2' },
+      { icon: '/assets/figma/icon-verified.svg', iconSize: 'w-7 h-7', label: 'BMDC Verified', pos: 'right-[10%] bottom-0 w-[170px]', float: 'animate-float-3' },
+   ];
+
+   return (
+      <div ref={fieldRef} className="relative w-full max-w-[803px] h-[380px] md:h-[500px]">
+         <div className="absolute left-1/2 -translate-x-1/2 top-[8%] w-[42%] h-[85%] rounded-[34px] overflow-hidden">
+            <img src="/assets/figma/badge-photo-1.png" alt="" className="w-full h-full object-cover" />
+         </div>
+         {badges.map((b, i) => (
+            <div key={b.label} className={`absolute ${b.pos} ${b.float}`}>
+               <div
+                  ref={(el) => { badgeRefs.current[i] = el; }}
+                  className="bg-white rounded-[20px] px-4 py-7 flex flex-col items-center gap-4 shadow-ds-card transition-transform duration-150 ease-out"
+               >
+                  <img src={b.icon} alt="" className={b.iconSize} />
+                  <p className="font-display font-medium text-[20px] text-black text-center">{b.label}</p>
+               </div>
+            </div>
+         ))}
+      </div>
+   );
+};
+
+// Animates 0 → target once the stat scrolls into view.
+const CountUpStat: React.FC<{ target: number; suffix: string; format: (n: number) => string; label: string }> = ({ target, suffix, format, label }) => {
+   const ref = useRef<HTMLDivElement>(null);
+   const [value, setValue] = useState(0);
+   const hasRun = useRef(false);
+
+   useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      const observer = new IntersectionObserver(
+         ([entry]) => {
+            if (entry.isIntersecting && !hasRun.current) {
+               hasRun.current = true;
+               const duration = 1400;
+               const start = performance.now();
+               const tick = (now: number) => {
+                  const progress = Math.min((now - start) / duration, 1);
+                  const eased = 1 - Math.pow(1 - progress, 3);
+                  setValue(Math.round(target * eased));
+                  if (progress < 1) requestAnimationFrame(tick);
+               };
+               requestAnimationFrame(tick);
+            }
+         },
+         { threshold: 0.4 }
+      );
+      observer.observe(el);
+      return () => observer.disconnect();
+   }, [target]);
+
+   return (
+      <div ref={ref} className="flex flex-col items-center gap-3">
+         <span className="font-sans font-medium text-[70px] text-black leading-none tabular-nums">{format(value)}{suffix}</span>
+         <span className="text-[16px] text-ink-500">{label}</span>
+      </div>
+   );
+};
+
+// One real Figma asset (Doctor Panel) + three lightweight mockups built from the app's
+// own dashboard tokens (Figma only ever defined one static image for this whole section).
+const PanelMockup: React.FC<{ panel: number }> = ({ panel }) => {
+   if (panel === 0) {
+      return <img src="/assets/figma/dashboard-mockup.png" alt="Doctor dashboard preview" className="absolute inset-0 w-full h-full object-cover animate-fade-in" />;
+   }
+
+   if (panel === 1) {
+      return (
+         <div className="absolute inset-0 p-8 flex flex-col gap-4 animate-fade-in">
+            <div className="bg-white rounded-2xl p-5 shadow-ds-card flex items-center gap-4">
+               <div className="w-14 h-14 rounded-full bg-medical-100 flex items-center justify-center text-medical-500 font-display font-bold">DR</div>
+               <div className="flex-1">
+                  <p className="font-display font-bold text-ink-800">Dr. Sarah Rahman</p>
+                  <p className="text-[12px] text-ink-500">Cardiology &middot; Today, 4:30 PM</p>
+               </div>
+               <span className="bg-emerald-50 text-emerald-600 text-[11px] font-bold px-2.5 py-1 rounded-full">Confirmed</span>
+            </div>
+            <div className="bg-white rounded-2xl p-5 shadow-ds-card flex items-center justify-between">
+               <div>
+                  <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide">Your Serial</p>
+                  <p className="font-display font-bold text-3xl text-ink-800">24</p>
+               </div>
+               <button className="h-10 px-5 rounded-full bg-medical-500 text-white text-[13px] font-semibold">Track Live</button>
+            </div>
+            <div className="bg-white rounded-2xl p-5 shadow-ds-card flex-1">
+               <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide mb-3">Recent Prescriptions</p>
+               {['Amoxicillin 500mg', 'Paracetamol 500mg'].map((rx) => (
+                  <div key={rx} className="flex items-center gap-3 py-2 border-b border-ink-50 last:border-0">
+                     <span className="w-2 h-2 rounded-full bg-medical-500 shrink-0" />
+                     <span className="text-[13px] text-ink-700">{rx}</span>
+                  </div>
+               ))}
+            </div>
+         </div>
+      );
+   }
+
+   if (panel === 2) {
+      return (
+         <div className="absolute inset-0 p-8 flex flex-col gap-4 animate-fade-in">
+            <div className="bg-white rounded-2xl p-5 shadow-ds-card">
+               <p className="font-display font-bold text-ink-800 mb-4">February 2026</p>
+               <div className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: 14 }).map((_, i) => (
+                     <div key={i} className={`aspect-square rounded-lg flex items-center justify-center text-[12px] ${i === 9 ? 'bg-medical-500 text-white font-bold' : 'bg-ink-50 text-ink-500'}`}>
+                        {i + 1}
+                     </div>
+                  ))}
+               </div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 shadow-ds-card flex-1 flex flex-col gap-2">
+               <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide mb-1">Today's Appointments</p>
+               {[{ t: '10:00 AM', n: 'John Doe' }, { t: '11:30 AM', n: 'Fatima Akter' }, { t: '2:00 PM', n: 'Rahim Uddin' }].map((appt) => (
+                  <div key={appt.t} className="flex items-center gap-3 bg-ink-50/60 rounded-xl px-3 py-2.5">
+                     <span className="text-[12px] font-bold text-medical-600 w-16 shrink-0">{appt.t}</span>
+                     <span className="text-[13px] text-ink-700">{appt.n}</span>
+                  </div>
+               ))}
+            </div>
+         </div>
+      );
+   }
+
+   return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 animate-fade-in">
+         <div className="relative w-40 h-40 rounded-full flex items-center justify-center" style={{ background: 'conic-gradient(#2E8CFF 0deg 300deg, #E5F1FF 300deg 360deg)' }}>
+            <div className="w-32 h-32 rounded-full bg-white flex flex-col items-center justify-center">
+               <span className="font-display font-bold text-3xl text-ink-800">18</span>
+               <span className="text-[11px] text-ink-400">Minutes Left</span>
+            </div>
+         </div>
+         <div className="flex items-center gap-3 bg-white rounded-2xl shadow-ds-card px-5 py-3">
+            <span className="w-9 h-9 rounded-full bg-medical-500 text-white flex items-center justify-center font-bold text-sm">24</span>
+            <div>
+               <p className="text-[13px] font-bold text-ink-800">John Doe</p>
+               <p className="text-[11px] text-ink-400">Now Serving</p>
+            </div>
+         </div>
+      </div>
+   );
+};
