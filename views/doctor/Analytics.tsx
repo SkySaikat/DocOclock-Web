@@ -11,8 +11,10 @@ import { Appointment, AppointmentStatus } from '../../types';
 
 import { getLocalISODate } from '../../utils/date';
 import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> = ({ onNavigate }) => {
+   const { colors: themeColors } = useTheme();
    const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'year'>('week');
    const session = DoctorStorage.get();
    const currentDoctorId = session?.id;
@@ -118,10 +120,41 @@ export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> 
          { name: 'Cancelled', value: cancelledCount, color: '#ef4444' }
       ];
 
-      return { trendData, statusData, peakData, filteredApps, cancellationRate, cancelledVsCompletedData };
+      // Patient Demographics (New vs Returning) — a patient counts as "new" if
+      // their earliest-ever appointment with this doctor (across all history,
+      // not just the current filtered window) falls inside this window;
+      // otherwise they had already visited before and count as "returning".
+      const firstApptDateByPatient = new Map<string, string>();
+      appointments
+         .filter(a => String(a.doctorId) === String(currentDoctorId) && a.status !== 'cancelled')
+         .forEach(a => {
+            const existing = firstApptDateByPatient.get(a.patientId);
+            if (!existing || a.date < existing) firstApptDateByPatient.set(a.patientId, a.date);
+         });
+
+      const patientsInWindow = new Set(filteredApps.filter(a => a.status !== 'cancelled').map(a => a.patientId));
+      let newPatientCount = 0;
+      let returningPatientCount = 0;
+      patientsInWindow.forEach(patientId => {
+         const firstDate = firstApptDateByPatient.get(patientId);
+         const firstApptWasInWindow = !!firstDate && filteredApps.some(a => a.patientId === patientId && a.date === firstDate);
+         if (firstApptWasInWindow) newPatientCount += 1;
+         else returningPatientCount += 1;
+      });
+      const demographicsTotal = newPatientCount + returningPatientCount;
+      const newPatientPct = demographicsTotal > 0 ? Math.round((newPatientCount / demographicsTotal) * 100) : 0;
+      const returningPatientPct = demographicsTotal > 0 ? 100 - newPatientPct : 0;
+
+      return {
+         trendData, statusData, peakData, filteredApps, cancellationRate, cancelledVsCompletedData,
+         newPatientCount, returningPatientCount, newPatientPct, returningPatientPct,
+      };
    }, [appointments, timeFilter, selectedHospitalId, currentDoctorId]);
 
-   const { trendData, statusData, peakData, cancellationRate, cancelledVsCompletedData } = stats;
+   const {
+      trendData, statusData, peakData, cancellationRate, cancelledVsCompletedData,
+      newPatientPct, returningPatientPct,
+   } = stats;
 
    return (
       <div className="space-y-8 pb-10">
@@ -198,8 +231,8 @@ export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> 
                               <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
                            </linearGradient>
                            <linearGradient id="colorPatients" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#2E8CFF" stopOpacity={0.2} />
-                              <stop offset="95%" stopColor="#2E8CFF" stopOpacity={0} />
+                              <stop offset="5%" stopColor={themeColors.primaryColor} stopOpacity={0.2} />
+                              <stop offset="95%" stopColor={themeColors.primaryColor} stopOpacity={0} />
                            </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -211,7 +244,7 @@ export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> 
                            itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
                         />
                         <Area yAxisId="right" type="monotone" dataKey="revenue" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                        <Area yAxisId="left" type="monotone" dataKey="patients" stroke="#2E8CFF" strokeWidth={3} fillOpacity={1} fill="url(#colorPatients)" />
+                        <Area yAxisId="left" type="monotone" dataKey="patients" stroke={themeColors.primaryColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPatients)" />
                      </AreaChart>
                   </ResponsiveContainer>
                </div>
@@ -285,37 +318,36 @@ export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> 
                      <p className="text-sm text-ink-500">New vs Returning Patients</p>
                   </div>
 
-                  {/* Mock Stats */}
                   <div className="flex gap-4">
                      <div className="flex-1 bg-medical-50 p-4 rounded-xl border border-medical-100">
                         <div className="flex items-center gap-2 mb-1">
                            <UserPlus size={16} className="text-medical-600" />
                            <span className="text-xs font-bold text-medical-700 uppercase">New Patients</span>
                         </div>
-                        <p className="text-2xl font-stat font-bold text-ink-800">35%</p>
+                        <p className="text-2xl font-stat font-bold text-ink-800">{newPatientPct}%</p>
                      </div>
                      <div className="flex-1 bg-purple-50 p-4 rounded-xl border border-purple-100">
                         <div className="flex items-center gap-2 mb-1">
                            <UserCheck size={16} className="text-purple-600" />
                            <span className="text-xs font-bold text-purple-800 uppercase">Returning</span>
                         </div>
-                        <p className="text-2xl font-stat font-bold text-ink-800">65%</p>
+                        <p className="text-2xl font-stat font-bold text-ink-800">{returningPatientPct}%</p>
                      </div>
                   </div>
 
-                  <div className="bg-ink-50 p-4 rounded-xl text-sm text-ink-500 italic border border-slate-100">
-                     "Returning patient rate increased by 12% this month, indicating high patient satisfaction."
+                  <div className="bg-ink-50 p-4 rounded-xl text-sm text-ink-500 border border-slate-100">
+                     Based on {stats.newPatientCount + stats.returningPatientCount} unique patient(s) seen in the selected period.
                   </div>
                </div>
 
                <div className="flex-1 w-full h-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={[{ name: 'Ratio', New: 35, Returning: 65 }]}>
+                     <BarChart data={[{ name: 'Ratio', New: newPatientPct, Returning: returningPatientPct }]}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis hide />
                         <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip />
-                        <Bar dataKey="New" fill="#2E8CFF" radius={[4, 4, 0, 0]} name="New Patients" />
+                        <Bar dataKey="New" fill={themeColors.primaryColor} radius={[4, 4, 0, 0]} name="New Patients" />
                         <Bar dataKey="Returning" fill="#a855f7" radius={[4, 4, 0, 0]} name="Returning Patients" />
                         <Legend iconType="circle" />
                      </BarChart>

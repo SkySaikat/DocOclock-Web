@@ -19,44 +19,77 @@ export default {
                 stat: ['Ubuntu', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
             },
             colors: {
-                primary: '#0f172a',
-                // Dococlock brand blue scale — kept under the pre-existing `medical-*`
-                // key so every current call site (views/patient, views/doctor, etc.)
-                // repaints to the new brand color automatically without renaming classes.
-                medical: {
-                    50: '#F5FAFF',
-                    100: '#E5F1FF',
-                    200: '#C7E1FF',
-                    300: '#88BEFF',
-                    400: '#3FA2FF',
-                    500: '#2E8CFF',
-                    600: '#1F6FD6',
-                    700: '#17569F',
+                primary: {
+                    DEFAULT: 'rgb(var(--color-primary-500) / <alpha-value>)',
+                    50: 'rgb(var(--color-primary-50) / <alpha-value>)',
+                    100: 'rgb(var(--color-primary-100) / <alpha-value>)',
+                    200: 'rgb(var(--color-primary-200) / <alpha-value>)',
+                    300: 'rgb(var(--color-primary-300) / <alpha-value>)',
+                    400: 'rgb(var(--color-primary-400) / <alpha-value>)',
+                    500: 'rgb(var(--color-primary-500) / <alpha-value>)',
+                    600: 'rgb(var(--color-primary-600) / <alpha-value>)',
+                    700: 'rgb(var(--color-primary-700) / <alpha-value>)',
+                    800: 'rgb(var(--color-primary-800) / <alpha-value>)',
+                    900: 'rgb(var(--color-primary-900) / <alpha-value>)',
                 },
-                // Same brand blue scale under the design system's own naming, plus
-                // sparing dashboard accents (teal/sky match Tailwind's stock teal-500
-                // / sky-500 exactly, so those utilities can be used directly too).
+                // Admin-configurable secondary brand color (Super Admin → Branding).
+                // New semantic alias for this redesign's new code — see `navy` below
+                // for the pre-existing key that resolves through the same variables.
+                secondary: {
+                    50: 'rgb(var(--color-secondary-50) / <alpha-value>)',
+                    100: 'rgb(var(--color-secondary-100) / <alpha-value>)',
+                    200: 'rgb(var(--color-secondary-200) / <alpha-value>)',
+                    300: 'rgb(var(--color-secondary-300) / <alpha-value>)',
+                    400: 'rgb(var(--color-secondary-400) / <alpha-value>)',
+                    500: 'rgb(var(--color-secondary-500) / <alpha-value>)',
+                    600: 'rgb(var(--color-secondary-600) / <alpha-value>)',
+                    700: 'rgb(var(--color-secondary-700) / <alpha-value>)',
+                    800: 'rgb(var(--color-secondary-800) / <alpha-value>)',
+                    900: 'rgb(var(--color-secondary-900) / <alpha-value>)',
+                },
+                // Dococlock brand scale — kept under the pre-existing `medical-*` key
+                // so every current call site (views/patient, views/doctor, etc.)
+                // resolves through the live theme CSS variables without renaming
+                // classes. Admin-configurable via Super Admin → Branding.
+                medical: {
+                    50: 'rgb(var(--color-primary-50) / <alpha-value>)',
+                    100: 'rgb(var(--color-primary-100) / <alpha-value>)',
+                    200: 'rgb(var(--color-primary-200) / <alpha-value>)',
+                    300: 'rgb(var(--color-primary-300) / <alpha-value>)',
+                    400: 'rgb(var(--color-primary-400) / <alpha-value>)',
+                    500: 'rgb(var(--color-primary-500) / <alpha-value>)',
+                    600: 'rgb(var(--color-primary-600) / <alpha-value>)',
+                    700: 'rgb(var(--color-primary-700) / <alpha-value>)',
+                    800: 'rgb(var(--color-primary-800) / <alpha-value>)',
+                    900: 'rgb(var(--color-primary-900) / <alpha-value>)',
+                },
+                // Same brand scale under the design system's own naming. `.teal`/`.sky`
+                // are one-off dashboard accents (match Tailwind's stock teal-500 /
+                // sky-500 exactly) — intentionally NOT part of the admin-configurable
+                // brand ramp, so they stay literal hex.
                 brand: {
-                    50: '#F5FAFF',
-                    100: '#E5F1FF',
-                    300: '#88BEFF',
-                    400: '#3FA2FF',
-                    500: '#2E8CFF',
-                    600: '#1F6FD6',
+                    50: 'rgb(var(--color-primary-50) / <alpha-value>)',
+                    100: 'rgb(var(--color-primary-100) / <alpha-value>)',
+                    300: 'rgb(var(--color-primary-300) / <alpha-value>)',
+                    400: 'rgb(var(--color-primary-400) / <alpha-value>)',
+                    500: 'rgb(var(--color-primary-500) / <alpha-value>)',
+                    600: 'rgb(var(--color-primary-600) / <alpha-value>)',
                     teal: '#14B8A6',
                     sky: '#0EA5E9',
                 },
-                // Single dark-navy used for hero/footer contrast bands — the only
-                // other saturated surface color in the brand.
+                // Dark-navy used for hero/footer contrast bands and admin-tier dark
+                // surfaces — resolves through the same admin-configurable secondary
+                // color as the new `secondary` alias above.
                 navy: {
-                    800: '#0B1F4D',
-                    900: '#061535',
+                    800: 'rgb(var(--color-secondary-800) / <alpha-value>)',
+                    900: 'rgb(var(--color-secondary-900) / <alpha-value>)',
                 },
-                surface: '#F5FAFF',
-                container: '#F7FAFF',
+                surface: 'rgb(var(--color-background) / <alpha-value>)',
+                container: 'rgb(var(--color-background) / <alpha-value>)',
                 // Ink/gray scale — the brand's near-black to mid-gray text ramp
                 // (kept separate from Tailwind's default `gray`/`slate` so we don't
                 // repaint every pre-existing gray-* utility across the app).
+                // Intentionally fixed (not admin-configurable) for text-contrast safety.
                 ink: {
                     900: '#000000',
                     800: '#171717',

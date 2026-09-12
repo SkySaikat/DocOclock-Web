@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, LogOut, LayoutDashboard, Database, Pill, Activity, FileText, Users, Settings, Building, Image, Globe } from 'lucide-react';
+import { ShieldCheck, LogOut, LayoutDashboard, Database, Pill, Activity, FileText, Users, Settings, Building, Image, Globe, Palette } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { useSuperAdminData } from '../../hooks/useSuperAdminData';
 
@@ -9,11 +9,12 @@ import { GlobalDataView } from '../../components/admin/GlobalDataView';
 import { MedicineManager } from '../../components/admin/MedicineManager';
 import { HospitalManager } from '../../components/admin/HospitalManager';
 import { HomepageManager } from '../../components/admin/HomepageManager';
+import { BrandingSettings } from './BrandingSettings';
 
 import { ReviewMonitor } from '../../components/hospital-admin/ReviewMonitor';
 import { UserCheck } from 'lucide-react';
 
-type TabType = 'OVERVIEW' | 'APPROVALS' | 'DATABASE' | 'HOSPITALS' | 'MEDICINES' | 'SETTINGS' | 'HOMEPAGE';
+type TabType = 'OVERVIEW' | 'APPROVALS' | 'DATABASE' | 'HOSPITALS' | 'MEDICINES' | 'SETTINGS' | 'HOMEPAGE' | 'BRANDING';
 
 export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void; onBrowsePublicSite?: () => void }> = ({ onNavigate, onBrowsePublicSite }) => {
   const { profile, logout } = useAuth();
@@ -41,6 +42,7 @@ export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void;
     { id: 'DATABASE' as TabType, label: 'Global Database', icon: Database },
     { id: 'MEDICINES' as TabType, label: 'Medicine Catalog', icon: Pill },
     { id: 'HOMEPAGE' as TabType, label: 'Homepage', icon: Image },
+    { id: 'BRANDING' as TabType, label: 'Branding', icon: Palette },
     { id: 'SETTINGS' as TabType, label: 'Platform Settings', icon: Settings },
   ];
 
@@ -161,6 +163,10 @@ export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void;
               onUpdate={updateHeroBanner}
               onDelete={deleteHeroBanner}
             />
+          )}
+
+          {activeTab === 'BRANDING' && (
+            <BrandingSettings />
           )}
 
           {activeTab === 'SETTINGS' && (
