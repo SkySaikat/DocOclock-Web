@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { GitBranch, LogOut, Users, Clock, Activity, Check, X, Plus, Stethoscope, Tag } from 'lucide-react';
+import { GitBranch, Users, Clock, Activity, Check, X, Plus, Stethoscope, Tag } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { useBranchManagerData } from '../../hooks/useBranchManagerData';
+import { AdminLayout, AdminNavItem } from '../../components/layout/AdminLayout';
 
 export const BranchManagerDashboard: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
-  const { logout } = useAuth();
+  const { logout, profile } = useAuth();
   const { loading, branch, hospital, roster, sectors, doctorRequests, stats, approveRequest, rejectRequest, createSector } = useBranchManagerData();
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'REQUESTS' | 'ROSTER' | 'SECTORS'>('OVERVIEW');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
@@ -58,54 +59,25 @@ export const BranchManagerDashboard: React.FC<{ onNavigate: (path: string) => vo
     );
   }
 
-  const tabs = [
-    { id: 'OVERVIEW' as const,  label: 'Overview',        icon: Activity },
-    { id: 'REQUESTS' as const,  label: 'Doctor Requests', icon: Clock,   badge: doctorRequests.length },
-    { id: 'ROSTER' as const,    label: 'Roster',          icon: Users },
-    { id: 'SECTORS' as const,   label: 'Sectors',         icon: Tag },
+  const navItems: AdminNavItem[] = [
+    { id: 'OVERVIEW',  label: 'Overview', icon: Activity },
+    { id: 'REQUESTS',  label: 'Requests', icon: Clock, badge: doctorRequests.length },
+    { id: 'ROSTER',    label: 'Roster',   icon: Users },
+    { id: 'SECTORS',   label: 'Sectors',  icon: Tag },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6">
-      {/* Header */}
-      <div className="bg-navy-900 rounded-ds-xl p-8 md:p-10 text-white shadow-2xl relative overflow-hidden mb-8 border border-ink-800">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-teal-500/10 blur-[80px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-white/10 border border-white/10 rounded-ds-md flex items-center justify-center">
-              <GitBranch size={32} className="text-teal-400" />
-            </div>
-            <div>
-              <p className="text-teal-400 text-xs font-black uppercase tracking-widest mb-1">Branch Management</p>
-              <h1 className="font-display text-3xl font-black tracking-tight">{branch.name}</h1>
-              <p className="text-sm font-bold text-ink-400 mt-1">{hospital?.name} — {branch.address}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="self-start md:self-auto flex items-center gap-2 px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-ds-sm border border-red-500/20 transition-all text-sm group">
-            <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" /> Sign Out
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar */}
-        <div className="lg:w-56 shrink-0">
-          <div className="bg-white rounded-ds-lg p-4 shadow-sm border border-ink-100 flex flex-col gap-2 sticky top-24">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center justify-between p-4 rounded-ds-sm font-bold transition-all ${activeTab === tab.id ? 'bg-teal-50 text-teal-700' : 'text-ink-500 hover:bg-ink-50 hover:text-ink-800'}`}
-              >
-                <span className="flex items-center gap-3"><tab.icon size={18} />{tab.label}</span>
-                {tab.badge ? <span className="text-[10px] px-2 py-0.5 bg-orange-100 text-orange-600 rounded-lg font-black">{tab.badge}</span> : null}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
+    <AdminLayout
+      title="Branch Manager"
+      subtitle={`${branch.name} — ${hospital?.name || ''}`}
+      navItems={navItems}
+      activeId={activeTab}
+      onSelect={(id) => setActiveTab(id as typeof activeTab)}
+      onLogout={handleLogout}
+      recipientId={profile?.id}
+      onNavigateNotification={onNavigate}
+    >
+        <div className="min-w-0">
           {/* OVERVIEW */}
           {activeTab === 'OVERVIEW' && (
             <div className="space-y-6">
@@ -245,7 +217,6 @@ export const BranchManagerDashboard: React.FC<{ onNavigate: (path: string) => vo
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AdminLayout>
   );
 };

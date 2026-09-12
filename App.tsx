@@ -29,8 +29,9 @@ const DoctorMore = lazy(() => import('./views/doctor/DoctorMore').then(m => ({ d
 const DoctorProfileEditor = lazy(() => import('./views/doctor/DoctorProfileEditor').then(m => ({ default: m.DoctorProfileEditor })));
 
 // Assistant Views
-const AssistantLayout = lazy(() => import('./views/assistant/AssistantLayout').then(m => ({ default: m.AssistantLayout })));
 const AssistantDashboard = lazy(() => import('./views/assistant/AssistantDashboard').then(m => ({ default: m.AssistantDashboard })));
+import { AdminLayout, AdminNavItem } from './components/layout/AdminLayout';
+import { LayoutDashboard as AssistantOverviewIcon, Users as AssistantAppointmentsIcon, Clock as AssistantQueueIcon } from 'lucide-react';
 
 // Marketing Views (public nav pages)
 const AboutUsPage = lazy(() => import('./views/marketing/AboutUsPage').then(m => ({ default: m.AboutUsPage })));
@@ -113,6 +114,8 @@ const App: React.FC = () => {
           setCurrentPath('/doctor/dashboard');
         } else if (authRole === UserRole.PATIENT) {
           setCurrentPath('/patient/home');
+        } else if (authRole === UserRole.ASSISTANT) {
+          setCurrentPath('/assistant/dashboard');
         }
       }
     }
@@ -264,11 +267,25 @@ const App: React.FC = () => {
     }
 
     if (isAssistant) {
+      const assistantNavItems: AdminNavItem[] = [
+        { id: '/assistant/dashboard', label: 'Overview', icon: AssistantOverviewIcon },
+        { id: '/assistant/appointments', label: 'Reservations', icon: AssistantAppointmentsIcon },
+        { id: '/assistant/queue', label: 'Queue', icon: AssistantQueueIcon },
+      ];
       return (
         <ProtectedRoute expectedRole={UserRole.ASSISTANT}>
-          <AssistantLayout currentPath={currentPath} onNavigate={navigate}>
+          <AdminLayout
+            title="Assistant Portal"
+            subtitle={profile?.name}
+            navItems={assistantNavItems}
+            activeId={currentPath}
+            onSelect={navigate}
+            onLogout={handleLogout}
+            recipientId={profile?.id}
+            onNavigateNotification={navigate}
+          >
             <AssistantDashboard currentPath={currentPath} />
-          </AssistantLayout>
+          </AdminLayout>
         </ProtectedRoute>
       );
     }

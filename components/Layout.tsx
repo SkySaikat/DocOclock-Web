@@ -30,12 +30,15 @@ const MARKETING_NAV_LINKS: { label: string; path: string }[] = [
   { label: 'Contact us', path: '/contact-us' },
 ];
 
+// Gradient stops read the live theme CSS variables (set by ThemeContext), so
+// the brand mark recolors instantly whenever Super Admin changes the brand
+// colors — no separate logo-specific theming logic needed.
 const Logo = () => (
   <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="logoGradient" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#88BEFF" />
-        <stop offset="1" stopColor="#2E8CFF" />
+        <stop style={{ stopColor: 'rgb(var(--color-primary-300))' }} />
+        <stop offset="1" style={{ stopColor: 'rgb(var(--color-primary-500))' }} />
       </linearGradient>
     </defs>
     <path d="M30 35 C 30 20, 70 20, 70 35" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" />
@@ -46,8 +49,8 @@ const Logo = () => (
     <path d="M50 50 L 65 40" stroke="#171717" strokeWidth="4" strokeLinecap="round" />
     <circle cx="50" cy="50" r="4" fill="#171717" />
     <g transform="translate(70, 20)">
-      <rect x="0" y="8" width="24" height="6" rx="3" fill="#2E8CFF" />
-      <rect x="9" y="-1" width="6" height="24" rx="3" fill="#2E8CFF" />
+      <rect x="0" y="8" width="24" height="6" rx="3" style={{ fill: 'rgb(var(--color-primary-500))' }} />
+      <rect x="9" y="-1" width="6" height="24" rx="3" style={{ fill: 'rgb(var(--color-primary-500))' }} />
     </g>
   </svg>
 );
@@ -87,9 +90,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
   const isDoctor = userRole === UserRole.DOCTOR;
   const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
   const isHospitalAdmin = userRole === UserRole.HOSPITAL_ADMIN;
+  // All four admin-tier roles build their own chrome via the shared
+  // <AdminLayout> (components/layout/AdminLayout.tsx) — Layout renders no
+  // nav/footer for any of them so there's exactly one source of chrome.
+  const isAdminTier = isSuperAdmin || isHospitalAdmin || userRole === UserRole.BRANCH_MANAGER || userRole === UserRole.ASSISTANT;
 
-  if ((isSuperAdmin || isHospitalAdmin) && !browseMode) {
-    return <div className="min-h-screen relative font-sans text-slate-800 bg-slate-50 py-10">{children}</div>;
+  if (isAdminTier && !browseMode) {
+    return <div className="min-h-screen relative font-sans text-slate-800 bg-surface">{children}</div>;
   }
 
   return (

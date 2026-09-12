@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ShieldCheck, LogOut, LayoutDashboard, Database, Pill, Activity, FileText, Users, Settings, Building, Image, Globe, Palette } from 'lucide-react';
+import { LayoutDashboard, Database, Pill, Settings, Building, Image, Palette, UserCheck } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { useSuperAdminData } from '../../hooks/useSuperAdminData';
+import { AdminLayout, AdminNavItem } from '../../components/layout/AdminLayout';
 
 import { AnalyticsOverview } from '../../components/admin/AnalyticsOverview';
 import { ApprovalQueue } from '../../components/admin/ApprovalQueue';
@@ -10,9 +11,6 @@ import { MedicineManager } from '../../components/admin/MedicineManager';
 import { HospitalManager } from '../../components/admin/HospitalManager';
 import { HomepageManager } from '../../components/admin/HomepageManager';
 import { BrandingSettings } from './BrandingSettings';
-
-import { ReviewMonitor } from '../../components/hospital-admin/ReviewMonitor';
-import { UserCheck } from 'lucide-react';
 
 type TabType = 'OVERVIEW' | 'APPROVALS' | 'DATABASE' | 'HOSPITALS' | 'MEDICINES' | 'SETTINGS' | 'HOMEPAGE' | 'BRANDING';
 
@@ -35,188 +33,108 @@ export const SuperAdminDashboard: React.FC<{ onNavigate: (path: string) => void;
     );
   }
 
-  const tabs = [
-    { id: 'OVERVIEW' as TabType, label: 'Platform Overview', icon: LayoutDashboard },
-    { id: 'APPROVALS' as TabType, label: 'Doctor Approvals', icon: UserCheck },
-    { id: 'HOSPITALS' as TabType, label: 'Hospitals', icon: Building },
-    { id: 'DATABASE' as TabType, label: 'Global Database', icon: Database },
-    { id: 'MEDICINES' as TabType, label: 'Medicine Catalog', icon: Pill },
-    { id: 'HOMEPAGE' as TabType, label: 'Homepage', icon: Image },
-    { id: 'BRANDING' as TabType, label: 'Branding', icon: Palette },
-    { id: 'SETTINGS' as TabType, label: 'Platform Settings', icon: Settings },
+  const navItems: AdminNavItem[] = [
+    { id: 'OVERVIEW', label: 'Overview', icon: LayoutDashboard },
+    { id: 'APPROVALS', label: 'Approvals', icon: UserCheck, badge: pendingDoctors.length },
+    { id: 'HOSPITALS', label: 'Hospitals', icon: Building },
+    { id: 'DATABASE', label: 'Database', icon: Database },
+    { id: 'MEDICINES', label: 'Medicines', icon: Pill },
+    { id: 'HOMEPAGE', label: 'Homepage', icon: Image },
+    { id: 'BRANDING', label: 'Branding', icon: Palette },
+    { id: 'SETTINGS', label: 'Settings', icon: Settings },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6">
-      
-      {/* Admin Header */}
-      <div className="bg-navy-900 rounded-ds-xl p-8 md:p-10 text-white shadow-ds-soft relative overflow-hidden mb-8 animate-in fade-in slide-in-from-top-4 duration-500 border border-navy-800">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-medical-500/10 blur-[80px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3" />
+    <AdminLayout
+      title="Super Admin"
+      subtitle={profile?.name || profile?.full_name}
+      navItems={navItems}
+      activeId={activeTab}
+      onSelect={(id) => setActiveTab(id as TabType)}
+      onLogout={handleLogout}
+      onBrowsePublicSite={onBrowsePublicSite}
+      recipientId={profile?.id}
+      onNavigateNotification={onNavigate}
+    >
+      <div className="space-y-8">
+        {activeTab === 'OVERVIEW' && (
+          <AnalyticsOverview stats={stats} />
+        )}
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-medical-500/20 border border-medical-500/30 rounded-2xl flex flex-col items-center justify-center text-medical-400 shadow-inner">
-              <ShieldCheck size={32} />
-            </div>
-            <div>
-              <p className="text-medical-400 text-xs font-display font-black uppercase tracking-widest mb-1">Super Admin Console</p>
-              <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">{profile?.name || profile?.full_name || 'System Administrator'}</h1>
-              <p className="text-slate-400 text-xs font-medium mt-1">{profile?.email || 'superadmin@dococlock.com'}</p>
-            </div>
-          </div>
+        {activeTab === 'APPROVALS' && (
+          <ApprovalQueue pendingDoctors={pendingDoctors} onApprove={approveDoctor} onReject={rejectDoctor} />
+        )}
 
-          <div className="flex items-center gap-3 self-start md:self-auto">
-            {onBrowsePublicSite && (
-              <button
-                onClick={onBrowsePublicSite}
-                className="flex items-center gap-2 px-4 py-2.5 bg-medical-500/10 hover:bg-medical-500/20 text-medical-400 font-bold rounded-full border border-medical-500/20 transition-all text-sm"
-              >
-                <Globe size={15} /> View Website
-              </button>
-            )}
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-full border border-red-500/20 transition-all text-sm group"
-            >
-              <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" /> Sign Out
-            </button>
-          </div>
-        </div>
-      </div>
+        {activeTab === 'DATABASE' && (
+          <GlobalDataView />
+        )}
 
-      {/* Main Container */}
-      <div className="flex flex-col lg:flex-row gap-8">
-        
-        {/* Sidebar Nav */}
-        <div className="lg:w-64 shrink-0">
-          <div className="bg-white rounded-ds-lg p-4 shadow-ds-soft flex flex-col gap-2 sticky top-24">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex justify-between items-center p-4 rounded-xl font-display font-bold transition-all text-left ${
-                  activeTab === tab.id
-                  ? 'bg-medical-50 text-medical-600'
-                  : 'text-ink-500 hover:bg-ink-50 hover:text-ink-800'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <tab.icon size={20} />
-                  <span className="text-sm">{tab.label}</span>
-                </div>
-                {tab.id === 'APPROVALS' && pendingDoctors.length > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-red-500/20">
-                    {pendingDoctors.length}
-                  </span>
-                )}
-              </button>
-            ))}
+        {activeTab === 'HOSPITALS' && (
+          <HospitalManager />
+        )}
 
-            {/* Quick Stats in Sidebar */}
-            <div className="mt-4 pt-4 border-t border-ink-100 space-y-3 px-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-display font-black text-ink-400 uppercase tracking-widest">Pending</span>
-                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-stat font-black">
-                  {pendingDoctors.length}
-                </span>
+        {activeTab === 'MEDICINES' && (
+          <MedicineManager />
+        )}
+
+        {activeTab === 'HOMEPAGE' && (
+          <HomepageManager
+            banners={heroBanners}
+            onCreate={createHeroBanner}
+            onUpdate={updateHeroBanner}
+            onDelete={deleteHeroBanner}
+          />
+        )}
+
+        {activeTab === 'BRANDING' && (
+          <BrandingSettings />
+        )}
+
+        {activeTab === 'SETTINGS' && (
+          <div className="bg-white rounded-ds-lg p-8 shadow-ds-soft animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-ink-100 rounded-2xl flex items-center justify-center text-ink-600">
+                <Settings size={24} />
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-display font-black text-ink-400 uppercase tracking-widest">Total Users</span>
-                <span className="text-xs font-stat font-black text-ink-700">
-                  {(stats?.totalPatients || 0) + (stats?.totalDoctors || 0)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-display font-black text-ink-400 uppercase tracking-widest">Hospitals</span>
-                <span className="text-xs font-stat font-black text-ink-700">{stats?.totalHospitals || 0}</span>
+              <div>
+                <h2 className="text-xl font-display font-black text-ink-800">Platform Settings</h2>
+                <p className="text-sm font-bold text-ink-500">Manage global features and toggles</p>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Content Area */}
-        <div className="flex-1 space-y-8">
-          {activeTab === 'OVERVIEW' && (
-            <AnalyticsOverview stats={stats} />
-          )}
-
-          {activeTab === 'APPROVALS' && (
-            <ApprovalQueue pendingDoctors={pendingDoctors} onApprove={approveDoctor} onReject={rejectDoctor} />
-          )}
-
-          {activeTab === 'DATABASE' && (
-            <GlobalDataView />
-          )}
-
-          {activeTab === 'HOSPITALS' && (
-            <HospitalManager />
-          )}
-
-          {activeTab === 'MEDICINES' && (
-            <MedicineManager />
-          )}
-
-          {activeTab === 'HOMEPAGE' && (
-            <HomepageManager
-              banners={heroBanners}
-              onCreate={createHeroBanner}
-              onUpdate={updateHeroBanner}
-              onDelete={deleteHeroBanner}
-            />
-          )}
-
-          {activeTab === 'BRANDING' && (
-            <BrandingSettings />
-          )}
-
-          {activeTab === 'SETTINGS' && (
-            <div className="bg-white rounded-ds-lg p-8 shadow-ds-soft animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-ink-100 rounded-2xl flex items-center justify-center text-ink-600">
-                  <Settings size={24} />
-                </div>
+            <div className="space-y-6">
+              {/* Feature Toggle Card */}
+              <div className="flex items-center justify-between p-6 border border-ink-200 rounded-ds-md bg-ink-50/50">
                 <div>
-                  <h2 className="text-xl font-display font-black text-ink-800">Platform Settings</h2>
-                  <p className="text-sm font-bold text-ink-500">Manage global features and toggles</p>
+                  <h3 className="font-display font-black text-ink-800 mb-1 flex items-center gap-2">
+                    Location-Based Search
+                    {platformSettings.location_search_enabled === 'true' && (
+                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] uppercase tracking-widest font-black rounded-md">Active</span>
+                    )}
+                  </h3>
+                  <p className="text-xs font-medium text-ink-500 max-w-md">
+                    Enable or disable the "Find Doctors Near Me" feature for patients. When turned off, patients will not be prompted for their location and the feature will be hidden from the homepage.
+                  </p>
                 </div>
-              </div>
 
-              <div className="space-y-6">
-                {/* Feature Toggle Card */}
-                <div className="flex items-center justify-between p-6 border border-ink-200 rounded-ds-md bg-ink-50/50">
-                  <div>
-                    <h3 className="font-display font-black text-ink-800 mb-1 flex items-center gap-2">
-                      Location-Based Search
-                      {platformSettings.location_search_enabled === 'true' && (
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] uppercase tracking-widest font-black rounded-md">Active</span>
-                      )}
-                    </h3>
-                    <p className="text-xs font-medium text-ink-500 max-w-md">
-                      Enable or disable the "Find Doctors Near Me" feature for patients. When turned off, patients will not be prompted for their location and the feature will be hidden from the homepage.
-                    </p>
-                  </div>
-
-                  {/* Toggle Switch */}
-                  <button
-                    onClick={() => updatePlatformSetting('location_search_enabled', platformSettings.location_search_enabled === 'true' ? 'false' : 'true')}
-                    className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      platformSettings.location_search_enabled === 'true' ? 'bg-medical-500' : 'bg-ink-200'
+                {/* Toggle Switch */}
+                <button
+                  onClick={() => updatePlatformSetting('location_search_enabled', platformSettings.location_search_enabled === 'true' ? 'false' : 'true')}
+                  className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    platformSettings.location_search_enabled === 'true' ? 'bg-medical-500' : 'bg-ink-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      platformSettings.location_search_enabled === 'true' ? 'translate-x-7' : 'translate-x-0'
                     }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        platformSettings.location_search_enabled === 'true' ? 'translate-x-7' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
+                  />
+                </button>
               </div>
             </div>
-          )}
-        </div>
-
+          </div>
+        )}
       </div>
-
-    </div>
+    </AdminLayout>
   );
 };

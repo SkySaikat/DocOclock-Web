@@ -132,7 +132,7 @@ export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> 
             if (!existing || a.date < existing) firstApptDateByPatient.set(a.patientId, a.date);
          });
 
-      const patientsInWindow = new Set(filteredApps.filter(a => a.status !== 'cancelled').map(a => a.patientId));
+      const patientsInWindow = new Set<string>(filteredApps.filter(a => a.status !== 'cancelled').map(a => a.patientId));
       let newPatientCount = 0;
       let returningPatientCount = 0;
       patientsInWindow.forEach(patientId => {

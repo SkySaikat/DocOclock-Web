@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Building2, LogOut, ActivitySquare, Users, Star, FileText, GitBranch, Tag, Clock, Check, X, Plus, Stethoscope, MapPin, Mail, Lock } from 'lucide-react';
+import { Building2, ActivitySquare, Users, Star, FileText, GitBranch, Tag, Clock, Check, X, Plus, Stethoscope, MapPin, Mail } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { useHospitalAdminData } from '../../hooks/useHospitalAdminData';
+import { AdminLayout, AdminNavItem } from '../../components/layout/AdminLayout';
 
 import { HospitalAnalytics } from '../../components/hospital-admin/HospitalAnalytics';
 import { RosterManager } from '../../components/hospital-admin/RosterManager';
@@ -11,7 +12,7 @@ import { AdminPrescriptionViewer } from '../../components/admin/AdminPrescriptio
 type TabType = 'ANALYTICS' | 'ROSTER' | 'BRANCHES' | 'SECTORS' | 'REQUESTS' | 'REVIEWS' | 'PRESCRIPTIONS';
 
 export const HospitalAdminDashboard: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
-  const { logout } = useAuth();
+  const { logout, profile } = useAuth();
   const {
     loading, hospital, roster, branches, sectors, doctorRequests, stats, reviews,
     searchResults, searchDoctors, addDoctorToRoster,
@@ -105,56 +106,28 @@ export const HospitalAdminDashboard: React.FC<{ onNavigate: (path: string) => vo
     );
   }
 
-  const tabs: { id: TabType; label: string; icon: React.ElementType; badge?: number }[] = [
-    { id: 'ANALYTICS',    label: 'Analytics',         icon: ActivitySquare },
-    { id: 'ROSTER',       label: 'Roster',             icon: Users,        badge: roster.length },
-    { id: 'BRANCHES',     label: 'Branches',           icon: GitBranch,    badge: branches.length },
-    { id: 'SECTORS',      label: 'Sectors',            icon: Tag,          badge: sectors.length },
-    { id: 'REQUESTS',     label: 'Doctor Requests',    icon: Clock,        badge: doctorRequests.length },
-    { id: 'REVIEWS',      label: 'Reviews',            icon: Star },
-    { id: 'PRESCRIPTIONS',label: 'Prescriptions',      icon: FileText },
+  const navItems: AdminNavItem[] = [
+    { id: 'ANALYTICS',    label: 'Analytics',      icon: ActivitySquare },
+    { id: 'ROSTER',       label: 'Roster',         icon: Users,     badge: roster.length },
+    { id: 'BRANCHES',     label: 'Branches',       icon: GitBranch, badge: branches.length },
+    { id: 'SECTORS',      label: 'Sectors',        icon: Tag,       badge: sectors.length },
+    { id: 'REQUESTS',     label: 'Requests',       icon: Clock,     badge: doctorRequests.length },
+    { id: 'REVIEWS',      label: 'Reviews',        icon: Star },
+    { id: 'PRESCRIPTIONS',label: 'Prescriptions',  icon: FileText },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6">
-      <div className="bg-navy-900 rounded-ds-xl p-8 md:p-10 text-white shadow-2xl relative overflow-hidden mb-8 animate-in fade-in slide-in-from-top-4 duration-500 border border-ink-800">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-medical-500/10 blur-[80px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-white/10 border border-white/10 rounded-ds-md flex items-center justify-center">
-              <Building2 size={32} className="text-medical-400" />
-            </div>
-            <div>
-              <p className="text-medical-400 text-xs font-black uppercase tracking-widest mb-1">Facility Management</p>
-              <h1 className="font-display text-3xl md:text-4xl font-black tracking-tight">{hospital.name}</h1>
-              <p className="text-sm font-bold text-ink-400 mt-1">{hospital.address}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="self-start md:self-auto flex items-center gap-2 px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-ds-sm border border-red-500/20 transition-all text-sm group">
-            <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" /> Sign Out
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar */}
-        <div className="lg:w-64 shrink-0">
-          <div className="bg-white rounded-ds-lg p-4 shadow-sm border border-ink-100 flex flex-col gap-2 sticky top-24">
-            {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center justify-between p-4 rounded-ds-sm font-bold transition-all ${activeTab === tab.id ? 'bg-medical-50 text-medical-600' : 'text-ink-500 hover:bg-ink-50 hover:text-ink-800'}`}
-              >
-                <span className="flex items-center gap-3"><tab.icon size={20} />{tab.label}</span>
-                {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-lg font-black ${tab.id === 'REQUESTS' ? 'bg-orange-100 text-orange-600' : 'bg-ink-100 text-ink-500'}`}>{tab.badge}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0 space-y-8">
+    <AdminLayout
+      title="Hospital Admin"
+      subtitle={hospital.name}
+      navItems={navItems}
+      activeId={activeTab}
+      onSelect={(id) => setActiveTab(id as TabType)}
+      onLogout={handleLogout}
+      recipientId={profile?.id}
+      onNavigateNotification={onNavigate}
+    >
+        <div className="space-y-8">
           {activeTab === 'ANALYTICS' && <HospitalAnalytics stats={stats} />}
 
           {activeTab === 'ROSTER' && (
@@ -325,7 +298,6 @@ export const HospitalAdminDashboard: React.FC<{ onNavigate: (path: string) => vo
           {activeTab === 'REVIEWS' && <ReviewMonitor reviews={reviews} />}
           {activeTab === 'PRESCRIPTIONS' && <AdminPrescriptionViewer hospitalId={hospital?.id} />}
         </div>
-      </div>
-    </div>
+    </AdminLayout>
   );
 };
