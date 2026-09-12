@@ -838,6 +838,20 @@ export async function fetchAppointments(filters?: { id?: string; doctorId?: stri
 }
 
 
+/** Lightweight count-only query (no row fetch) for a doctor's appointments in a date range — used for "this month" style stat cards. */
+export async function fetchAppointmentCountInRange(doctorId: string, hospitalId: string | null, startDate: string, endDate: string): Promise<number> {
+  try {
+    let query = supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('doctor_id', doctorId).gte('appointment_date', startDate).lte('appointment_date', endDate);
+    if (hospitalId) query = query.eq('hospital_id', hospitalId);
+    const { count, error } = await query;
+    if (error) throw error;
+    return count || 0;
+  } catch (err) {
+    console.error('[CRITICAL] fetchAppointmentCountInRange: Fetch failed.', err);
+    return 0;
+  }
+}
+
 export const fetchDoctorAppointments = (doctorId: string) => fetchAppointments({ doctorId });
 export const fetchDoctorAppointmentsByHospital = (doctorId: string, hospitalId: string | null) =>
   hospitalId ? fetchAppointments({ doctorId, hospitalId }) : Promise.resolve([]);

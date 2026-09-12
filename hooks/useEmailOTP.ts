@@ -7,8 +7,6 @@ interface OTPState {
   error: string | null;
 }
 
-const EMAIL_SERVER_URL = 'http://localhost:3001';
-
 export const useEmailOTP = () => {
   const [otpState, setOtpState] = useState<OTPState>({
     step: 'IDLE',
@@ -25,40 +23,19 @@ export const useEmailOTP = () => {
     setOtpState({ step: 'SENDING', email, error: null });
 
     try {
-      // Generate 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-      // Clear old OTPs for this email
-      await supabase.from('email_otps').delete().eq('email', email).eq('verified', false);
-
-      // Store OTP in database
-      const { error: insertErr } = await supabase.from('email_otps').insert({
-        email,
-        otp_code: otp,
-        expires_at: expiresAt,
-        verified: false,
+      // OTP generation and storage now happen entirely server-side, in the
+      // `send-otp` Supabase Edge Function (supabase/functions/send-otp) —
+      // this used to generate the code in the browser and write it directly
+      // to the open-RLS `email_otps` table, which meant anyone could insert
+      // their own OTP for any email address and skip the email step
+      // entirely. The Edge Function uses the service-role key, so the
+      // client never touches `email_otps` on the send path anymore.
+      const { data, error } = await supabase.functions.invoke('send-otp', {
+        body: { email },
       });
 
-      if (insertErr) throw new Error(insertErr.message);
-
-      // Send email via our SMTP server
-      try {
-        const res = await fetch(`${EMAIL_SERVER_URL}/api/send-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, otp }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          console.warn('Email server error, OTP still stored:', data.error);
-        }
-      } catch (fetchErr) {
-        // Email server not reachable — surface a clear error instead of silently failing
-        console.warn('Email server not reachable at localhost:3001. Run: npm run email');
-        throw new Error('Could not reach the email server. Please ensure the email server is running (npm run email) and try again.');
-      }
+      if (error) throw new Error(error.message || 'Failed to send verification code.');
+      if (data?.error) throw new Error(data.error);
 
       setOtpState({ step: 'SENT', email, error: null });
       return true;
@@ -66,7 +43,7 @@ export const useEmailOTP = () => {
       setOtpState({
         step: 'ERROR',
         email,
-        error: err.message || 'Failed to generate OTP.',
+        error: err.message || 'Failed to send verification code.',
       });
       return false;
     }

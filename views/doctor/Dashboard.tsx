@@ -1,12 +1,10 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Button } from '../../components/ui/Button';
-import { ArrowUpRight, Users, CreditCard, Activity, Clock, MapPin, BadgeCheck, AlertCircle, X, UserCheck, TrendingUp } from 'lucide-react';
-import { StatCard } from '../../components/ui/StatCard';
+import React, { useEffect, useState, useRef } from 'react';
+import { TrendingUp, TrendingDown, Building2, ChevronDown } from 'lucide-react';
 import { DoctorDashboardProfile } from '../../components/ui/DoctorDashboardProfile';
-import { DoctorStorage, fetchDoctorAppointments, fetchDoctorAppointmentsByHospital } from '../../storage';
-import { Appointment, AppointmentStatus } from '../../types';
+import { ArcGauge } from '../../components/ui/ArcGauge';
+import { DoctorStorage, fetchAppointmentCountInRange } from '../../storage';
+import { Appointment } from '../../types';
 
 import { getLocalISODate } from '../../utils/date';
 import { compareTimeStrings } from '../../utils/timeComparison';
@@ -23,6 +21,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
   const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [isResolving, setIsResolving] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [monthCount, setMonthCount] = useState(0);
+  const [progressionPct, setProgressionPct] = useState<number | null>(null);
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
   const today = getLocalISODate();
 
   const fetchData = async () => {
@@ -105,6 +107,33 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
     fetchData();
   }, [doctorId, onNavigate, today]);
 
+  // This-month vs. last-month appointment volume, for the "Progression" stat.
+  useEffect(() => {
+    if (!doctorId) return;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+
+    (async () => {
+      const [thisMonth, lastMonth] = await Promise.all([
+        fetchAppointmentCountInRange(doctorId, selectedHospitalId, monthStart, today),
+        fetchAppointmentCountInRange(doctorId, selectedHospitalId, lastMonthStart, lastMonthEnd),
+      ]);
+      setMonthCount(thisMonth);
+      setProgressionPct(lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null);
+    })();
+  }, [doctorId, selectedHospitalId, today]);
+
+  // Close the hospital switcher on outside click.
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) setIsSwitcherOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   if (!doctor) return null;
 
   // 1. All Today's Appointments for this Doctor (Global Scope)
@@ -119,9 +148,12 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
   const activeFiltered = filteredAppointments.filter(a => a.status !== 'cancelled');
   const totalPatients = activeFiltered.length;
   const waitingCount = filteredAppointments.filter(a => a.status === 'waiting').length;
+  const consultingCount = filteredAppointments.filter(a => a.status === 'consulting').length;
   const finishedCount = filteredAppointments.filter(a => a.status === 'completed').length;
   const cancelledCount = filteredAppointments.filter(a => a.status === 'cancelled').length;
   const revenueTotal = filteredAppointments.filter(a => a.status === 'completed').reduce((sum, a) => sum + (a.fee || 0), 0);
+  const potentialRevenueTotal = activeFiltered.reduce((sum, a) => sum + (a.fee || 0), 0);
+  const queueProgress = totalPatients > 0 ? finishedCount / totalPatients : 0;
 
   const selectedHospitalName = hospitals.find((h: any) => String(h.id) === String(selectedHospitalId))?.hospitalName;
 
@@ -146,90 +178,122 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
           onManageClick={() => onNavigate?.('/doctor/practice-settings')}
         />
 
-        {/* TODAY'S OVERVIEW SECTION */}
-        <div className="space-y-5">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-6 bg-teal-500 rounded-full"></div>
-              <h3 className="font-display text-xs font-black text-ink-800 uppercase tracking-[0.2em]">Today's Overview</h3>
+        {/* WELCOME + HOSPITAL SWITCHER — matches the Figma "Doctor Overview" header */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-3xl font-bold text-ink-800">Welcome</h2>
+            <p className="text-ink-500 text-sm mt-1">Track your queue and arrive on time</p>
+          </div>
+
+          {hospitals.length > 0 && (
+            <div className="relative shrink-0" ref={switcherRef}>
+              <button
+                onClick={() => setIsSwitcherOpen(o => !o)}
+                className="flex items-center gap-3 bg-white pl-4 pr-3 py-2.5 rounded-full shadow-ds-card border border-slate-100 font-bold text-sm text-ink-800"
+              >
+                <span className="truncate max-w-[140px]">{selectedHospitalName || 'Select Hospital'}</span>
+                <span className="w-7 h-7 rounded-full bg-medical-500 text-white flex items-center justify-center shrink-0">
+                  <ChevronDown size={14} className={`transition-transform ${isSwitcherOpen ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+
+              {isSwitcherOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  {hospitals.map((h: any) => {
+                    const hospApps = doctorTodayAppointments.filter(a => String(a.hospitalId) === String(h.id) && a.status !== 'cancelled');
+                    const isActive = String(h.id) === String(selectedHospitalId);
+                    return (
+                      <button
+                        key={h.id}
+                        onClick={() => { setSelectedHospitalId(h.id); setIsSwitcherOpen(false); }}
+                        className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-bold transition-colors ${isActive ? 'bg-medical-50 text-medical-600' : 'text-ink-600 hover:bg-ink-50'}`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <Building2 size={14} className="shrink-0" />
+                          <span className="truncate">{h.hospitalName}</span>
+                        </span>
+                        <span className="shrink-0 text-xs font-black">{hospApps.length}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div className="text-[10px] font-black text-ink-500 uppercase tracking-widest bg-ink-100 px-3 py-1 rounded-full border border-slate-200/50">
-              Live Updates
+          )}
+        </div>
+
+        {/* QUEUE MANAGE ROW — Appointments / Queue Status / Earning, matching Figma's "Doctor Overview" layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)] gap-4">
+          {/* Appointments stat row */}
+          <div className="bg-white rounded-[32px] p-6 shadow-ds-soft">
+            <h3 className="font-display text-xl text-ink-800 mb-4">Appointments</h3>
+            <div className="flex items-center divide-x divide-slate-100">
+              <div className="flex-1 pr-6">
+                <p className="font-stat text-4xl md:text-5xl font-medium text-medical-600 tracking-tight">
+                  {isResolving ? <div className="w-16 h-10 bg-slate-50 animate-pulse rounded-lg" /> : totalPatients}
+                </p>
+                <p className="text-xs text-ink-500 mt-1">Today</p>
+              </div>
+              <div className="flex-1 px-6">
+                <p className="font-stat text-4xl md:text-5xl font-medium text-medical-600 tracking-tight">
+                  {isResolving ? <div className="w-16 h-10 bg-slate-50 animate-pulse rounded-lg" /> : monthCount}
+                </p>
+                <p className="text-xs text-ink-500 mt-1">This Month</p>
+              </div>
+              <div className="flex-1 pl-6">
+                <p className={`font-stat text-4xl md:text-5xl font-medium tracking-tight flex items-center gap-1.5 ${progressionPct != null && progressionPct < 0 ? 'text-red-500' : 'text-medical-600'}`}>
+                  {progressionPct == null ? '—' : `${progressionPct > 0 ? '+' : ''}${progressionPct}%`}
+                  {progressionPct != null && (progressionPct < 0 ? <TrendingDown size={22} /> : <TrendingUp size={22} />)}
+                </p>
+                <p className="text-xs text-ink-500 mt-1">Progression</p>
+              </div>
             </div>
           </div>
 
-          <div className="grid gap-4">
-            {/* Row 1: Primary (Full-width) */}
-            <div className="w-full">
-              <div className="bg-white border border-slate-100 rounded-ds-xl p-8 flex items-center justify-between group hover:border-teal-200 transition-all shadow-ds-soft relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
-                <div className="space-y-1 relative z-10">
-                  <p className="text-[10px] font-black text-ink-500 uppercase tracking-[0.15em] mb-2 flex items-center gap-2">
-                    <TrendingUp size={12} className="text-teal-500" /> Total Earnings
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-stat text-5xl font-bold text-ink-800 tracking-tighter">
-                      {isResolving ? <div className="w-24 h-12 bg-slate-50 animate-pulse rounded-xl" /> : `৳${revenueTotal}`}
-                    </span>
-                    {!isResolving && <span className="text-xs font-black text-teal-600 uppercase tracking-widest bg-teal-50 px-3 py-1 rounded-lg">Today</span>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Queue Status arc gauge */}
+            <div className="bg-white rounded-3xl p-5 shadow-ds-soft">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-display text-xl text-ink-800">Queue Status</h3>
+                <span className="text-[10px] font-bold text-ink-500 border border-slate-200 rounded-full px-3 py-1">Today</span>
+              </div>
+              <div className="flex items-center gap-6">
+                <ArcGauge progress={queueProgress} size={170} />
+                <div className="flex-1 space-y-2.5 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-sm text-ink-600 min-w-0"><span className="w-2.5 h-2.5 rounded-full bg-medical-800 shrink-0" />Completed</span>
+                    <span className="font-bold text-ink-700 shrink-0">{finishedCount}</span>
                   </div>
-                </div>
-                <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100/30 shadow-inner group-hover:bg-teal-600 group-hover:text-white transition-all duration-500">
-                  <CreditCard size={28} />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-sm text-ink-600 min-w-0"><span className="w-2.5 h-2.5 rounded-full bg-medical-400 shrink-0" />In Consultation</span>
+                    <span className="font-bold text-ink-700 shrink-0">{consultingCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-sm text-ink-600 min-w-0"><span className="w-2.5 h-2.5 rounded-full bg-medical-100 shrink-0" />Waiting</span>
+                    <span className="font-bold text-ink-700 shrink-0">{waitingCount}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Row 2: Secondary (2 Columns) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white border border-slate-100 rounded-ds-xl p-7 flex flex-col justify-between hover:border-teal-200 transition-all shadow-ds-card relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-slate-200 group-hover:bg-teal-500 transition-colors"></div>
-                <div className="flex items-center justify-between mb-6">
-                  <p className="text-[9px] font-black text-ink-500 uppercase tracking-widest">Appointments</p>
-                  <div className="w-8 h-8 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-teal-50 group-hover:text-teal-500 transition-all">
-                    <Users size={16} />
-                  </div>
-                </div>
-                <h4 className="font-stat text-4xl font-bold text-ink-800 tracking-tighter">
-                  {isResolving ? <div className="w-12 h-10 bg-slate-50 animate-pulse rounded-lg" /> : totalPatients}
-                </h4>
+            {/* Earning */}
+            <div className="bg-white rounded-3xl p-5 shadow-ds-soft flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-xl text-ink-800">Earning</h3>
+                <span className="text-[10px] font-bold text-ink-500 border border-slate-200 rounded-full px-3 py-1">Today</span>
               </div>
-
-              <div className="bg-white border border-slate-100 rounded-ds-xl p-7 flex flex-col justify-between hover:border-teal-200 transition-all shadow-ds-card relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>
-                <div className="flex items-center justify-between mb-6">
-                  <p className="text-[9px] font-black text-ink-500 uppercase tracking-widest">Waiting List</p>
-                  <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
-                    <Clock size={16} />
-                  </div>
+              <div className="space-y-3 flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-sm text-ink-600"><span className="w-2.5 h-2.5 rounded-full bg-medical-500" />Earned</span>
+                  {isResolving ? <div className="w-12 h-4 bg-slate-50 animate-pulse rounded" /> : <span className="font-bold text-ink-700">৳{revenueTotal}</span>}
                 </div>
-                <h4 className="font-stat text-4xl font-bold text-ink-800 tracking-tighter">
-                  {isResolving ? <div className="w-12 h-10 bg-slate-50 animate-pulse rounded-lg" /> : waitingCount}
-                  <span className="ml-2 text-[10px] text-orange-500 uppercase tracking-widest font-black">Active</span>
-                </h4>
-              </div>
-            </div>
-
-            {/* Row 3: Support (2 Columns - Smaller) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50/40 border border-slate-100/80 rounded-ds-lg p-5 flex items-center gap-5 hover:bg-white hover:border-teal-100 transition-all transition-duration-500 group">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-teal-500 shadow-sm group-hover:scale-110 transition-transform">
-                  <UserCheck size={18} />
-                </div>
-                <div>
-                  <p className="text-[8px] font-black text-ink-500 uppercase tracking-widest leading-none">Completed</p>
-                  <p className="font-stat text-2xl font-bold text-ink-800 leading-none mt-1.5">{finishedCount}</p>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-sm text-ink-600"><span className="w-2.5 h-2.5 rounded-full bg-ink-200" />Potential (if all completed)</span>
+                  {isResolving ? <div className="w-12 h-4 bg-slate-50 animate-pulse rounded" /> : <span className="font-bold text-ink-700">৳{potentialRevenueTotal}</span>}
                 </div>
               </div>
-
-              <div className="bg-slate-50/40 border border-slate-100/80 rounded-ds-lg p-5 flex items-center gap-5 hover:bg-white hover:border-red-100 transition-all transition-duration-500 group">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 group-hover:text-red-400 shadow-sm group-hover:scale-110 transition-transform">
-                  <X size={18} />
-                </div>
-                <div>
-                  <p className="text-[8px] font-black text-ink-500 uppercase tracking-widest leading-none">Cancelled</p>
-                  <p className="font-stat text-2xl font-bold text-ink-800 leading-none mt-1.5">{cancelledCount}</p>
-                </div>
+              <div className="w-full bg-ink-100 rounded-full h-2 mt-4">
+                <div className="bg-medical-500 h-2 rounded-full transition-all" style={{ width: `${potentialRevenueTotal > 0 ? Math.min(100, (revenueTotal / potentialRevenueTotal) * 100) : 0}%` }} />
               </div>
             </div>
           </div>

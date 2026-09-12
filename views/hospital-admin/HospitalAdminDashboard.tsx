@@ -14,7 +14,7 @@ type TabType = 'ANALYTICS' | 'ROSTER' | 'BRANCHES' | 'SECTORS' | 'REQUESTS' | 'R
 export const HospitalAdminDashboard: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   const { logout, profile } = useAuth();
   const {
-    loading, hospital, roster, branches, sectors, doctorRequests, stats, reviews,
+    loading, hospital, roster, branches, sectors, doctorRequests, stats, analytics, reviews,
     searchResults, searchDoctors, addDoctorToRoster,
     createBranch, assignBranchManager, createSector,
     approveRequest, rejectRequest,
@@ -128,7 +128,7 @@ export const HospitalAdminDashboard: React.FC<{ onNavigate: (path: string) => vo
       onNavigateNotification={onNavigate}
     >
         <div className="space-y-8">
-          {activeTab === 'ANALYTICS' && <HospitalAnalytics stats={stats} />}
+          {activeTab === 'ANALYTICS' && <HospitalAnalytics stats={stats} analytics={analytics} />}
 
           {activeTab === 'ROSTER' && (
             <RosterManager roster={roster} searchResults={searchResults} onSearch={searchDoctors} onAddDoctor={addDoctorToRoster} />
