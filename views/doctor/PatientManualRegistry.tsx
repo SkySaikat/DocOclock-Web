@@ -392,7 +392,7 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
                     <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full h-14 rounded-full bg-medical-500 hover:bg-medical-600 text-white font-display font-black text-base shadow-md shadow-medical-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                        className="btn-sheen w-full h-14 rounded-full bg-medical-500 hover:bg-medical-600 text-white font-display font-black text-base shadow-md shadow-medical-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
                         {isSubmitting ? (
                             <>

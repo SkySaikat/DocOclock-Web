@@ -109,7 +109,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    return (
       <div className="min-h-screen bg-white font-sans text-ink-800">
          {/* HERO — exact Figma node 87:3801 */}
-         <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-[#3988ff] overflow-hidden">
+         <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-medical-500 overflow-hidden">
             <div className="max-w-[1440px] mx-auto relative h-[500px] md:h-[703px]">
                <img src="/assets/figma/hero-vector-25.svg" alt="" className="hidden md:block absolute left-0 top-0 w-[482px] h-[503px] pointer-events-none" />
                <img src="/assets/figma/hero-vector-26.svg" alt="" className="hidden md:block absolute left-[224px] top-[202px] w-[687px] h-[713px] pointer-events-none" />
@@ -296,8 +296,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                      {testimonials.map((t) => (
                         <div
                            key={t.id}
-                           className="flex flex-col gap-8 p-8 rounded-[24px] shadow-ds-soft"
-                           style={{ background: 'linear-gradient(160deg, #F5FAFF 0%, #FFFFFF 55%)' }}
+                           className="flex flex-col gap-8 p-8 rounded-[24px] shadow-ds-soft bg-gradient-to-br from-medical-50 to-white"
                         >
                            <p className="text-[20px] text-black tracking-[-0.6px] leading-8">“{t.comment}”</p>
                            <div className="flex items-center gap-4">
@@ -504,7 +503,7 @@ const PanelMockup: React.FC<{ panel: number }> = ({ panel }) => {
 
    return (
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 animate-fade-in">
-         <div className="relative w-40 h-40 rounded-full flex items-center justify-center" style={{ background: 'conic-gradient(#2E8CFF 0deg 300deg, #E5F1FF 300deg 360deg)' }}>
+         <div className="relative w-40 h-40 rounded-full flex items-center justify-center" style={{ background: 'conic-gradient(rgb(var(--color-primary-500)) 0deg 300deg, rgb(var(--color-primary-100)) 300deg 360deg)' }}>
             <div className="w-32 h-32 rounded-full bg-white flex flex-col items-center justify-center">
                <span className="font-display font-bold text-3xl text-ink-800">18</span>
                <span className="text-[11px] text-ink-400">Minutes Left</span>

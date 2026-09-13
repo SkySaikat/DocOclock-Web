@@ -133,12 +133,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                 <button onClick={() => onLoginClick?.(UserRole.PATIENT)} className="font-normal text-[16px] text-ink-800 hover:text-medical-600 transition-colors">
                   Login
                 </button>
+                {/* Figma's "Button Featured Hover" pattern: collapses to an icon-only
+                    circle by default, expands to show the label on hover. */}
                 <button
                   onClick={() => onRegisterClick?.()}
-                  className="inline-flex items-center rounded-full text-white overflow-hidden"
-                  style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
+                  className="group inline-flex items-center rounded-full text-white overflow-hidden bg-gradient-to-b from-medical-300 to-medical-500"
                 >
-                  <span className="pl-4 pr-0 text-[16px] font-display">Register</span>
+                  <span className="max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-[max-width] duration-300 ease-out text-[16px] font-display">
+                    <span className="pl-4 pr-0">Register</span>
+                  </span>
                   <span className="flex items-center justify-center px-[18px] py-4">
                     <ArrowRight size={14} />
                   </span>
@@ -352,8 +355,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                 <div className="grid gap-3">
                   <button
                     onClick={() => { onRegisterClick?.(); setIsMobileMenuOpen(false); }}
-                    className="w-full p-4 rounded-[16px] text-white flex items-center justify-center gap-2 font-display font-semibold active:scale-95 transition-all"
-                    style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
+                    className="btn-sheen w-full p-4 rounded-[16px] text-white flex items-center justify-center gap-2 font-display font-semibold active:scale-95 transition-all bg-gradient-to-b from-medical-300 to-medical-500"
                   >
                     Register <ArrowRight size={16} />
                   </button>

@@ -198,7 +198,7 @@ export const HomepageManager: React.FC<HomepageManagerProps> = ({ banners, onCre
           <button
             onClick={handleAdd}
             disabled={!desktopFile || adding}
-            className="flex items-center gap-2 px-5 py-2.5 bg-medical-500 hover:bg-medical-600 disabled:bg-ink-200 disabled:text-ink-400 text-white font-black rounded-full text-sm transition-colors"
+            className="btn-sheen flex items-center gap-2 px-5 py-2.5 bg-medical-500 hover:bg-medical-600 disabled:bg-ink-200 disabled:text-ink-400 text-white font-black rounded-full text-sm transition-colors"
           >
             {adding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
             {adding ? 'Uploading…' : 'Add Slide'}

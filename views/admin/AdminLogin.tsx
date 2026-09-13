@@ -105,7 +105,7 @@ export const AdminLogin: React.FC<{ onNavigate: (path: string) => void }> = ({ o
           <div className="pt-4">
             <button
               type="submit"
-              className="w-full bg-medical-500 hover:bg-medical-600 text-white h-12 rounded-full font-display font-black text-[14px] shadow-[0_0_20px_rgba(46,140,255,0.3)] active:scale-[0.98] transition-all"
+              className="btn-sheen w-full bg-medical-500 hover:bg-medical-600 text-white h-12 rounded-full font-display font-black text-[14px] shadow-[0_0_20px_rgb(var(--color-primary-500)_/_30%)] active:scale-[0.98] transition-all"
             >
               Authorize Access
             </button>

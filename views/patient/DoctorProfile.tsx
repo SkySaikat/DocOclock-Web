@@ -597,7 +597,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
             ) : (
               <>
                 {/* Blue header banner — exact Figma treatment */}
-                <div className="bg-[#3988ff] relative overflow-hidden pt-9 pb-[68px] px-7">
+                <div className="bg-medical-500 relative overflow-hidden pt-9 pb-[68px] px-7">
                   <img src="/assets/figma/booking-vector25.svg" alt="" className="absolute -top-2 right-6 w-24 opacity-90 pointer-events-none" />
                   <img src="/assets/figma/booking-vector26.svg" alt="" className="absolute top-8 right-24 w-16 opacity-70 pointer-events-none" />
                   <div className="relative flex items-start justify-between">
@@ -607,7 +607,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                 </div>
 
                 {/* Floating stepper card */}
-                <div className="mx-3.5 -mt-14 relative bg-[#f7faff] border-8 border-white rounded-[20px] py-6 px-4 sm:px-6 shadow-[0px_8px_20px_rgba(30,80,180,0.08)]">
+                <div className="mx-3.5 -mt-14 relative bg-medical-50 border-8 border-white rounded-[20px] py-6 px-4 sm:px-6 shadow-[0px_8px_20px_rgb(var(--color-primary-700)_/_8%)]">
                   <div className="flex items-center w-full">
                     {BOOKING_STEPS.map((step, i) => {
                       const idx = i + 1;
@@ -616,12 +616,12 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                       const isOn = isActive || isDone;
                       return (
                         <React.Fragment key={step.label}>
-                          {i > 0 && <div className={`flex-1 h-px min-w-[8px] transition-colors duration-500 ${idx <= bookingStep ? 'bg-[#3fa2ff]' : 'bg-[#d7e3f5]'}`} />}
+                          {i > 0 && <div className={`flex-1 h-px min-w-[8px] transition-colors duration-500 ${idx <= bookingStep ? 'bg-medical-400' : 'bg-medical-200'}`} />}
                           <div className="flex flex-col items-center gap-1 shrink-0">
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${isOn ? 'bg-[#3fa2ff] shadow-[0_0_0_4px_rgba(63,162,255,0.15)]' : 'bg-white border border-[#e2eaf5]'} ${isActive ? 'scale-110' : ''}`}>
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${isOn ? 'bg-medical-400 shadow-[0_0_0_4px_rgb(var(--color-primary-400)_/_15%)]' : 'bg-white border border-medical-200'} ${isActive ? 'scale-110' : ''}`}>
                               <img src={step.icon} alt="" className={`w-4 h-4 ${isOn ? 'brightness-0 invert' : 'opacity-50'}`} />
                             </div>
-                            <p className={`text-[10px] sm:text-[12px] font-medium text-center leading-tight max-w-[74px] transition-colors duration-300 ${isOn ? 'text-[#3fa2ff]' : 'text-[#96a7b8]'}`}>{step.label}</p>
+                            <p className={`text-[10px] sm:text-[12px] font-medium text-center leading-tight max-w-[74px] transition-colors duration-300 ${isOn ? 'text-medical-400' : 'text-[#96a7b8]'}`}>{step.label}</p>
                           </div>
                         </React.Fragment>
                       );
@@ -635,7 +635,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                     <div className="space-y-6 animate-fade-in-up">
                       <div className="space-y-2.5">
                         <p className="font-sans text-[15px] text-[#171717]">Choose Date</p>
-                        <input type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium text-[#171717] outline-none focus:ring-2 ring-[#3fa2ff]/30 transition-all cursor-pointer" />
+                        <input type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium text-[#171717] outline-none focus:ring-2 ring-medical-400/30 transition-all cursor-pointer" />
                       </div>
 
                       {selectedDate && (
@@ -652,13 +652,13 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                                 <button
                                   key={c.id}
                                   onClick={() => setSelectedChamber(c)}
-                                  className={`w-full text-left bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 flex items-center justify-between transition-all ${selectedChamber?.id === c.id ? 'ring-2 ring-[#3fa2ff]' : 'hover:ring-1 ring-[#d7e3f5]'}`}
+                                  className={`w-full text-left bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 flex items-center justify-between transition-all ${selectedChamber?.id === c.id ? 'ring-2 ring-medical-400' : 'hover:ring-1 ring-medical-200'}`}
                                 >
                                   <div>
                                     <h4 className="font-semibold text-[#171717] text-[14px]">{c.hospitalName}</h4>
                                     <p className="text-[12px] text-[#909090] mt-0.5">{c.schedule[0]?.startTime} - {c.schedule[0]?.endTime}</p>
                                   </div>
-                                  <span className="text-[15px] font-semibold text-[#2e8cff] shrink-0">৳ {c.feeNormal}</span>
+                                  <span className="text-[15px] font-semibold text-medical-500 shrink-0">৳ {c.feeNormal}</span>
                                 </button>
                               ))}
                             </div>
@@ -670,7 +670,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
 
                   {bookingStep === 2 && selectedChamber && (
                     <div className="space-y-6 animate-fade-in-up">
-                      <div className="flex items-center justify-between bg-[#f7faff] rounded-[8px] px-4 py-3">
+                      <div className="flex items-center justify-between bg-medical-50 rounded-[8px] px-4 py-3">
                         <span className="text-[13px] font-medium text-[#171717]">{(selectedChamber as any).hospitalName}</span>
                         <span className="text-[12px] text-[#909090]">{selectedDate}</span>
                       </div>
@@ -703,7 +703,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                                     key={slot.serial}
                                     disabled={taken}
                                     onClick={() => setSelectedTimeSlot(selected ? null : slot)}
-                                    className={`p-3 rounded-[8px] text-center transition-all ${taken ? 'bg-slate-50 opacity-40 cursor-not-allowed' : selected ? 'bg-[#eaf3ff] ring-2 ring-[#2e8cff] text-[#2e8cff]' : 'bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] hover:ring-1 ring-[#d7e3f5] text-[#171717]'}`}
+                                    className={`p-3 rounded-[8px] text-center transition-all ${taken ? 'bg-slate-50 opacity-40 cursor-not-allowed' : selected ? 'bg-medical-100 ring-2 ring-medical-500 text-medical-500' : 'bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] hover:ring-1 ring-medical-200 text-[#171717]'}`}
                                   >
                                     <p className="text-xs font-semibold">{slot.label}</p>
                                     <p className="text-[9px] text-[#909090] mt-0.5">#{slot.serial}</p>
@@ -716,7 +716,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                           </div>
                         );
                       })() : (
-                        <div className="bg-[#f7faff] rounded-[8px] p-6 text-center">
+                        <div className="bg-medical-50 rounded-[8px] p-6 text-center">
                           <p className="text-sm font-medium text-[#171717]">You'll be assigned the next available serial</p>
                           <p className="text-[12px] text-[#909090] mt-1">This doctor doesn't use fixed time slots</p>
                         </div>
@@ -742,7 +742,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                       </div>
 
                       {isAddingNew && (
-                        <div className="p-5 bg-[#f7faff] rounded-[12px] space-y-3 animate-fade-in">
+                        <div className="p-5 bg-medical-50 rounded-[12px] space-y-3 animate-fade-in">
                           <input placeholder="Full Name" value={newPatientData.name} onChange={e => setNewPatientData({ ...newPatientData, name: e.target.value })} className="w-full bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium outline-none" />
                           <div className="flex gap-2">
                             <select className="flex-1 bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] px-4 py-3 font-medium outline-none" onChange={e => setNewPatientData({ ...newPatientData, gender: e.target.value as any })}>
@@ -767,7 +767,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                       </div>
                       <div className="space-y-2.5">
                         <p className="font-sans text-[15px] text-[#171717]">Chief Complaint <span className="text-[#909090] text-[12px]">(optional)</span></p>
-                        <textarea rows={2} placeholder="e.g. Chest pain, shortness of breath..." value={chiefComplaint} onChange={e => setChiefComplaint(e.target.value)} className="w-full px-4 py-3 bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] text-sm font-medium text-[#171717] outline-none resize-none focus:ring-2 ring-[#3fa2ff]/30 transition-all" />
+                        <textarea rows={2} placeholder="e.g. Chest pain, shortness of breath..." value={chiefComplaint} onChange={e => setChiefComplaint(e.target.value)} className="w-full px-4 py-3 bg-white drop-shadow-[0px_0px_0.5px_rgba(0,0,0,0.25)] rounded-[8px] text-sm font-medium text-[#171717] outline-none resize-none focus:ring-2 ring-medical-400/30 transition-all" />
                       </div>
                     </div>
                   )}
@@ -775,13 +775,13 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                   {bookingStep === 4 && selectedChamber && (
                     <div className="space-y-5 animate-fade-in-up">
                       <p className="font-sans text-[15px] text-[#171717] mb-1">Review And Confirm</p>
-                      <div className="bg-[#f7faff] rounded-[16px] p-5 space-y-3.5">
+                      <div className="bg-medical-50 rounded-[16px] p-5 space-y-3.5">
                         <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Doctor</span><span className="font-semibold text-[#171717] text-[13px]">{doctor.name}</span></div>
                         <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Hospital</span><span className="font-semibold text-[#171717] text-[13px]">{(selectedChamber as any).hospitalName}</span></div>
                         <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Date</span><span className="font-semibold text-[#171717] text-[13px]">{selectedDate}</span></div>
                         <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Patient</span><span className="font-semibold text-[#171717] text-[13px]">{isAddingNew ? newPatientData.name || '—' : session?.name}</span></div>
-                        {selectedTimeSlot && <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Time Slot</span><span className="font-semibold text-[#2e8cff] text-[13px]">{selectedTimeSlot.time} · Serial #{selectedTimeSlot.serial}</span></div>}
-                        <div className="border-t border-[#e2eaf5] pt-3.5 flex justify-between items-center"><span className="text-[13px] font-semibold text-[#171717]">Amount to Pay</span><span className="text-xl font-bold text-[#2e8cff]">৳ {(selectedChamber as any).feeNormal}</span></div>
+                        {selectedTimeSlot && <div className="flex justify-between items-center"><span className="text-[12px] text-[#909090]">Time Slot</span><span className="font-semibold text-medical-500 text-[13px]">{selectedTimeSlot.time} · Serial #{selectedTimeSlot.serial}</span></div>}
+                        <div className="border-t border-medical-200 pt-3.5 flex justify-between items-center"><span className="text-[13px] font-semibold text-[#171717]">Amount to Pay</span><span className="text-xl font-bold text-medical-500">৳ {(selectedChamber as any).feeNormal}</span></div>
                       </div>
 
                       {bookingError && (
@@ -805,7 +805,7 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
                   <button
                     onClick={() => bookingStep === 4 ? handleConfirmBooking() : (canAdvanceFromStep(bookingStep) && setBookingStep(s => s + 1))}
                     disabled={!canAdvanceFromStep(bookingStep) || (bookingStep === 4 && isBooking)}
-                    className="bg-[#2e8cff] hover:bg-[#2478e8] flex-1 min-w-0 flex items-center justify-center gap-2 rounded-full h-12 text-[15px] text-white font-medium transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="bg-medical-500 hover:bg-medical-600 flex-1 min-w-0 flex items-center justify-center gap-2 rounded-full h-12 text-[15px] text-white font-medium transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {bookingStep === 4 && isBooking && <Loader2 size={16} className="animate-spin" />}
                     {bookingStep === 4 ? (isBooking ? 'Finalizing...' : 'Confirm') : 'Continue'}

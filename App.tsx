@@ -365,7 +365,7 @@ const App: React.FC = () => {
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-medical-500 hover:bg-medical-600 text-white h-14 rounded-full font-display font-medium text-[16px] transition-colors"
+                    className="btn-sheen w-full bg-medical-500 hover:bg-medical-600 text-white h-14 rounded-full font-display font-medium text-[16px] transition-colors"
                   >
                     Login Now
                   </button>
@@ -381,7 +381,7 @@ const App: React.FC = () => {
             </div>
 
             {/* RIGHT — exact Figma brand-blue hero panel */}
-            <div className="hidden lg:flex flex-1 relative bg-[#3988ff] overflow-hidden p-16 flex-col justify-between">
+            <div className="hidden lg:flex flex-1 relative bg-medical-500 overflow-hidden p-16 flex-col justify-between">
               <img src="/assets/figma/hero-vector-25.svg" alt="" className="absolute left-0 top-0 w-[482px] h-[503px] pointer-events-none opacity-80" />
               <img src="/assets/figma/hero-vector-26.svg" alt="" className="absolute left-[-30px] top-[220px] w-[500px] h-[520px] pointer-events-none opacity-80" />
               <div className="absolute right-0 top-0 h-full w-[55%] overflow-hidden">

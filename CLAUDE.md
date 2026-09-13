@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev        # Vite dev server on port 3000
-npm run email      # Email server on port 3001 (required for OTP and doctor status emails)
+npm run email      # Email server on port 3001 (doctor approval/rejection emails only — OTP is a Supabase Edge Function now)
 npm run dev:all    # Run both Vite + email server concurrently
 npm run build      # Production build → dist/
 ```
@@ -39,6 +39,12 @@ All brand colors are admin-configurable from Super Admin → Branding, not hardc
 
 ### Super Admin / Hospital Admin Analytics
 `components/admin/AnalyticsOverview.tsx` (platform-wide, via `hooks/useSuperAdminAnalytics.ts`) and `components/hospital-admin/HospitalAnalytics.tsx` (per-hospital, computed in `hooks/useHospitalAdminData.ts`'s `computeHospitalAnalytics`) are real aggregate queries over `profiles`/`appointments` now — they used to be `Math.random()`-generated on every render. Shared chart primitives live in `components/admin/charts/` (`TrendAreaChart`, `DonutStatusChart`, `LeaderboardBar`). "Estimated Revenue" is exactly that — `SUM(appointments.fee)` for completed appointments — since there's no payment gateway integrated.
+
+### Interaction / hover language
+Figma's design system documents exactly one deliberate hover treatment, applied consistently to every filled/solid pill CTA: a soft radial highlight (`mix-blend-mode: soft-light`) that fades in on hover, confirmed on both the generic Buttons component and the Doctor Card's "Get an Appointment" button. This is the `.btn-sheen` utility class in `index.css` — apply it to any new filled CTA pill (it's already on `Button.tsx`'s `primary`/`accent`/`gradient` variants and on the other hand-rolled filled buttons across the app; it's a no-op on non-pill/outline/secondary buttons, matching Figma's own scoping). Separately, the navbar's "Register" button implements Figma's other documented pattern — "Button Featured Hover" — where a compact CTA collapses to an icon-only circle by default and expands to show its label on hover (pure CSS `max-width` transition, see `components/Layout.tsx`); that pattern is specific to space-constrained nav slots, not applied to full-width marketing CTAs.
+
+### Theming coverage — a note on scope
+When adding any new UI, remember the live theme only reaches code that goes through Tailwind's `medical`/`brand`/`navy`/`surface`/`primary`/`secondary`/`background` classes (or reads `useTheme()` directly for non-Tailwind contexts like inline SVG/canvas/recharts props) — a literal hex value or an inline `style={{ background: '#...' }}` will not recolor when Super Admin changes the brand colors. A full-codebase sweep found and fixed several of these (the `<body>` background itself was hardcoded, several marketing CTAs used inline gradient styles, and a handful of `shadow-[...rgba(...)]` glow effects referenced fixed decimal RGB) — but this is exactly the kind of regression that's easy to reintroduce by pasting a literal hex value instead of a token, so treat any new literal hex/rgba color as a bug unless it's a genuinely fixed semantic color (status chips, toasts) or an intentionally brand-independent decorative accent (already commented where that's the case, e.g. SerialManager's pastel queue-ring motif).
 
 ### Security notes for future work
 - OTP generation is server-side only now (`supabase/functions/send-otp`, called via `supabase.functions.invoke('send-otp', ...)` in `hooks/useEmailOTP.ts`) — never generate or insert an OTP from client code again; that was the exact vulnerability that got fixed. This also happens to be the first time OTP email delivery can work in production at all — the old path called `http://localhost:3001` directly from the patient's own browser, which only ever worked when testing on the same machine as the email server. **Operational requirement:** the Edge Function sends via Resend, not the Hostinger SMTP server — set `RESEND_API_KEY` as a Supabase Edge Function secret (`supabase secrets set RESEND_API_KEY=...`) or OTP emails silently only get logged server-side instead of delivered.

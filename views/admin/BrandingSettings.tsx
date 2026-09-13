@@ -142,7 +142,7 @@ export const BrandingSettings: React.FC = () => {
         <button
           onClick={handleSave}
           disabled={saving || !isDirty}
-          className="flex items-center gap-2 px-6 py-3 bg-medical-500 hover:bg-medical-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-display font-bold rounded-full transition-all text-sm"
+          className="btn-sheen flex items-center gap-2 px-6 py-3 bg-medical-500 hover:bg-medical-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-display font-bold rounded-full transition-all text-sm"
         >
           <Save size={16} /> {saving ? 'Saving…' : 'Save & Publish'}
         </button>

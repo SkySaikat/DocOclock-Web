@@ -32,8 +32,7 @@ export const Footer: React.FC<{ onNavigate: (path: string) => void }> = ({ onNav
         </p>
         <button
           onClick={() => onNavigate('/patient/doctors')}
-          className="inline-flex items-center rounded-full text-white overflow-hidden mt-2 hover:brightness-105 active:scale-[0.98] transition-all"
-          style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
+          className="btn-sheen inline-flex items-center rounded-full text-white overflow-hidden mt-2 hover:brightness-105 active:scale-[0.98] transition-all bg-gradient-to-b from-medical-300 to-medical-500"
         >
           <span className="pl-6 text-[16px] font-display">Register</span>
           <span className="flex items-center justify-center px-[18px] py-4">
@@ -73,8 +72,7 @@ export const Footer: React.FC<{ onNavigate: (path: string) => void }> = ({ onNav
               />
               <button
                 type="submit"
-                className="inline-flex items-center rounded-full text-white shrink-0"
-                style={{ background: 'linear-gradient(180deg, #88BEFF 0%, #2E8CFF 100%)' }}
+                className="btn-sheen inline-flex items-center rounded-full text-white shrink-0 bg-gradient-to-b from-medical-300 to-medical-500"
               >
                 <span className="pl-4 text-[16px] font-display">Subscribe</span>
                 <span className="flex items-center justify-center px-[18px] py-4">

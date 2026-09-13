@@ -144,7 +144,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
    const PrescriptionFlashCard = ({ rx }: { rx: any }) => (
       <div className="flex flex-col h-full bg-white relative font-sans">
          {/* Premium Custom Header Matching Doctor View EXACTLY */}
-         <div className="p-6 md:p-8" style={{ backgroundColor: '#2E8CFF10', borderBottom: '2px solid #2E8CFF' }}>
+         <div className="p-6 md:p-8 bg-medical-50 border-b-2 border-medical-500">
             <div className="flex justify-between items-start gap-4">
                <div className="flex gap-4">
                   <div className="w-14 h-14 md:w-16 md:h-16 bg-white p-2 rounded-ds-md border border-medical-100 flex items-center justify-center shrink-0 shadow-sm">

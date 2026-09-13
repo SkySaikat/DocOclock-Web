@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Building, Calendar, Activity, TrendingUp, Stethoscope, Wallet, Repeat } from 'lucide-react';
 import { useSuperAdminAnalytics, AnalyticsRange } from '../../hooks/useSuperAdminAnalytics';
+import { useTheme } from '../../contexts/ThemeContext';
 import { TrendAreaChart } from './charts/TrendAreaChart';
 import { DonutStatusChart } from './charts/DonutStatusChart';
 import { LeaderboardBar } from './charts/LeaderboardBar';
@@ -35,6 +36,7 @@ const StatCard: React.FC<{ label: string; value: string | number; icon: React.El
 export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({ stats }) => {
   const [range, setRange] = useState<AnalyticsRange>(30);
   const { data, loading } = useSuperAdminAnalytics(range);
+  const { colors: themeColors } = useTheme();
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -99,7 +101,7 @@ export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({ stats }) =
             <Wallet className="text-emerald-500" size={20} /> Estimated Revenue
           </h3>
           <p className="text-ink-400 font-bold text-xs mb-4">Sum of completed appointment fees — not a real payment gateway total, since none is integrated yet.</p>
-          <TrendAreaChart data={data.revenueTrend} xKey="date" series={[{ dataKey: 'revenue', name: 'Revenue', color: '#10b981' }]} />
+          <TrendAreaChart data={data.revenueTrend} xKey="date" series={[{ dataKey: 'revenue', name: 'Revenue', color: themeColors.primaryColor }]} />
         </div>
 
         {/* Doctor approval funnel */}

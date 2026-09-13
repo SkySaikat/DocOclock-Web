@@ -116,7 +116,7 @@ export const HospitalManager: React.FC = () => {
             <h3 className="text-lg font-display font-black text-ink-700">Registered Hospitals</h3>
             <button
               onClick={() => setShowCreateHospital(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-medical-500 hover:bg-medical-600 text-white text-sm font-black rounded-full transition-all"
+              className="btn-sheen flex items-center gap-2 px-4 py-2 bg-medical-500 hover:bg-medical-600 text-white text-sm font-black rounded-full transition-all"
             >
               <Plus size={16} /> New Hospital
             </button>
@@ -140,7 +140,7 @@ export const HospitalManager: React.FC = () => {
                   <input className={inputCls} placeholder="Phone / email" value={hospForm.contact_info} onChange={e => setHospForm(p => ({ ...p, contact_info: e.target.value }))} />
                 </div>
                 <div className="flex gap-3">
-                  <button type="submit" disabled={saving} className="px-5 py-2 bg-medical-500 text-white text-sm font-black rounded-full disabled:opacity-50">{saving ? 'Creating...' : 'Create Hospital'}</button>
+                  <button type="submit" disabled={saving} className="btn-sheen px-5 py-2 bg-medical-500 text-white text-sm font-black rounded-full disabled:opacity-50">{saving ? 'Creating...' : 'Create Hospital'}</button>
                   <button type="button" onClick={() => setShowCreateHospital(false)} className="px-5 py-2 bg-ink-200 text-ink-700 text-sm font-black rounded-full">Cancel</button>
                 </div>
               </form>
@@ -201,7 +201,7 @@ export const HospitalManager: React.FC = () => {
                         </div>
                         <button
                           onClick={() => { setShowAssignAdmin(h.id); setAdminForm({ email: '', full_name: '', password: '' }); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-medical-500 text-white text-xs font-black rounded-full"
+                          className="btn-sheen flex items-center gap-1.5 px-3 py-1.5 bg-medical-500 text-white text-xs font-black rounded-full"
                         >
                           <Mail size={12} /> {h.owner ? 'Reassign Admin' : 'Assign Admin'}
                         </button>
@@ -226,7 +226,7 @@ export const HospitalManager: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button type="submit" disabled={saving} className="px-4 py-2 bg-medical-500 text-white text-xs font-black rounded-full disabled:opacity-50">{saving ? 'Saving...' : 'Assign'}</button>
+                            <button type="submit" disabled={saving} className="btn-sheen px-4 py-2 bg-medical-500 text-white text-xs font-black rounded-full disabled:opacity-50">{saving ? 'Saving...' : 'Assign'}</button>
                             <button type="button" onClick={() => setShowAssignAdmin(null)} className="px-4 py-2 bg-ink-200 text-ink-700 text-xs font-black rounded-full">Cancel</button>
                           </div>
                         </form>

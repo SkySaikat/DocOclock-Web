@@ -263,7 +263,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
    return (
       <div className="max-w-4xl mx-auto space-y-0 pb-10 px-4 md:px-0 animate-fade-in">
          {/* Blue banner header — same visual language as the booking wizard */}
-         <div className="bg-[#3988ff] relative overflow-hidden rounded-t-[20px] pt-8 pb-14 px-7 -mx-4 md:mx-0">
+         <div className="bg-medical-500 relative overflow-hidden rounded-t-[20px] pt-8 pb-14 px-7 -mx-4 md:mx-0">
             <img src="/assets/figma/booking-vector25.svg" alt="" className="absolute -top-2 right-6 w-20 opacity-90 pointer-events-none" />
             <img src="/assets/figma/booking-vector26.svg" alt="" className="absolute top-7 right-20 w-14 opacity-70 pointer-events-none" />
             <div className="relative text-center space-y-1">
@@ -281,7 +281,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                   <div className="flex items-center gap-3">
                      <span className="relative flex h-2.5 w-2.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-medical-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-medical-500 shadow-[0_0_10px_rgba(var(--medical-500-rgb),0.5)]"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-medical-500 shadow-[0_0_10px_rgb(var(--color-primary-500)_/_50%)]"></span>
                      </span>
                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">
                         {isMyTurn ? 'Your Consultation' : 'Live Chamber Status'}
@@ -335,7 +335,7 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
                         <div className="relative px-4 pb-12">
                            <div className="absolute top-1/2 left-0 right-0 h-2 bg-slate-50 rounded-full overflow-hidden">
                               <div
-                                 className="h-full bg-gradient-to-r from-medical-400 to-medical-600 shadow-[0_0_15px_rgba(var(--medical-500-rgb),0.3)] transition-all duration-1000 ease-out"
+                                 className="h-full bg-gradient-to-r from-medical-400 to-medical-600 shadow-[0_0_15px_rgb(var(--color-primary-500)_/_30%)] transition-all duration-1000 ease-out"
                                  style={{ width: `${Math.min(100, ((currentServing?.serialNumber || stats.servingToken) / myApp.serialNumber) * 100)}%` }}
                               ></div>
                            </div>

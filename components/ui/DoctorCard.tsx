@@ -126,7 +126,7 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
                             e.stopPropagation();
                             onCtaClick();
                         }}
-                        className="w-full h-11 rounded-full bg-gradient-to-b from-medical-500 to-medical-600 text-white font-display font-semibold text-[13px] flex items-center justify-center gap-2 transition-all hover:brightness-105 active:scale-95"
+                        className="btn-sheen w-full h-11 rounded-full bg-gradient-to-b from-medical-500 to-medical-600 text-white font-display font-semibold text-[13px] flex items-center justify-center gap-2 transition-all hover:brightness-105 active:scale-95"
                     >
                         {ctaLabel}
                         <ChevronRight size={14} />

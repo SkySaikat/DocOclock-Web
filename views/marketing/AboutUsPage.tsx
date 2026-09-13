@@ -52,7 +52,7 @@ export const AboutUsPage: React.FC = () => {
           <h2 className="font-display text-2xl md:text-3xl font-bold text-white leading-tight mb-4 max-w-lg mx-auto">
             Built by clinicians and engineers who were tired of waiting rooms.
           </h2>
-          <p className="text-[#93d3fd] text-sm md:text-base font-medium max-w-md mx-auto">
+          <p className="text-medical-300 text-sm md:text-base font-medium max-w-md mx-auto">
             Dococlock started as a simple queue tracker for one clinic — today it connects patients, doctors and hospitals across the country.
           </p>
         </div>

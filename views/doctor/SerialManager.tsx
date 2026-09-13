@@ -644,7 +644,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                     Patient Records
                                  </Button>
                                  <Button
-                                    className="h-16 px-10 gap-3 !bg-medical-500 hover:!bg-medical-400 shadow-lg shadow-medical-500/20 active:scale-95 transition-all font-black text-lg rounded-full !text-white"
+                                    className="btn-sheen h-16 px-10 gap-3 !bg-medical-500 hover:!bg-medical-400 shadow-lg shadow-medical-500/20 active:scale-95 transition-all font-black text-lg rounded-full !text-white"
                                     onClick={handleNextPatient}
                                     disabled={sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK'}
                                  >
@@ -955,7 +955,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                               {selectedApp.status === 'consulting' && (
                                  <Button
                                     fullWidth
-                                    className="h-16 text-lg font-black rounded-2xl bg-teal-600 shadow-xl shadow-teal-100 flex items-center gap-3 !text-white"
+                                    className="btn-sheen h-16 text-lg font-black rounded-2xl bg-teal-600 shadow-xl shadow-teal-100 flex items-center gap-3 !text-white"
                                     onClick={() => {
                                        updateAppStatus(selectedApp.id, 'completed');
                                        setSelectedAppId(null);
@@ -968,7 +968,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                               {(selectedApp.status === 'waiting' || selectedApp.status === 'late') && (
                                  <Button
                                     fullWidth
-                                    className="h-16 text-lg font-black rounded-2xl bg-teal-600 shadow-xl shadow-teal-100 flex items-center gap-3 !text-white"
+                                    className="btn-sheen h-16 text-lg font-black rounded-2xl bg-teal-600 shadow-xl shadow-teal-100 flex items-center gap-3 !text-white"
                                     onClick={() => {
                                        updateAppStatus(selectedApp.id, 'consulting');
                                        setSelectedAppId(null);
@@ -1015,7 +1015,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
                               <Button
                                  fullWidth
-                                 className="h-16 text-lg font-black rounded-2xl bg-navy-900 shadow-xl shadow-slate-100 flex items-center gap-3 !text-white"
+                                 className="btn-sheen h-16 text-lg font-black rounded-2xl bg-navy-900 shadow-xl shadow-slate-100 flex items-center gap-3 !text-white"
                                  onClick={() => {
                                     if (selectedApp.isReserved) {
                                        setAssignData({ name: '', phone: '', appId: selectedApp.id });
@@ -1092,7 +1092,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                         <Button
                            fullWidth
                            disabled={!assignData.name || !assignData.phone}
-                           className="h-14 rounded-full font-black bg-medical-500 shadow-md shadow-medical-200 disabled:opacity-50 disabled:shadow-none"
+                           className="btn-sheen h-14 rounded-full font-black bg-medical-500 shadow-md shadow-medical-200 disabled:opacity-50 disabled:shadow-none"
                            onClick={async () => {
                               if (assignData.appId && assignData.name && assignData.phone) {
                                  let slot = allAppointments.find(a => a.id === assignData.appId);

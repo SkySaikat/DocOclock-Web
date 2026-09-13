@@ -295,7 +295,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                     type="submit"
                     fullWidth
                     disabled={isLoading || !loginEmail.includes('@')}
-                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all"
+                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-medical-700 active:scale-[0.98] transition-all"
                   >
                     {isLoading ? 'Checking...' : 'Continue'}
                   </Button>
@@ -333,7 +333,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                     type="submit"
                     fullWidth
                     disabled={isLoading || !password}
-                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all"
+                    className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-medical-700 active:scale-[0.98] transition-all"
                   >
                     {isLoading ? 'Verifying...' : 'Login Now'}
                   </Button>
@@ -384,7 +384,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       type="submit"
                       fullWidth
                       disabled={isLoading || !signupEmail.includes('@')}
-                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all"
+                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-medical-700 active:scale-[0.98] transition-all"
                     >
                       {isLoading ? (
                         <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Sending Code...</span>
@@ -430,7 +430,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       type="submit"
                       fullWidth
                       disabled={isLoading || otpCode.length !== 6}
-                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all"
+                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-medical-700 active:scale-[0.98] transition-all"
                     >
                       {isLoading ? (
                         <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Verifying...</span>
@@ -523,7 +523,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess,
                       type="submit"
                       fullWidth
                       disabled={isLoading}
-                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-[#1c5499] active:scale-[0.98] transition-all mt-2"
+                      className="h-12 text-[15px] font-black rounded-xl shadow-lg shadow-medical-500/10 bg-gradient-to-b from-medical-500 to-medical-700 active:scale-[0.98] transition-all mt-2"
                     >
                       {isLoading ? 'Creating...' : 'Create Account'}
                     </Button>
