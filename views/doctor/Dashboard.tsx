@@ -227,25 +227,25 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
           {/* Appointments stat row */}
           <div className="bg-white rounded-[32px] p-6 shadow-ds-soft">
             <h3 className="font-display text-xl text-ink-800 mb-4">Appointments</h3>
-            <div className="flex items-center divide-x divide-slate-100">
-              <div className="flex-1 pr-6">
-                <p className="font-stat text-4xl md:text-5xl font-medium text-medical-600 tracking-tight">
-                  {isResolving ? <div className="w-16 h-10 bg-slate-50 animate-pulse rounded-lg" /> : totalPatients}
+            <div className="grid grid-cols-3 divide-x divide-slate-100">
+              <div className="pr-2 sm:pr-6 min-w-0">
+                <p className="font-stat text-2xl sm:text-4xl md:text-5xl font-medium text-medical-600 tracking-tight truncate">
+                  {isResolving ? <span className="inline-block w-12 h-8 bg-slate-50 animate-pulse rounded-lg align-middle" /> : totalPatients}
                 </p>
-                <p className="text-xs text-ink-500 mt-1">Today</p>
+                <p className="text-[10px] sm:text-xs text-ink-500 mt-1">Today</p>
               </div>
-              <div className="flex-1 px-6">
-                <p className="font-stat text-4xl md:text-5xl font-medium text-medical-600 tracking-tight">
-                  {isResolving ? <div className="w-16 h-10 bg-slate-50 animate-pulse rounded-lg" /> : monthCount}
+              <div className="px-2 sm:px-6 min-w-0">
+                <p className="font-stat text-2xl sm:text-4xl md:text-5xl font-medium text-medical-600 tracking-tight truncate">
+                  {isResolving ? <span className="inline-block w-12 h-8 bg-slate-50 animate-pulse rounded-lg align-middle" /> : monthCount}
                 </p>
-                <p className="text-xs text-ink-500 mt-1">This Month</p>
+                <p className="text-[10px] sm:text-xs text-ink-500 mt-1">This Month</p>
               </div>
-              <div className="flex-1 pl-6">
-                <p className={`font-stat text-4xl md:text-5xl font-medium tracking-tight flex items-center gap-1.5 ${progressionPct != null && progressionPct < 0 ? 'text-red-500' : 'text-medical-600'}`}>
+              <div className="pl-2 sm:pl-6 min-w-0">
+                <p className={`font-stat text-2xl sm:text-4xl md:text-5xl font-medium tracking-tight flex items-center gap-1 sm:gap-1.5 truncate ${progressionPct != null && progressionPct < 0 ? 'text-red-500' : 'text-medical-600'}`}>
                   {progressionPct == null ? '—' : `${progressionPct > 0 ? '+' : ''}${progressionPct}%`}
-                  {progressionPct != null && (progressionPct < 0 ? <TrendingDown size={22} /> : <TrendingUp size={22} />)}
+                  {progressionPct != null && (progressionPct < 0 ? <TrendingDown size={20} className="shrink-0" /> : <TrendingUp size={20} className="shrink-0" />)}
                 </p>
-                <p className="text-xs text-ink-500 mt-1">Progression</p>
+                <p className="text-[10px] sm:text-xs text-ink-500 mt-1">Progression</p>
               </div>
             </div>
           </div>
@@ -257,9 +257,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
                 <h3 className="font-display text-xl text-ink-800">Queue Status</h3>
                 <span className="text-[10px] font-bold text-ink-500 border border-slate-200 rounded-full px-3 py-1">Today</span>
               </div>
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
                 <ArcGauge progress={queueProgress} size={170} />
-                <div className="flex-1 space-y-2.5 min-w-0">
+                <div className="flex-1 w-full space-y-2.5 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-2 text-sm text-ink-600 min-w-0"><span className="w-2.5 h-2.5 rounded-full bg-medical-800 shrink-0" />Completed</span>
                     <span className="font-bold text-ink-700 shrink-0">{finishedCount}</span>

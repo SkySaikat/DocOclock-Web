@@ -27,6 +27,7 @@ const PatientManualRegistry = lazy(() => import('./views/doctor/PatientManualReg
 const DoctorPracticeSettings = lazy(() => import('./views/doctor/DoctorPracticeSettings').then(m => ({ default: m.DoctorPracticeSettings })));
 const DoctorMore = lazy(() => import('./views/doctor/DoctorMore').then(m => ({ default: m.DoctorMore })));
 const DoctorProfileEditor = lazy(() => import('./views/doctor/DoctorProfileEditor').then(m => ({ default: m.DoctorProfileEditor })));
+const PaymentSubscription = lazy(() => import('./views/doctor/PaymentSubscription').then(m => ({ default: m.PaymentSubscription })));
 
 // Assistant Views
 const AssistantDashboard = lazy(() => import('./views/assistant/AssistantDashboard').then(m => ({ default: m.AssistantDashboard })));
@@ -250,6 +251,7 @@ const App: React.FC = () => {
               case '/doctor/serial-manager': return <SerialManager onNavigate={navigate} onStartPrescription={setActiveRxPatient} />;
               case '/doctor/manual-booking': return <PatientManualRegistry onNavigate={navigate} />;
               case '/doctor/practice-settings': return <DoctorPracticeSettings onNavigate={navigate} />;
+              case '/doctor/payment': return <PaymentSubscription onNavigate={navigate} />;
               case '/doctor/profile': return <DoctorMore onNavigate={navigate} onLogout={handleLogout} />;
               case '/doctor/profile-editor': return <DoctorProfileEditor onBack={() => navigate('/doctor/profile')} />;
               case '/doctor/prescription': return (

@@ -1,7 +1,8 @@
 import React from 'react';
 
-// Exact Figma doctor-dashboard tab bar (Queue / Appointments / Prescriptions / Analytics / Manage).
+// Figma doctor-dashboard tab bar (Overview / Queue / Appointments / Prescriptions / Analytics / Manage).
 const TABS = [
+  { label: 'Overview', path: '/doctor/dashboard' },
   { label: 'Queue', path: '/doctor/serial-manager' },
   { label: 'Appointments', path: '/doctor/appointments' },
   { label: 'Prescriptions', path: '/doctor/prescription' },

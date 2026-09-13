@@ -58,14 +58,24 @@ export const ChamberCard: React.FC<ChamberCardProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                            <Clock size={12} /> Visiting Schedule
+                            <Clock size={12} /> Available
                         </p>
                         <div className="flex flex-wrap gap-1">
-                            {chamber.schedule.map((s, i) => (
-                                <span key={i} className="text-[10px] font-black text-slate-700 bg-white px-2 py-0.5 rounded-lg border border-slate-200">
-                                    {DAY_NAMES[Number(s.day)] || s.day}
-                                </span>
-                            ))}
+                            {DAY_NAMES.map((label, dayIndex) => {
+                                const isAvailable = chamber.schedule.some(s => Number(s.day) === dayIndex);
+                                return (
+                                    <span
+                                        key={label}
+                                        className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${
+                                            isAvailable
+                                                ? 'text-medical-700 bg-medical-100 border-medical-200'
+                                                : 'text-slate-300 bg-white border-slate-200'
+                                        }`}
+                                    >
+                                        {label}
+                                    </span>
+                                );
+                            })}
                         </div>
                     </div>
                     <div className="bg-medical-50/50 p-4 rounded-2xl border border-medical-100">

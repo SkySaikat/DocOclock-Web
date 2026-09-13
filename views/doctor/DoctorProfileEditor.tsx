@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import {
-    User, Stethoscope, Award, BookOpen, Clock,
+    User, Stethoscope, Award, Clock,
     ChevronLeft, Save, Loader2, Camera, Info,
-    MapPin, GraduationCap, Briefcase
+    GraduationCap, ShieldCheck
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { DoctorStorage } from '../../storage';
@@ -232,7 +232,7 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
                             onClick={handleSave}
                             disabled={loading}
                             fullWidth
-                            className={`h-14 rounded-2xl font-black text-base shadow-xl transition-all duration-300 ${success ? 'bg-green-500 hover:bg-green-600 shadow-green-500/20' : 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20'}`}
+                            className={`btn-sheen h-14 rounded-2xl font-black text-base shadow-xl transition-all duration-300 ${success ? 'bg-green-500 hover:bg-green-600 shadow-green-500/20' : 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20'}`}
                         >
                             {loading ? (
                                 <>
@@ -267,9 +267,3 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
         </div>
     );
 };
-
-const ShieldCheck = ({ size, className }: { size: number, className?: string }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" />
-    </svg>
-);

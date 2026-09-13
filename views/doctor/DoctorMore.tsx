@@ -46,6 +46,7 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
             title: "Practice & Finances",
             items: [
                 { icon: Settings, label: "Chamber & Schedule", path: "/doctor/practice-settings", color: "text-medical-600", bg: "bg-medical-50", desc: "Manage visiting hours and fees" },
+                { icon: Wallet, label: "Payment & Subscription", path: "/doctor/payment", color: "text-medical-600", bg: "bg-medical-50", desc: "View your earnings summary" },
                 { icon: Banknote, label: "Payout Options", path: "#", color: "text-amber-600", bg: "bg-amber-50", desc: "Manage bKash/Bank details" },
             ]
         },
@@ -153,7 +154,7 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
                                 <Unlink size={14} /> Disconnect
                             </button>
                         ) : (
-                            <button onClick={connect} disabled={!isConfigured} className="flex items-center gap-1.5 px-4 py-2 bg-medical-600 hover:bg-medical-500 text-white text-xs font-black rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                            <button onClick={connect} disabled={!isConfigured} className="btn-sheen flex items-center gap-1.5 px-4 py-2 bg-medical-600 hover:bg-medical-500 text-white text-xs font-black rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                                 <Link size={14} /> Connect
                             </button>
                         )}
