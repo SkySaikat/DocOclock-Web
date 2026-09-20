@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '../supabase';
-import { generateColorScale, isValidHex } from '../utils/colorScale';
+import { COLOR_SCALE_STEPS, generateColorScale, isValidHex } from '../utils/colorScale';
 
 export interface ThemeColors {
   primaryColor: string;
@@ -37,7 +37,8 @@ function applyToDocument(colors: ThemeColors) {
   const secondaryScale = generateColorScale(colors.secondaryColor);
   const backgroundRgb = generateColorScale(colors.backgroundColor)[500];
 
-  (Object.keys(primaryScale) as unknown as (keyof typeof primaryScale)[]).forEach(step => {
+  // Steps 50-900 plus 950 (Figma's Accent-950 -> `primary-950` / `secondary-950`).
+  COLOR_SCALE_STEPS.forEach(step => {
     root.setProperty(`--color-primary-${step}`, primaryScale[step]);
     root.setProperty(`--color-secondary-${step}`, secondaryScale[step]);
   });

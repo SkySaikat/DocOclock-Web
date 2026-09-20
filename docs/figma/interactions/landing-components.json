@@ -1,0 +1,289 @@
+{
+  "unit": "landing-components",
+  "fileKey": "zJRyAML8hv0uEBOXtu5Hpn",
+  "page": "Web Version V1 (5:2)",
+  "section": "Components (5:2401)",
+  "source": "use_figma read-only snippet A over 5:2401 (6 nodes with reactions); variant diffs via snippet B; get_motion_context(5:2401, recursive) = {\"nodes\":[]}",
+  "reactionCount": 6,
+  "reactions": [
+    {
+      "sourceNodeId": "80:2152",
+      "sourceName": "Button Usual Hover",
+      "sourceType": "INSTANCE",
+      "trigger": "ON_HOVER",
+      "triggerDelay": null,
+      "action": "CHANGE_TO",
+      "navigation": "NODE",
+      "destinationId": "80:4772",
+      "destinationName": "Button Usual Hover / Property 1=Hovered",
+      "transition": "SMART_ANIMATE",
+      "easing": "EASE_OUT",
+      "cssEasing": "cubic-bezier(0, 0, 0.58, 1)",
+      "durationSeconds": 0.3,
+      "durationMs": 300,
+      "direction": null,
+      "overlayRelativePosition": null,
+      "overlayPositionType": null,
+      "note": "Information Component, Primary sheen button (R2)"
+    },
+    {
+      "sourceNodeId": "80:2153",
+      "sourceName": "Button Usual Hover",
+      "sourceType": "INSTANCE",
+      "trigger": "ON_HOVER",
+      "triggerDelay": null,
+      "action": "CHANGE_TO",
+      "navigation": "NODE",
+      "destinationId": "80:4772",
+      "destinationName": "Button Usual Hover / Property 1=Hovered",
+      "transition": "SMART_ANIMATE",
+      "easing": "EASE_OUT",
+      "cssEasing": "cubic-bezier(0, 0, 0.58, 1)",
+      "durationSeconds": 0.3,
+      "durationMs": 300,
+      "direction": null,
+      "overlayRelativePosition": null,
+      "overlayPositionType": null,
+      "note": "Information Component, nested Buttons swapped to Secondary/white (R3); soft-light over #fff is a no-op"
+    },
+    {
+      "sourceNodeId": "80:4767",
+      "sourceName": "Buttons",
+      "sourceType": "INSTANCE",
+      "trigger": "ON_HOVER",
+      "triggerDelay": null,
+      "action": "CHANGE_TO",
+      "navigation": "NODE",
+      "destinationId": "80:4764",
+      "destinationName": "Button Featured Hover / Property 1=Hovered",
+      "transition": "SMART_ANIMATE",
+      "easing": "EASE_OUT",
+      "cssEasing": "cubic-bezier(0, 0, 0.58, 1)",
+      "durationSeconds": 0.3,
+      "durationMs": 300,
+      "direction": null,
+      "overlayRelativePosition": null,
+      "overlayPositionType": null,
+      "note": "Inside Button Featured Hover Default 80:4766 (R5): width 43.78->113.78, label frame appears, chevron x 0->70"
+    },
+    {
+      "sourceNodeId": "80:4769",
+      "sourceName": "Property 1=Default",
+      "sourceType": "COMPONENT",
+      "trigger": "ON_HOVER",
+      "triggerDelay": null,
+      "action": "CHANGE_TO",
+      "navigation": "NODE",
+      "destinationId": "80:4772",
+      "destinationName": "Button Usual Hover / Property 1=Hovered",
+      "transition": "SMART_ANIMATE",
+      "easing": "EASE_OUT",
+      "cssEasing": "cubic-bezier(0, 0, 0.58, 1)",
+      "durationSeconds": 0.3,
+      "durationMs": 300,
+      "direction": null,
+      "overlayRelativePosition": null,
+      "overlayPositionType": null,
+      "note": "Component-level (R1): Ellipse 51 x 40.78->-1.22, y 46->-39.73, w 37->115, h 45->123, fill #ffffff->#bebebe, SOFT_LIGHT; root radius 0->100"
+    },
+    {
+      "sourceNodeId": "80:4717",
+      "sourceName": "Button Usual Hover",
+      "sourceType": "INSTANCE",
+      "trigger": "ON_HOVER",
+      "triggerDelay": null,
+      "action": "CHANGE_TO",
+      "navigation": "NODE",
+      "destinationId": "80:4772",
+      "destinationName": "Button Usual Hover / Property 1=Hovered",
+      "transition": "SMART_ANIMATE",
+      "easing": "EASE_OUT",
+      "cssEasing": "cubic-bezier(0, 0, 0.58, 1)",
+      "durationSeconds": 0.3,
+      "durationMs": 300,
+      "direction": null,
+      "overlayRelativePosition": null,
+      "overlayPositionType": null,
+      "note": "Inside Doctor Card - Final Default 80:4686, the 'Get an Appointment' CTA (R4); ellipse is left/right stretched over the 352px button"
+    },
+    {
+      "sourceNodeId": "80:4718",
+      "sourceName": "Property 1=Variant2",
+      "sourceType": "COMPONENT",
+      "trigger": "ON_HOVER",
+      "triggerDelay": null,
+      "action": "CHANGE_TO",
+      "navigation": "NODE",
+      "destinationId": "80:4686",
+      "destinationName": "Doctor Card - Final / Property 1=Default",
+      "transition": "SMART_ANIMATE",
+      "easing": "EASE_OUT",
+      "cssEasing": "cubic-bezier(0, 0, 0.58, 1)",
+      "durationSeconds": 0.3,
+      "durationMs": 300,
+      "direction": null,
+      "overlayRelativePosition": null,
+      "overlayPositionType": null,
+      "note": "Resting -> hover (R6): 384x502 -> 384x481.73, pad 4->0, image 376->384, shadow 0,-8,20,.05, gradient (SCREEN), info over image, stat panels, CTA, chip re-skin"
+    }
+  ],
+  "motionContext": {
+    "nodes": [],
+    "note": "no keyframe animations anywhere in the Components section"
+  },
+  "easingMap": {
+    "EASE_OUT": "cubic-bezier(0, 0, 0.58, 1)",
+    "EASE_IN": "cubic-bezier(0.42, 0, 1, 1)",
+    "EASE_IN_OUT": "cubic-bezier(0.42, 0, 0.58, 1)",
+    "note": "CSS keyword ease-out is identical to Figma EASE_OUT"
+  },
+  "variantDiffs": {
+    "Button Usual Hover 80:4769 -> 80:4772": [
+      {
+        "layer": "root",
+        "prop": "cornerRadius",
+        "from": 0,
+        "to": 100
+      },
+      {
+        "layer": "Ellipse 51 (80:4771 -> 80:4774)",
+        "prop": "x",
+        "from": 40.78,
+        "to": -1.22
+      },
+      {
+        "layer": "Ellipse 51",
+        "prop": "y",
+        "from": 46,
+        "to": -39.73
+      },
+      {
+        "layer": "Ellipse 51",
+        "prop": "width",
+        "from": 37,
+        "to": 115
+      },
+      {
+        "layer": "Ellipse 51",
+        "prop": "height",
+        "from": 45,
+        "to": 123
+      },
+      {
+        "layer": "Ellipse 51",
+        "prop": "fill",
+        "from": "#ffffff",
+        "to": "#bebebe"
+      },
+      {
+        "layer": "Ellipse 51",
+        "prop": "blendMode",
+        "from": "SOFT_LIGHT",
+        "to": "SOFT_LIGHT",
+        "constraints": "horizontal STRETCH (left 40.78/right 36 -> left -1.22/right 0), vertical MIN"
+      }
+    ],
+    "Button Featured Hover 80:4766 -> 80:4764": [
+      {
+        "layer": "root + Buttons",
+        "prop": "width",
+        "from": 43.78,
+        "to": 113.78
+      },
+      {
+        "layer": "Frame 1000012737 (label, 94x20 @0,12.36, text 'Register' Instrument Sans Regular 16 white)",
+        "prop": "exists",
+        "from": false,
+        "to": true
+      },
+      {
+        "layer": "arrow-right-s-line (43.78x44.73, pad 16,18,16,18, r500)",
+        "prop": "x",
+        "from": 0,
+        "to": 70
+      }
+    ],
+    "Doctor Card - Final 80:4718 (Variant2) -> 80:4686 (Default)": [
+      {
+        "layer": "root",
+        "prop": "size",
+        "from": "384x502",
+        "to": "384x481.73"
+      },
+      {
+        "layer": "root",
+        "prop": "padding",
+        "from": "4",
+        "to": "0"
+      },
+      {
+        "layer": "root",
+        "prop": "effects",
+        "from": "none",
+        "to": "DROP_SHADOW 0,-8 blur20 rgba(0,0,0,.05)"
+      },
+      {
+        "layer": "root",
+        "prop": "clipsContent",
+        "from": false,
+        "to": true
+      },
+      {
+        "layer": "Rectangle 16",
+        "prop": "size",
+        "from": "376x405",
+        "to": "384x405"
+      },
+      {
+        "layer": "Rectangle 3510",
+        "prop": "exists",
+        "from": false,
+        "to": true,
+        "detail": "linear top->bottom #fafafa a0 -> #fafafa a1 @0.875, blend SCREEN, 384x405"
+      },
+      {
+        "layer": "Info",
+        "prop": "placement",
+        "from": "below image, 376x89 @4,409, pad 16,8",
+        "to": "over image, 384x218 @0,190, pad 16"
+      },
+      {
+        "layer": "Frame 1000010559 (stat panels 2x 172x113, #fbfbfb, r24, gap 8)",
+        "prop": "exists",
+        "from": false,
+        "to": true
+      },
+      {
+        "layer": "Chip",
+        "prop": "geometry+skin",
+        "from": "77x23 @275,15 fill #fff, 'Cardiology' Instrument Sans 12 #171c1a",
+        "to": "94x23 @272,16 fill #eff6ff, 'CARDIOLOGY' Inter 12 #2563eb"
+      },
+      {
+        "layer": "Button (Button Usual Hover 'Get an Appointment')",
+        "prop": "exists",
+        "from": false,
+        "to": true,
+        "detail": "384x76.73 @0,405 pad 16; own hover reaction R4"
+      }
+    ]
+  },
+  "noReactions": [
+    "Buttons 80:4641 (5 variants)",
+    "Tab 80:4680",
+    "Featured Tabs 80:4670",
+    "Process Cards 80:4731",
+    "Eyebbrow 80:4634",
+    "Header 80:4667",
+    "Values 80:2143",
+    "Typography 80:4747",
+    "Input Field 80:4937",
+    "User Card 80:2891",
+    "Hovered variants 80:4772, 80:4764, 80:4686"
+  ],
+  "measured": {
+    "buttonUsualHoverDefaultPixel": "rgb(12,167,104)",
+    "buttonUsualHoverHoveredPixel": "rgb(18,195,134)",
+    "source": "pixel sample of docs/figma/reference/landing-components/button-usual-hover-80_4768.png (2x)"
+  }
+}

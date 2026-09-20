@@ -1,0 +1,53 @@
+/* Dashboard chrome motion (docs/figma/tokens.md §7, specs/dashboard-components.md §5).
+   Figma EASE_OUT = cubic-bezier(0,0,.58,1); DISSOLVE / hover = 300ms, MOVE_IN toasts = 500ms.
+   `tailwindcss-animate` is not installed, so `animate-in fade-in ...` utilities emit no CSS —
+   these are the real keyframes for overlay open/close. All are disabled under reduced motion. */
+
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ds-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes ds-move-in-bottom {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-move-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Overlay open (popovers, profile menu, scrims) — Figma DISSOLVE 0.3s EASE_OUT. */
+.ds-fade-in {
+  animation: ds-fade-in var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)) both;
+}
+
+/* Toast enter — Figma MOVE_IN BOTTOM 0.5s EASE_OUT. */
+.ds-toast-in {
+  animation: ds-move-in-bottom var(--ds-duration-slow, 500ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)) both;
+}
+
+/* Toast exit — DISSOLVE 0.3s (the toast provider keeps the element mounted for 300ms). */
+.ds-toast-out {
+  animation: ds-fade-out var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)) both;
+}
+
+/* Mobile drawer — Figma OVERLAY MOVE_IN 0.3s EASE_OUT. */
+.ds-drawer-in {
+  animation: ds-move-in-right var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-fade-in,
+  .ds-toast-in,
+  .ds-toast-out,
+  .ds-drawer-in {
+    animation: none;
+  }
+}

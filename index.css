@@ -31,29 +31,42 @@
      aliases (for new code written against this redesign). RGB-triplet
      form (not hex) so Tailwind's `rgb(var(--x) / <alpha-value>)` pattern
      keeps opacity modifiers (`bg-medical-500/20` etc.) working. */
-  --color-primary-50: 244 251 247;
-  --color-primary-100: 231 246 240;
-  --color-primary-200: 194 233 217;
-  --color-primary-300: 158 220 195;
-  --color-primary-400: 85 193 149;
+  /* Primary = Figma's exact `Accent` ramp for the default #0ca768 (tokens.md D3-C);
+     Accent-900 (3 64 42) doubles as the default secondary-500. Step 950 is Figma's
+     Accent-950. Every value here MUST equal generateColorScale() output for the
+     default theme so ThemeContext re-applying it on mount changes nothing. */
+  --color-primary-50: 230 247 240;
+  --color-primary-100: 207 240 227;
+  --color-primary-200: 163 226 202;
+  --color-primary-300: 112 208 173;
+  --color-primary-400: 60 187 141;
   --color-primary-500: 12 167 104;
-  --color-primary-600: 10 142 88;
-  --color-primary-700: 8 117 73;
-  --color-primary-800: 7 92 57;
-  --color-primary-900: 5 67 42;
+  --color-primary-600: 9 141 88;
+  --color-primary-700: 7 116 72;
+  --color-primary-800: 5 90 57;
+  --color-primary-900: 3 64 42;
+  --color-primary-950: 2 42 28;
 
-  --color-secondary-50: 242 245 244;
-  --color-secondary-100: 230 236 234;
-  --color-secondary-200: 192 207 202;
-  --color-secondary-300: 154 179 170;
-  --color-secondary-400: 79 121 106;
+  --color-secondary-50: 230 236 234;
+  --color-secondary-100: 207 219 215;
+  --color-secondary-200: 167 188 180;
+  --color-secondary-300: 116 150 138;
+  --color-secondary-400: 58 106 89;
   --color-secondary-500: 3 64 42;
   --color-secondary-600: 3 54 36;
   --color-secondary-700: 2 45 29;
   --color-secondary-800: 2 35 23;
   --color-secondary-900: 1 26 17;
+  --color-secondary-950: 1 16 11;
 
   --color-background: 245 247 246;
+
+  /* Figma prototype motion (tokens.md §7): every hover/navigate reaction is
+     EASE_OUT 0.3s; Manage/Profile screen changes and modals/toasts are 0.5s.
+     Tailwind mirrors these as `ease-ds-out`, `duration-ds-fast`, `duration-ds-slow`. */
+  --ds-ease-out: cubic-bezier(0, 0, 0.58, 1);
+  --ds-duration-fast: 300ms;
+  --ds-duration-slow: 500ms;
 }
 
 @layer base {
@@ -172,6 +185,25 @@
 }
 
 @layer utilities {
+  /* Figma page-background gradients (tokens.md §1.4, D9). Stops come from the
+     live theme (--color-background / --color-primary-50) so they recolour with
+     Super Admin → Branding; the only literals are Tailwind's fixed white/page.
+     Angles are derived from Figma's gradientTransform on the 1440x800 frame
+     (verify visually, tokens O5); the stop percentages compensate for Figma's
+     gradient ending before the far corner while CSS' 0%/100% sit on corners. */
+
+  /* Doctor Overview / Queue: Fill Color (top-left) -> white, ~120deg. */
+  .bg-ds-page-overview {
+    background-color: theme('colors.white');
+    background-image: linear-gradient(120deg, rgb(var(--color-background)) 0%, theme('colors.white') 84.4%);
+  }
+
+  /* Patient Queue: page grey (bottom-right) -> Accent-50 glow (top-left), ~301deg. */
+  .bg-ds-page-patient {
+    background-color: rgb(var(--color-primary-50));
+    background-image: linear-gradient(301deg, theme('colors.page') 15%, rgb(var(--color-primary-50)) 98.6%);
+  }
+
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out forwards;
   }

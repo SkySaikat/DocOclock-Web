@@ -1,0 +1,93 @@
+{
+  "unit": "dashboard-components",
+  "fileKey": "zJRyAML8hv0uEBOXtu5Hpn",
+  "page": "Web Version V1 (5:2)",
+  "section": "Components 303:13210",
+  "source": "figma use_figma read-only scripts (node.reactions, overlay* properties, variant dumps). Easing EASE_OUT = CSS ease-out = cubic-bezier(0,0,.58,1). Durations in seconds as Figma reports them.",
+  "motionContext": {
+    "get_motion_context_recursive_on_303:13210": "{\"nodes\":[]} - no keyframe animations anywhere in the section",
+    "springs": "none in this unit"
+  },
+  "flowStartingPoints": [
+    { "nodeId": "303:13394", "name": "Flow 5", "note": "Search Component (a COMPONENT, 538x41). One reaction: filter button -> Sort menu overlay" }
+  ],
+  "reactions": [
+    { "node": "303:13101", "name": "Lead Icon Button (in Dashboard Header/Queue)", "type": "INSTANCE", "trigger": "ON_HOVER", "action": "CHANGE_TO", "destination": "303:13039 (Lead Icon Button / Property 1=Variant2)", "transition": { "type": "SMART_ANIMATE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "303:13103", "name": "3 Buttons (in Dashboard Header/Queue date pill)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": null, "transition": { "type": "SMART_ANIMATE", "easing": "EASE_OUT", "duration": 0.3 }, "note": "blank destination = placeholder for a view toggle" },
+    { "node": "303:13390", "name": "iconoir:filter (Search Component)", "type": "FRAME", "trigger": "ON_CLICK", "action": "OVERLAY", "destination": "368:16699 (Sort menu 136x117)", "overlayRelativePosition": { "x": -4.99998, "y": 46.99984 }, "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "368:15049", "name": "Toggle (User Card/Default status chip)", "type": "FRAME", "trigger": "ON_CLICK", "action": "OVERLAY", "destination": "368:16140 (Bottombar 'Update Status')", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "368:15070", "name": "Toggle (User Card/Variant2)", "type": "FRAME", "trigger": "ON_CLICK", "action": "OVERLAY", "destination": "368:16140", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "368:15096", "name": "Toggle (User Card/Variant3)", "type": "FRAME", "trigger": "ON_CLICK", "action": "OVERLAY", "destination": "368:16140", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "I368:16141;1790:13221", "name": "Trail Icon Button (Bottombar close)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "CLOSE", "destination": null, "transition": null },
+    { "node": "368:17695", "name": "Frame 2147207294 (Profile menu: My Account)", "type": "FRAME", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "276:13531 (Account)", "transition": { "type": "SMART_ANIMATE", "easing": "EASE_OUT", "duration": 0.5 } },
+    { "node": "368:17699", "name": "Frame 2147207295 (Profile menu: Activity History)", "type": "FRAME", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "276:13827 (Activity Log)", "transition": { "type": "SMART_ANIMATE", "easing": "EASE_OUT", "duration": 0.5 } },
+    { "node": "317:13560", "name": "Overview tab (Navbar/Default)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "339:17421 (Overview)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "368:18571", "name": "Queue tab (Navbar/Default)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "368:14306 (Queue)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "317:13561", "name": "Appointments tab (Navbar/Default)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "255:11674 (Appointments)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "317:13562", "name": "Prescriptions tab (Navbar/Default)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "307:13617 (Prescriptions)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "317:13563", "name": "Analytics tab (Navbar/Default)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "257:10189 (Analytics)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "317:13564", "name": "Manage tab (Navbar/Default)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "257:10013 (Manage)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "317:13569", "name": "Frame 1000012212 (avatar button, Navbar/Default)", "type": "FRAME", "trigger": "ON_CLICK", "action": "OVERLAY", "destination": "368:17693 (Profile menu 260x376)", "overlayRelativePosition": { "x": -181.00003, "y": 54.99997 }, "transition": null },
+    { "node": "396:12133", "name": "Queue tab (Navbar/Patient)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "339:15916 (Patient Queue)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "396:12134", "name": "Appointments tab (Navbar/Patient)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "191:5570 (Patient Appointments)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "396:12160", "name": "'Medicines' tab (layer misnamed 'Appointments', Navbar/Patient)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "339:16108 (Patient Medicines)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "396:12135", "name": "Prescriptions tab (Navbar/Patient)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "297:12584 (Patient Prescriptions)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "396:12142", "name": "Frame 1000012212 (avatar button, Navbar/Patient)", "type": "FRAME", "trigger": "ON_CLICK", "action": "OVERLAY", "destination": "368:17693 (Profile menu)", "overlayRelativePosition": { "x": 0, "y": 0 }, "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } },
+    { "node": "396:12789", "name": "'Back to Dashboard' link (Navbar/Variant3)", "type": "INSTANCE", "trigger": "ON_CLICK", "action": "NAVIGATE", "destination": "339:15916 (Patient Queue)", "transition": { "type": "DISSOLVE", "easing": "EASE_OUT", "duration": 0.3 } }
+  ],
+  "reactionCount": { "section_total_nodes_with_reactions": 22, "note": "Navbar - Dashboard alone owns 13 of the 22 (Default: 6 nav + avatar; Patient: 4 nav + avatar; Variant3: 1 back link)" },
+  "activeTabByPage": {
+    "note": "Nav Link variant Default (= active) per Navbar - Dashboard instance on the Web page; all instances at (64,48) 1312x49",
+    "doctorDefault": { "339:17421": "Overview (Manage link absent)", "368:14306": "Queue", "328:14902": "first link labelled Queue", "255:11674": "Appointments", "255:12102": "Appointments", "307:13617": "Prescriptions", "257:13781": "none", "317:15542": "none", "257:10189": "Analytics", "257:10013": "Manage", "276:12374": "Manage", "328:13919": "none", "255:8163": "none" },
+    "patient": { "339:15916": "Queue", "191:5570": "Appointments", "339:16108": "Medicines", "297:12584": "Prescriptions", "297:12283": "none (3 links)", "191:5104": "none (3 links)" },
+    "variant3Instances": "none found"
+  },
+  "componentsWithNoReactionsOfTheirOwn": [
+    "Nav Link - Dashboard (317:13571) - Default(active)/Inactive are static variants, switched by frame navigation only",
+    "3 Buttons (317:15075) - static Active/Inactive; only the instance inside Dashboard Header carries a click reaction",
+    "Buttons - Dashboard (303:13196) - NO hover/press variants at all",
+    "Typography - Dashboard, Icons, Input Field - Dococlock, User Card variants (only the status Toggle has a click), Bottombar (only the close button), Profile menu (only 2 of 7 rows), Sort menu (no reactions; rows are not interactive in Figma)"
+  ],
+  "variantHoverPairs": [
+    {
+      "set": "Lead Icon Button 303:13034 (page-level component set, used in Dashboard Header/Queue)",
+      "trigger": "ON_HOVER on Default 303:13035",
+      "changeTo": "Variant2 303:13039",
+      "transition": { "type": "SMART_ANIMATE", "easing": "EASE_OUT", "duration": 0.3 },
+      "returns": "Variant2 has no reactions -> Figma returns to Default on pointer leave",
+      "diff": [
+        "root width 40 -> 122 (height 40 both, radius 500 both, fill #ffffff both)",
+        "root drop shadow: 0,0 blur 7 rgba(0,0,0,.05) -> 0,0 blur 4 rgba(0,0,0,.25)",
+        "label container (Default: 'Frame 1000012703' width 0, pad 0/12, clip; Inter Regular 12 -2% 'Add Time') -> ('Text' 96x20 at x22, pad 0/12, clip; Instrument Sans Regular 16 #8a94a3 'Add Time')",
+        "Icons (32x32, 'Add' glyph 11.25) stays at x4,y4 in both variants",
+        "layer names differ for the label (Frame 1000012703/Add Time vs Text/Typography - Dashboard/Button) so SMART_ANIMATE cannot tween it - it cross-fades; Icons tweens by name (position unchanged)"
+      ]
+    },
+    {
+      "set": "Trail Icon Button 255:6656 (used as Bottombar close, 'Add' buttons in Manage, etc.)",
+      "trigger": "ON_HOVER on Default 255:6657",
+      "changeTo": "Variant2 255:6661",
+      "transition": { "type": "SMART_ANIMATE", "easing": "EASE_OUT", "duration": 0.3 },
+      "returns": "Variant2 has no reactions -> returns on leave",
+      "diff": [
+        "root width 40 -> 122 (height 40, r500, fill #fff)",
+        "root drop shadow: 0,0 blur 7 rgba(0,0,0,.05) -> none",
+        "Text frame: HIDDEN (30x20 at 4,10) -> visible 96x20 at 4,10 (pad 0/12, clip); inner label 'Add Time' Instrument Sans Regular 16 #8a94a3, width 6 -> 72",
+        "Icons 32x32: x 4 -> 86 (the icon moves to the RIGHT end; label appears on the LEFT)"
+      ],
+      "caveat": "In the Bottombar the icon is overridden to Close and the label is NOT overridden, so the inherited hover would show the placeholder text 'Add Time' - a design artefact; see spec section 8"
+    }
+  ],
+  "overlaySettings": [
+    { "frame": "368:16140 Bottombar", "positionType": "CENTER", "background": "SOLID_COLOR rgba(0,0,0,0.25)", "backgroundInteraction": "CLOSE_ON_CLICK_OUTSIDE", "openTransition": "DISSOLVE EASE_OUT 0.3s (from User Card Toggle)", "closeTransition": "instant (CLOSE action, transition null)" },
+    { "frame": "368:16699 Sort menu", "positionType": "MANUAL", "background": "NONE", "backgroundInteraction": "CLOSE_ON_CLICK_OUTSIDE", "offset": "(-5,+47) relative to the filter button's top-left", "openTransition": "DISSOLVE EASE_OUT 0.3s" },
+    { "frame": "368:17693 Profile menu", "positionType": "MANUAL", "background": "NONE", "backgroundInteraction": "CLOSE_ON_CLICK_OUTSIDE", "offset": "doctor: (-181,+55) instant; patient: (0,0) DISSOLVE 0.3s - relative to the avatar button's top-left", "openTransition": "doctor navbar: none (instant); patient navbar: DISSOLVE EASE_OUT 0.3s" },
+    { "frame": "255:8156 Top (card header, reused in Bottombar)", "positionType": "CENTER", "background": "NONE", "backgroundInteraction": "NONE" }
+  ],
+  "adjacentOverlayConventions": [
+    { "frame": "368:16641 Toaster 287x800 (also 368:17311, 368:17538, 399:12818, 619:13780)", "positionType": "CENTER (368:17551, 368:17561 are TOP_CENTER)", "background": "NONE (399:12826 and 619:13780 use rgba(0,0,0,.25) + close-on-outside)", "timeout": "AFTER_TIMEOUT -> NAVIGATE DISSOLVE 0.3s", "pillOffsetInsideFrame": "toast pill sits 90px below the top of the 800px frame" },
+    { "frame": "368:15791 Card 3 (447x420)", "positionType": "CENTER", "background": "rgba(0,0,0,.25)", "backgroundInteraction": "CLOSE_ON_CLICK_OUTSIDE" },
+    { "frame": "368:14285 Modal (411x142) and 255:12870 Modal (612x414)", "positionType": "CENTER", "background": "rgba(0,0,0,.30)", "backgroundInteraction": "CLOSE_ON_CLICK_OUTSIDE" },
+    { "frame": "255:9358 Queue Card (363x801)", "positionType": "TOP_RIGHT", "background": "rgba(0,0,0,.25)", "backgroundInteraction": "CLOSE_ON_CLICK_OUTSIDE" }
+  ]
+}

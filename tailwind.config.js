@@ -15,6 +15,11 @@ export default {
                 manrope: ['Manrope', 'sans-serif'],
                 // Instrument Sans — marketing headlines/titles + dashboard type scale
                 display: ['"Instrument Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                // Inter as an explicit opt-in (same stack as `sans`). Figma uses Inter only in chrome:
+                // navbar links, wordmark, dashboard button labels, pagination, table heads, chart axes.
+                // The base body font is deliberately NOT flipped (docs/figma/tokens.md D1 override):
+                // restyled screen roots opt into `font-display`, un-restyled views keep Inter.
+                inter: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
                 // Ubuntu (bold, capitalized) — exclusively for big analytics/stat numbers
                 stat: ['Ubuntu', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
             },
@@ -31,6 +36,8 @@ export default {
                     700: 'rgb(var(--color-primary-700) / <alpha-value>)',
                     800: 'rgb(var(--color-primary-800) / <alpha-value>)',
                     900: 'rgb(var(--color-primary-900) / <alpha-value>)',
+                    // Figma Accent-950 (Analytics bars, Chip) — black-mix step, see utils/colorScale.ts
+                    950: 'rgb(var(--color-primary-950) / <alpha-value>)',
                 },
                 // Admin-configurable secondary brand color (Super Admin → Branding).
                 // New semantic alias for this redesign's new code — see `navy` below
@@ -46,6 +53,7 @@ export default {
                     700: 'rgb(var(--color-secondary-700) / <alpha-value>)',
                     800: 'rgb(var(--color-secondary-800) / <alpha-value>)',
                     900: 'rgb(var(--color-secondary-900) / <alpha-value>)',
+                    950: 'rgb(var(--color-secondary-950) / <alpha-value>)',
                 },
                 // Dococlock brand scale — kept under the pre-existing `medical-*` key
                 // so every current call site (views/patient, views/doctor, etc.)
@@ -102,6 +110,21 @@ export default {
                     100: '#F6F6F6',
                     50: '#FBFBFB',
                 },
+                // Figma `Texts` collection neutrals (Text/Primary, /secondary, /tertiary, /disabled).
+                // Fixed (not admin-themed) for contrast safety. Use for anything restyled to Figma;
+                // `ink-*` stays for the dashboards' literal greys (docs/figma/tokens.md D2).
+                content: {
+                    primary: '#171c1a',
+                    secondary: '#4b5752',
+                    tertiary: '#707b76',
+                    disabled: '#a8b0ac',
+                },
+                // Figma `Ghost` (#d0d8eb): schedule grid lines, Medicine Track bars, dividers.
+                ghost: '#d0d8eb',
+                // Figma `Secondary` (#7b87a4) — a fixed blue-grey, NOT the themable `secondary` role.
+                steel: '#7b87a4',
+                // Pre-login page background (Figma #fafafa / #f9f9f9 frames).
+                page: '#fafafa',
             },
             boxShadow: {
                 'premium': '0 25px 50px -12px rgba(0, 0, 0, 0.08)',
@@ -113,6 +136,16 @@ export default {
                 'ds-card': '0px 0px 2px 0px rgba(0,0,0,0.25)',
                 'ds-pill': '0px 0px 7px 0px rgba(0,0,0,0.05)',
                 'ds-soft': '0px 10px 40px -10px rgba(0,0,0,0.05)',
+                // Figma drop shadows (all #000), x y blur spread alpha — docs/figma/tokens.md §4.1.
+                // Use only on screens restyled to Figma; ds-card/ds-soft above have no Figma counterpart.
+                'ds-row': '12px 9px 20px 0px rgba(0,0,0,0.04)',        // User Card, dashboard rows
+                'ds-queue': '0px 0px 12px 0px rgba(0,0,0,0.06)',       // Queue Card
+                'ds-rise': '0px -1px 12px 0px rgba(0,0,0,0.04)',       // Queue cards
+                'ds-rise-lg': '0px -4px 12px 0px rgba(0,0,0,0.04)',    // Queue cards
+                'ds-track': '-2px -4px 8px 0px rgba(0,0,0,0.02)',      // Medicine Track
+                'ds-modal': '0px 0px 18.1px 0px rgba(0,0,0,0.1)',      // all modals
+                'ds-toast': '0px -4px 12px 0px rgba(0,0,0,0.08)',      // Toaster action
+                'ds-doctor-hover': '0px -8px 20px 0px rgba(0,0,0,0.05)', // Doctor Card hovered state
             },
             borderRadius: {
                 '3xl': '1.5rem',
@@ -124,6 +157,32 @@ export default {
                 'ds-lg': '24px',
                 'ds-xl': '32px',
                 'ds-pill': '500px',
+                // Figma radii with no existing token (queue-bar segments 5px, analytics bars 4px)
+                'ds-xs': '5px',
+                'ds-2xs': '4px',
+            },
+            // Figma type scale — Instrument Sans (docs/figma/tokens.md §2.2). Pair with `font-display`.
+            // Weight is left to the call site except where the role fixes it (stats = Medium).
+            fontSize: {
+                'ds-stat-xl': ['70px', { lineHeight: 'normal', fontWeight: '500' }],
+                'ds-display': ['64px', { lineHeight: 'normal' }],
+                'ds-hero': ['48px', { lineHeight: '58px', letterSpacing: '0.02em' }],
+                'ds-stat': ['48px', { lineHeight: 'normal', letterSpacing: '-0.02em', fontWeight: '500' }],
+                'ds-h36': ['36px', { lineHeight: 'normal' }],
+                'ds-title-24': ['24px', { lineHeight: 'normal' }],
+                'ds-title-20': ['20px', { lineHeight: 'normal' }],
+                'ds-subtitle': ['16px', { lineHeight: '22px' }],
+                'ds-paragraph': ['16px', { lineHeight: 'normal', letterSpacing: '0.02em' }],
+                'ds-body': ['14px', { lineHeight: 'normal' }],
+                'ds-small': ['12px', { lineHeight: 'normal' }],
+            },
+            // Figma prototype motion: every hover/navigate reaction is EASE_OUT 0.3s; screen changes 0.5s.
+            transitionTimingFunction: {
+                'ds-out': 'cubic-bezier(0, 0, 0.58, 1)',
+            },
+            transitionDuration: {
+                'ds-fast': '300ms',
+                'ds-slow': '500ms',
             },
             spacing: {
                 '18': '4.5rem',
