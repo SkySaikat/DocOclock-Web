@@ -1,0 +1,175 @@
+/*
+ * "Doctor Card - Final" (component set 80:4685): resting Variant2 (80:4718, 384 x 502) -> hovered Default
+ * (80:4686, 384 x 481.73). Prototype reaction: ON_HOVER -> CHANGE_TO, SMART_ANIMATE, EASE_OUT, 0.3s.
+ * Numbers: docs/figma/specs/landing-home.md 3.1.1 - 3.1.3 and 5.1, landing-components.md 3.12 / 5.3.
+ *
+ * ONE element whose layers morph. Every geometry value below is `rest + p * (hover - rest)` where
+ * --dcf-p is 0 at rest and 1 while the card is hovered / has keyboard focus inside it. Each animated
+ * property (left, right, top, opacity, filter) carries the same 300ms cubic-bezier(0,0,.58,1)
+ * transition, so all layers tween in parallel exactly like Smart Animate (no stagger).
+ *
+ * Layers matched by name in Figma (tween):    Image Container / Rectangle 16, Info, Chip frame
+ * Layers that exist in one state only (fade): Rectangle 3510 (gradient), stat panels, CTA row
+ *
+ * Horizontal coordinates are anchored with left/right (not width) so the card also works when the
+ * carousel narrows it below 384px on phones; vertical coordinates are the Figma numbers.
+ * The slot is the fixed 384 x 502 resting footprint (the hovered card is 20.27px shorter and simply
+ * leaves slack, as in the prototype), so hovering never moves the carousel.
+ */
+
+.dcf {
+  --dcf-p: 0;
+  --dcf-t: var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1));
+
+  position: relative;
+  flex: none;
+  width: 384px;
+  max-width: 85vw;
+  height: 502px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* hover exists only with a real pointer (touch keeps the resting card and taps straight through);
+   :focus-within gives keyboard users the same state. */
+@media (hover: hover) {
+  .dcf:hover {
+    --dcf-p: 1;
+  }
+}
+
+.dcf:focus-within {
+  --dcf-p: 1;
+}
+
+/* Root of the component: r24, clips its children, and on hover DROP_SHADOW 0,-8 blur 20 #000 @5%.
+   The card has no fill, so the shadow is cast by its contents -> filter drop-shadow (CSS blur = Figma / 2). */
+.dcf__card {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 502px;
+  border-radius: 24px;
+  overflow: hidden;
+  filter: drop-shadow(
+    0 calc(var(--dcf-p) * -8px) calc(var(--dcf-p) * 10px) rgba(0, 0, 0, calc(var(--dcf-p) * 0.05))
+  );
+  transition: filter var(--dcf-t);
+}
+
+/* Image Container: (4,4) 376x405 -> (0,0) 384x405 */
+.dcf__media {
+  position: absolute;
+  left: calc(4px - var(--dcf-p) * 4px);
+  right: calc(4px - var(--dcf-p) * 4px);
+  top: calc(4px - var(--dcf-p) * 4px);
+  height: 405px;
+  border-radius: 24px;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: rgb(var(--color-primary-50));
+  transition: left var(--dcf-t), right var(--dcf-t), top var(--dcf-t);
+}
+
+/* Rectangle 3510 (exists only in the hovered state): 384x405 linear top->bottom, #fafafa alpha 0 -> alpha 1 at 87.5%,
+   blend SCREEN. #fafafa is the page background token (tailwind `page`). It is NOT clipped by the photo's rounded
+   corners in Figma (only by the root's r24), so it is a sibling of .dcf__media with square bottom corners: the
+   page-coloured corners are invisible on the page but they are part of the shape that casts the drop shadow. */
+.dcf__fade {
+  position: absolute;
+  left: calc(4px - var(--dcf-p) * 4px);
+  right: calc(4px - var(--dcf-p) * 4px);
+  top: calc(4px - var(--dcf-p) * 4px);
+  height: 405px;
+  border-radius: 24px 24px 0 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    180deg,
+    theme('colors.page / 0') 0%,
+    theme('colors.page') 87.5%
+  );
+  mix-blend-mode: screen;
+  opacity: var(--dcf-p);
+  transition: left var(--dcf-t), right var(--dcf-t), top var(--dcf-t), opacity var(--dcf-t);
+}
+
+/* Info (name / qualification / rating): row at y425 x12 (below the photo) -> y206 x16 (over the photo), i.e. up 219px */
+.dcf__info {
+  position: absolute;
+  left: calc(12px + var(--dcf-p) * 4px);
+  right: calc(12px + var(--dcf-p) * 4px);
+  top: calc(425px - var(--dcf-p) * 219px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  transition: left var(--dcf-t), right var(--dcf-t), top var(--dcf-t);
+}
+
+/* Frame 1000010559: two 172x113 stat panels at (16,279), gap 8 - exists only when hovered */
+.dcf__stats {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 279px;
+  height: 113px;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+  opacity: var(--dcf-p);
+  transition: opacity var(--dcf-t);
+}
+
+/* Chip: white "Cardiology" pill at (right 28, top 19) -> #eff6ff "CARDIOLOGY" pill at (right 18, top 16).
+   The frame tweens, the two differently named text layers cross-fade -> two stacked pills that travel
+   to the same spot while cross-fading. */
+.dcf__chip {
+  position: absolute;
+  max-width: 62%;
+  padding: 4px 8px;
+  border-radius: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 15px;
+  pointer-events: none;
+  right: calc(28px - var(--dcf-p) * 10px);
+  top: calc(19px - var(--dcf-p) * 3px);
+  transition: right var(--dcf-t), top var(--dcf-t), opacity var(--dcf-t);
+}
+
+.dcf__chip--rest {
+  opacity: calc(1 - var(--dcf-p));
+}
+
+.dcf__chip--hover {
+  opacity: var(--dcf-p);
+}
+
+/* Button row (exists only when hovered): Button Usual Hover 352x44.728 at (16,421) - fades in */
+.dcf__cta {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 421px;
+  height: 44.728px;
+  pointer-events: none;
+  opacity: var(--dcf-p);
+  transition: opacity var(--dcf-t);
+}
+
+.dcf:focus-within .dcf__cta {
+  pointer-events: auto;
+}
+
+@media (hover: hover) {
+  .dcf:hover .dcf__cta {
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dcf {
+    --dcf-t: 0.01ms linear;
+  }
+}

@@ -1,10 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
-import { LogOut, Menu, X, Users, Home, FileText, Calendar, Activity, Gift, MoreHorizontal, User, ChevronDown, Stethoscope, BriefcaseMedical, BarChart2, ClipboardList, LayoutDashboard, Pill, UserCircle, PlusCircle, ShieldCheck, Settings, Wallet, Globe, ArrowLeft, ArrowRight } from 'lucide-react';
-import { Button } from './ui/Button';
+import { Menu, X, Activity, Gift, User, Stethoscope, ShieldCheck, Globe, ArrowLeft, BarChart2, Settings, PlusCircle } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { Footer } from './Footer';
 import { NotificationBell } from './ui/NotificationBell';
+import { DashboardNavbar } from './dashboard/DashboardNavbar';
+import { AvatarMenu, AvatarMenuItem } from './dashboard/AvatarMenu';
+import { BottomTabBar, BottomTabItem } from './dashboard/BottomTabBar';
+import { MaskIcon } from './dashboard/MaskIcon';
+import { DS_ICONS } from './dashboard/assets';
+import { DOCTOR_TABS, DoctorNavbarContext, getDoctorActiveTab } from './doctor/DoctorTabBar';
+import './dashboard/dashboard.css';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -30,60 +36,61 @@ const MARKETING_NAV_LINKS: { label: string; path: string }[] = [
   { label: 'Contact us', path: '/contact-us' },
 ];
 
-// Gradient stops read the live theme CSS variables (set by ThemeContext), so
-// the brand mark recolors instantly whenever Super Admin changes the brand
-// colors — no separate logo-specific theming logic needed.
-const Logo = () => (
-  <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="logoGradient" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-        <stop style={{ stopColor: 'rgb(var(--color-primary-300))' }} />
-        <stop offset="1" style={{ stopColor: 'rgb(var(--color-primary-500))' }} />
-      </linearGradient>
-    </defs>
-    <path d="M30 35 C 30 20, 70 20, 70 35" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" />
-    <circle cx="50" cy="50" r="35" stroke="url(#logoGradient)" strokeWidth="4" strokeOpacity="0.3" fill="white" />
-    <path d="M20 50 C 20 80, 50 85, 50 85" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" />
-    <circle cx="50" cy="85" r="6" fill="url(#logoGradient)" />
-    <path d="M50 50 L 35 40" stroke="#171717" strokeWidth="4" strokeLinecap="round" />
-    <path d="M50 50 L 65 40" stroke="#171717" strokeWidth="4" strokeLinecap="round" />
-    <circle cx="50" cy="50" r="4" fill="#171717" />
-    <g transform="translate(70, 20)">
-      <rect x="0" y="8" width="24" height="6" rx="3" style={{ fill: 'rgb(var(--color-primary-500))' }} />
-      <rect x="9" y="-1" width="6" height="24" rx="3" style={{ fill: 'rgb(var(--color-primary-500))' }} />
-    </g>
-  </svg>
-);
+// Figma Navbar - Dashboard / Patient (396:12117): Queue / Appointments / Medicines / Prescriptions.
+// (Route of each tab; "Home" and "Profile" have no navbar slot in Figma — the logo goes home, the avatar menu opens the account page.)
+const PATIENT_TABS = [
+  { id: '/live-serial', label: 'Queue' },
+  { id: '/patient/appointments', label: 'Appointments' },
+  { id: '/patient/medicine-tracker', label: 'Medicines' },
+  { id: '/patient/prescriptions', label: 'Prescriptions' },
+];
+
+// Phone bottom bar (Figma Card 4 570:20777): 4 tabs, icons are exported assets.
+const DOCTOR_BOTTOM_TABS: BottomTabItem[] = [
+  { id: '/doctor/dashboard', label: 'Overview', icon: DS_ICONS.grid, iconSize: 20 },
+  { id: '/doctor/serial-manager', label: 'Queue', icon: DS_ICONS.queue },
+  { id: '/doctor/appointments', label: 'Appointments', icon: DS_ICONS.calendar },
+  { id: '/doctor/prescription', label: 'Prescriptions', icon: DS_ICONS.prescriptions, iconSize: 15 },
+];
+const PATIENT_BOTTOM_TABS: BottomTabItem[] = [
+  { id: '/live-serial', label: 'Queue', icon: DS_ICONS.queue },
+  { id: '/patient/appointments', label: 'Appointments', icon: DS_ICONS.calendar },
+  { id: '/patient/medicine-tracker', label: 'Medicines', icon: DS_ICONS.pill },
+  { id: '/patient/prescriptions', label: 'Prescriptions', icon: DS_ICONS.prescriptions, iconSize: 15 },
+];
+
+// Patient routes that show the public site (landing / doctor search / doctor profile) rather than a dashboard page.
+const PATIENT_SITE_PATHS = ['/', '/index.html', '/patient/home', '/patient/doctors', '/patient/profile'];
+
+const menuIcon = (src: string) => <MaskIcon src={src} size={20} className="text-content-secondary" />;
 
 export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, onNavigate, onLoginClick, onRegisterClick, hideMobileBottomNav, currentPath, browseMode, onBrowsePublicSite, onReturnToDashboard }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDoctorProfileOpen, setIsDoctorProfileOpen] = useState(false);
   const [isNavCompact, setIsNavCompact] = useState(false);
-  const doctorDropdownRef = useRef<HTMLDivElement>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { profile } = useAuth();
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (doctorDropdownRef.current && !doctorDropdownRef.current.contains(event.target as Node)) {
-        setIsDoctorProfileOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Navbar shrinks on scroll-down, grows back on scroll-up.
+  // Public navbar shrinks on scroll-down, grows back on scroll-up (and gains a hairline shadow once content scrolls under it).
   useEffect(() => {
     let lastY = window.scrollY;
     const handleScroll = () => {
       const y = window.scrollY;
       if (y > lastY && y > 80) setIsNavCompact(true);
       else if (y < lastY) setIsNavCompact(false);
+      setIsScrolled(y > 8);
       lastY = y;
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Mobile drawer: Escape closes it.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsMobileMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isMobileMenuOpen]);
 
   const isPublic = !userRole;
   const isPatient = userRole === UserRole.PATIENT;
@@ -99,236 +106,151 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
     return <div className="min-h-screen relative font-sans text-slate-800 bg-surface">{children}</div>;
   }
 
+  const path = currentPath || '/';
+  // Signed-in chrome (Figma "Navbar - Dashboard"): patients, doctors, and admins browsing the public site.
+  const hasDashboardNav = isPatient || isDoctor || !!browseMode;
+  const isDoctorConsole = isDoctor && !browseMode;
+  const isPatientSitePage = isPatient && (PATIENT_SITE_PATHS.includes(path) || path.startsWith('/doctor/'));
+  const showBottomBar = hasDashboardNav && !hideMobileBottomNav;
+
+  // Page backgrounds (Figma root fills, tokens.md §1.5 / D9): Overview + Queue and the patient Queue use the two theme-derived gradients,
+  // Prescriptions / patient Appointments + the public site sit on #fafafa (`page`), everything else on Fill Color (`surface`).
+  let rootBg = 'bg-surface';
+  if (isPublic || isPatientSitePage || browseMode) rootBg = 'bg-page'; // browse mode = the public site, so same page fill as a guest
+  else if (isDoctorConsole && (path === '/doctor/dashboard' || path === '/doctor/serial-manager')) rootBg = 'bg-ds-page-overview';
+  else if (isDoctorConsole && path === '/doctor/prescription') rootBg = 'bg-page';
+  else if (isPatient && path === '/live-serial') rootBg = 'bg-ds-page-patient';
+  else if (isPatient && path === '/patient/appointments') rootBg = 'bg-page';
+
+  const goTo = (p: string) => () => onNavigate(p);
+
+  const doctorMenu: AvatarMenuItem[] = [
+    { id: 'account', label: 'My Account', icon: menuIcon(DS_ICONS.menuAccount), onSelect: goTo('/doctor/profile') },
+    { id: 'payment', label: 'Payment History', icon: menuIcon(DS_ICONS.menuPayment), onSelect: goTo('/doctor/payment') },
+    ...(onBrowsePublicSite ? [{ id: 'website', label: 'View Website', icon: <Globe size={20} strokeWidth={1.5} className="text-content-secondary" />, onSelect: () => onBrowsePublicSite() }] : []),
+    // Reachability for the tabs the 4-tab phone bar (Figma) has no slot for — only shown below `lg`.
+    { id: 'analytics', label: 'Analytics', icon: <BarChart2 size={20} strokeWidth={1.5} className="text-content-secondary" />, onSelect: goTo('/doctor/analytics'), mobileOnly: true },
+    { id: 'manage', label: 'Manage', icon: <Settings size={20} strokeWidth={1.5} className="text-content-secondary" />, onSelect: goTo('/doctor/practice-settings'), mobileOnly: true },
+    { id: 'enroll', label: 'Enroll Patient', icon: <PlusCircle size={20} strokeWidth={1.5} className="text-content-secondary" />, onSelect: goTo('/doctor/manual-booking'), mobileOnly: true },
+  ];
+  const patientMenu: AvatarMenuItem[] = [
+    { id: 'account', label: 'My Account', icon: menuIcon(DS_ICONS.menuAccount), onSelect: goTo('/patient/more') },
+    { id: 'rewards', label: 'Rewards', icon: menuIcon(DS_ICONS.menuActivity), onSelect: goTo('/patient/rewards') },
+  ];
+  const browseMenu: AvatarMenuItem[] = [
+    { id: 'account', label: 'My Account', icon: menuIcon(DS_ICONS.menuAccount), onSelect: goTo('/patient/more') },
+  ];
+
+  const navItems = isDoctorConsole ? DOCTOR_TABS : isPatient ? PATIENT_TABS : undefined;
+  const activeNav = isDoctorConsole ? getDoctorActiveTab(path) : path;
+
+  // Main column geometry: Figma `Body` = padding 48/64, content 1312 wide. index.css forces `main` padding-x to 24/40px (!important), so the
+  // inner wrapper adds the missing 24px at md+ (24 + 40 = 64) and caps the column at 1312.
+  const mainClass = hasDashboardNav
+    ? `pt-6 ${hideMobileBottomNav ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-32 lg:pb-12'} mx-auto min-h-screen`
+    : `pt-[calc(6.5rem+env(safe-area-inset-top))] ${hideMobileBottomNav ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-32'} max-w-7xl mx-auto min-h-screen`;
+  // Only real dashboard screens get the 1312 column; the public site (guest, patient site pages, and browse mode = "viewing as visitor") stays full-bleed.
+  const constrainColumn = isDoctorConsole || (isPatient && !isPatientSitePage);
+  const innerClass = constrainColumn ? 'w-full max-w-[1360px] mx-auto md:px-6' : 'w-full';
+
   return (
-    <div className="min-h-screen relative font-sans text-slate-800 bg-medical-50">
+    <div className={`min-h-screen relative font-sans text-slate-800 ${rootBg}`}>
 
-      {/* NAVBAR (TOP) - Added safe area top padding. Shrinks on scroll-down, grows on scroll-up. */}
-      <nav className={`fixed top-0 w-full z-50 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pointer-events-none transition-[padding] duration-300 ${isNavCompact ? 'pb-2' : 'pb-4'}`}>
-        <div className={`max-w-7xl mx-auto px-6 flex justify-between items-center rounded-full pointer-events-auto transition-all duration-300 ${isNavCompact ? 'h-11 py-2' : 'h-14 py-3'} ${isPublic ? 'bg-white shadow-ds-pill' : 'glass-panel shadow-premium border-medical-100/50'}`}>
-          {/* Brand Logo */}
-          <div className="flex items-center gap-3 cursor-pointer group shrink-0" onClick={() => onNavigate('/')}>
-            <div className={`transition-transform duration-300 ${isNavCompact ? 'scale-75' : 'scale-100'}`}>
-              <Logo />
-            </div>
-            <span className={`font-display font-bold tracking-tight text-ink-800 transition-all duration-300 ${isNavCompact ? 'text-lg' : 'text-2xl'}`}>
-              DocOclock
-            </span>
-          </div>
+      {/* NAVBAR — signed-in: in-flow Figma "Navbar - Dashboard"; public: Figma "Navbar/Default" floating pill. */}
+      {hasDashboardNav ? (
+        <DashboardNavbar
+          onLogoClick={() => onNavigate('/')}
+          navItems={navItems}
+          activeId={activeNav}
+          onSelectNav={onNavigate}
+          hideWordmarkOnLg={isDoctorConsole}
+        >
+          <NotificationBell variant="dashboard" recipientId={profile?.id} onNavigate={onNavigate} />
+          <AvatarMenu
+            imageUrl={profile?.image}
+            name={profile?.name}
+            items={isDoctorConsole ? doctorMenu : isPatient ? patientMenu : browseMenu}
+            logout={isDoctorConsole || isPatient ? { label: 'Logout', onSelect: () => onLogout?.() } : undefined}
+          />
+        </DashboardNavbar>
+      ) : (
+        /* Public navbar — pill 1224 x 68.73 (Figma 80:7430), white, no shadow at rest. Shrinks on scroll-down. */
+        <nav className={`fixed top-0 w-full z-50 px-4 pointer-events-none transition-[padding] duration-300 ease-ds-out motion-reduce:transition-none ${isNavCompact ? 'pt-[calc(12px+env(safe-area-inset-top))] pb-2' : 'pt-[calc(16px+env(safe-area-inset-top))] md:pt-[calc(26px+env(safe-area-inset-top))] pb-4'}`}>
+          <div className={`max-w-[1224px] mx-auto px-6 flex justify-between items-center rounded-full pointer-events-auto bg-white transition-all duration-300 ease-ds-out motion-reduce:transition-none ${isNavCompact ? 'h-[52px]' : 'h-[68.73px] py-3'} ${isScrolled ? 'shadow-ds-pill' : ''}`}>
+            {/* Brand Logo — Figma Favicon 40x40 + "Dococlock" Inter Regular 16 */}
+            <button type="button" aria-label="Dococlock home" className="flex items-center gap-2 cursor-pointer shrink-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" onClick={() => onNavigate('/')}>
+              <img src={DS_ICONS.logoFavicon} alt="" width={40} height={40} className={`size-10 transition-transform duration-300 ease-ds-out motion-reduce:transition-none ${isNavCompact ? 'scale-90' : 'scale-100'}`} />
+              <span className="font-inter font-normal text-[16px] leading-[normal] text-ink-800">Dococlock</span>
+            </button>
 
-          {/* Desktop Navigation — exact Figma navbar tags */}
-          <div className="hidden lg:flex items-center gap-[44px]">
-            {isPublic && MARKETING_NAV_LINKS.map(link => (
-              <button
-                key={link.path}
-                onClick={() => onNavigate(link.path)}
-                className="font-normal text-[16px] leading-none text-ink-800 hover:text-medical-600 transition-colors whitespace-nowrap"
-              >
-                {link.label}
-              </button>
-            ))}
-          </div>
-          <div className="hidden md:flex items-center gap-5">
-            {isPublic && (
-              <>
-                <button onClick={() => onLoginClick?.(UserRole.PATIENT)} className="font-normal text-[16px] text-ink-800 hover:text-medical-600 transition-colors">
-                  Login
+            {/* Desktop Navigation — exact Figma navbar tags (Inter Regular 16, gap 44; tighter gap only at 1024-1099px where the fixed-width right group leaves no room) */}
+            <div className="hidden lg:flex items-center gap-8 min-[1100px]:gap-[44px]">
+              {MARKETING_NAV_LINKS.map(link => (
+                <button
+                  key={link.path}
+                  onClick={() => onNavigate(link.path)}
+                  className="font-inter font-normal text-[16px] leading-none text-ink-800 hover:text-primary-600 focus-visible:text-primary-600 transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none whitespace-nowrap cursor-pointer"
+                >
+                  {link.label}
                 </button>
-                {/* Figma's "Button Featured Hover" pattern: collapses to an icon-only
-                    circle by default, expands to show the label on hover. */}
+              ))}
+            </div>
+            {/* Right group — fixed 179.78px wide like Figma's Frame 1000012132 (Login at x=0, Buttons slot at x=66 / 113.78 wide) so the
+                Register expand/collapse never changes any sibling's position. */}
+            <div className="hidden md:flex items-center gap-5 w-[179.78px] shrink-0">
+              <button onClick={() => onLoginClick?.(UserRole.PATIENT)} className="w-[46px] shrink-0 text-left font-inter font-normal text-[16px] leading-none text-ink-800 hover:text-primary-600 focus-visible:text-primary-600 transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none cursor-pointer">
+                Login
+              </button>
+              {/* Reserved 113.78px slot: the circle stays right-aligned and the label expands leftwards inside it. */}
+              <div className="w-[113.78px] shrink-0 flex justify-end">
+                {/* Figma's "Button Featured Hover" (80:4763): collapses to a 43.78 x 44.73 icon-only circle by default and expands to 113.78 wide
+                    with the "Register" label on hover / keyboard focus — 300ms EASE_OUT, label fades in while the width grows. */}
                 <button
                   onClick={() => onRegisterClick?.()}
-                  className="group inline-flex items-center rounded-full text-white overflow-hidden bg-gradient-to-b from-medical-300 to-medical-500"
+                  aria-label="Register"
+                  className="group inline-flex items-center h-[44.73px] rounded-full overflow-hidden text-white bg-gradient-to-b from-primary-400 to-primary-600 cursor-pointer btn-sheen focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
                 >
-                  <span className="max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-[max-width] duration-300 ease-out text-[16px] font-display">
-                    <span className="pl-4 pr-0">Register</span>
+                  <span className="grid grid-cols-[0fr] opacity-0 -mr-0 transition-[grid-template-columns,margin,opacity] duration-ds-fast ease-ds-out motion-reduce:transition-none group-hover:grid-cols-[1fr] group-hover:opacity-100 group-hover:-mr-2 group-focus-visible:grid-cols-[1fr] group-focus-visible:opacity-100 group-focus-visible:-mr-2">
+                    <span className="min-w-0 overflow-hidden">
+                      <span className="block whitespace-nowrap pl-4 font-display text-[16px] leading-[normal]">Register</span>
+                    </span>
                   </span>
-                  <span className="flex items-center justify-center px-[18px] py-4">
-                    <ArrowRight size={14} />
-                  </span>
+                  <img src="/assets/figma/booking-arrow-right-btn.svg" alt="" width={43.78} height={44.73} className="relative z-[1] w-[43.78px] h-[44.73px] shrink-0" />
                 </button>
-              </>
-            )}
-
-            {isPatient && (
-              <>
-                <button onClick={() => onNavigate('/patient/home')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-medical-50 transition-all">
-                  <Home size={18} /> Home
-                </button>
-                <button onClick={() => onNavigate('/patient/medicine-tracker')} className="font-bold text-slate-600 hover:text-indigo-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-indigo-50 transition-all">
-                  <Pill size={18} /> Meds
-                </button>
-                <button onClick={() => onNavigate('/patient/appointments')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-medical-50 transition-all">
-                  <Calendar size={18} /> Appointments
-                </button>
-                <button onClick={() => onNavigate('/patient/prescriptions')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-medical-50 transition-all">
-                  <FileText size={18} /> Rx
-                </button>
-                <button onClick={() => onNavigate('/patient/more')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-medical-50 transition-all">
-                  <UserCircle size={18} /> Profile
-                </button>
-                <NotificationBell recipientId={profile?.id} onNavigate={onNavigate} />
-              </>
-            )}
-
-            {(isDoctor || (browseMode && (isSuperAdmin || isHospitalAdmin))) && (
-              <div className="flex items-center gap-4 lg:gap-6">
-                {isDoctor && !browseMode && (
-                  <>
-                    <button onClick={() => onNavigate('/doctor/dashboard')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-medical-50 transition-all">
-                      <LayoutDashboard size={18} /> Dashboard
-                    </button>
-                    <button onClick={() => onNavigate('/doctor/serial-manager')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-medical-50 transition-all">
-                      <Users size={18} /> Queue
-                    </button>
-                    <button onClick={() => onNavigate('/doctor/prescription')} className="font-bold text-slate-600 hover:text-medical-600 flex items-center gap-2 h-10 px-3 rounded-lg hover:bg-medical-50 transition-all">
-                      <FileText size={18} /> RX
-                    </button>
-                  </>
-                )}
-                <NotificationBell recipientId={profile?.id} onNavigate={onNavigate} />
-
-                {/* Doctor Profile Dropdown */}
-                {isDoctor && !browseMode && <div ref={doctorDropdownRef} className="relative ml-2">
-                  <button
-                    onClick={() => setIsDoctorProfileOpen(!isDoctorProfileOpen)}
-                    className="flex items-center gap-3 pl-3 pr-2 py-1.5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-medical-50 hover:border-medical-100 transition-all group"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-medical-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-medical-500/20 overflow-hidden">
-                      {profile?.image ? <img src={profile.image} alt="" className="w-full h-full object-cover" /> : <User size={16} />}
-                    </div>
-                    <div className="text-left hidden lg:block">
-                      <p className="text-[11px] font-black text-slate-900 leading-none mb-0.5">{profile?.name || 'Dr. Account'}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Settings</p>
-                    </div>
-                    <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isDoctorProfileOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {isDoctorProfileOpen && (
-                    <div className="absolute top-full right-0 mt-3 w-64 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-[60]">
-                      <div className="p-4 bg-teal-50/50 border-b border-slate-50">
-                        <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest mb-1">Authenticated As</p>
-                        <p className="text-[13px] font-black text-slate-900 truncate">{profile?.name || 'Doctor'}</p>
-                        <p className="text-[10px] font-bold text-slate-500 mt-0.5">BMDC: {profile?.bmdcNumber || profile?.bmdc_number || 'Verified'}</p>
-                      </div>
-                      <div className="p-2 flex flex-col gap-1">
-                        <button
-                          onClick={() => { onNavigate('/doctor/profile'); setIsDoctorProfileOpen(false); }}
-                          className="w-full flex items-center gap-3 p-3 hover:bg-teal-50/50 rounded-2xl transition-all text-slate-700 group"
-                        >
-                          <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-600 group-hover:border-teal-100 transition-all">
-                            <UserCircle size={18} />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-black text-[13px] leading-tight group-hover:text-teal-700">My Profile</p>
-                            <p className="text-[10px] text-slate-400 font-bold">Personal Settings</p>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => { onNavigate('/doctor/analytics'); setIsDoctorProfileOpen(false); }}
-                          className="w-full flex items-center gap-3 p-3 hover:bg-teal-50/50 rounded-2xl transition-all text-slate-700 group"
-                        >
-                          <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-600 group-hover:border-teal-100 transition-all">
-                            <Wallet size={18} />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-black text-[13px] leading-tight group-hover:text-teal-700">Earnings & Payments</p>
-                            <p className="text-[10px] text-slate-400 font-bold">Financial Options</p>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => { onNavigate('/doctor/practice-settings'); setIsDoctorProfileOpen(false); }}
-                          className="w-full flex items-center gap-3 p-3 hover:bg-teal-50/50 rounded-2xl transition-all text-slate-700 group"
-                        >
-                          <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-600 group-hover:border-teal-100 transition-all">
-                            <Settings size={18} />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-black text-[13px] leading-tight group-hover:text-teal-700">Chamber Settings</p>
-                            <p className="text-[10px] text-slate-400 font-bold">Schedule & Fees</p>
-                          </div>
-                        </button>
-
-                        <div className="my-1.5 h-px bg-slate-100 mx-2" />
-
-                        {onBrowsePublicSite && (
-                          <button
-                            onClick={() => { onBrowsePublicSite(); setIsDoctorProfileOpen(false); }}
-                            className="w-full flex items-center gap-3 p-3 hover:bg-medical-50/60 rounded-2xl transition-all text-slate-700 group"
-                          >
-                            <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-medical-600 group-hover:border-medical-100 transition-all">
-                              <Globe size={18} />
-                            </div>
-                            <div className="text-left">
-                              <p className="font-black text-[13px] leading-tight group-hover:text-medical-700">View Website</p>
-                              <p className="text-[10px] text-slate-400 font-bold">Browse as patient</p>
-                            </div>
-                          </button>
-                        )}
-
-                        <div className="my-1.5 h-px bg-slate-100 mx-2" />
-
-                        <button
-                          onClick={() => { onLogout?.(); setIsDoctorProfileOpen(false); }}
-                          className="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded-2xl transition-all text-red-600 group"
-                        >
-                          <div className="w-9 h-9 rounded-xl bg-white border border-red-50 flex items-center justify-center text-red-400 group-hover:text-red-600 group-hover:border-red-100 transition-all shadow-sm shadow-red-50/50">
-                            <LogOut size={18} />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-black text-[13px] leading-tight">Exit Portal</p>
-                            <p className="text-[10px] text-red-400 font-bold">Log out safely</p>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Mobile UI Controls */}
-          {isPublic && (
-            <button className="lg:hidden text-slate-700 p-2" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {/* Mobile UI Controls */}
+            <button
+              className="lg:hidden text-content-secondary p-2 rounded-lg cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={isMobileMenuOpen}
+            >
               {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
-          )}
-          {(isPatient || isDoctor || browseMode) && (
-            <div className="md:hidden flex items-center gap-1">
-              <NotificationBell recipientId={profile?.id} onNavigate={onNavigate} />
-              <button
-                className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 overflow-hidden hover:bg-slate-200 transition-colors"
-                onClick={() => onNavigate(isPatient || browseMode ? '/patient/more' : '/doctor/profile')}
-              >
-                {isPatient || browseMode ? <UserCircle size={20} /> : <Menu size={20} />}
-              </button>
-            </div>
-          )}
+          </div>
+        </nav>
+      )}
 
-        </div>
-      </nav>
-
-      {/* MOBILE PREMIUM DRAWER (Contextual Sidebar) */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[100] lg:hidden">
-          {/* Backdrop Blur & Overlay */}
+      {/* MOBILE PREMIUM DRAWER (Contextual Sidebar) — public visitors only */}
+      {isPublic && isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+          {/* Scrim — Figma overlay scrim is 25% black */}
           <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
+            className="absolute inset-0 bg-black/25 ds-fade-in"
             onClick={() => setIsMobileMenuOpen(false)}
           />
 
           {/* Drawer Container */}
-          <div className="absolute right-0 top-0 h-full w-[85%] max-w-[320px] bg-white shadow-2xl animate-in slide-in-from-right duration-500 border-l border-slate-100 flex flex-col">
+          <div className="ds-drawer-in absolute right-0 top-0 h-full w-[85%] max-w-[320px] bg-white shadow-ds-modal flex flex-col font-display">
             {/* Drawer Header */}
-            <div className="p-6 flex justify-between items-center border-b border-slate-50">
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                <UserCircle size={24} />
-              </div>
+            <div className="p-6 flex justify-between items-center border-b border-ink-100">
+              <img src={DS_ICONS.logoFavicon} alt="" width={40} height={40} className="size-10" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500"
+                aria-label="Close menu"
+                className="p-2 hover:bg-ink-100 rounded-xl transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none text-content-secondary cursor-pointer"
               >
                 <X size={24} />
               </button>
@@ -342,7 +264,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
                   <button
                     key={link.path}
                     onClick={() => { onNavigate(link.path); setIsMobileMenuOpen(false); }}
-                    className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-ink-800 font-medium text-[15px] transition-colors"
+                    className="w-full text-left p-3 rounded-xl hover:bg-ink-50 text-ink-800 font-inter font-normal text-[16px] transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none cursor-pointer"
                   >
                     {link.label}
                   </button>
@@ -350,55 +272,55 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
               </div>
 
               {/* Account Section */}
-              <div className="space-y-4 pt-4 border-t border-slate-50">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Switch Account</h3>
+              <div className="space-y-4 pt-4 border-t border-ink-100">
+                <h3 className="text-[12px] font-medium text-content-tertiary px-1">Switch Account</h3>
                 <div className="grid gap-3">
                   <button
                     onClick={() => { onRegisterClick?.(); setIsMobileMenuOpen(false); }}
-                    className="btn-sheen w-full p-4 rounded-[16px] text-white flex items-center justify-center gap-2 font-display font-semibold active:scale-95 transition-all bg-gradient-to-b from-medical-300 to-medical-500"
+                    className="btn-sheen w-full h-12 rounded-full text-white flex items-center justify-center font-display text-[16px] bg-gradient-to-b from-primary-400 to-primary-600 cursor-pointer"
                   >
-                    Register <ArrowRight size={16} />
+                    Register
                   </button>
                   <button
                     onClick={() => { onLoginClick?.(UserRole.PATIENT); setIsMobileMenuOpen(false); }}
-                    className="w-full p-4 rounded-[16px] bg-medical-600 text-white flex items-center gap-4 group transition-all active:scale-95 shadow-lg shadow-medical-500/20"
+                    className="w-full p-4 rounded-2xl bg-primary-500 text-white flex items-center gap-4 cursor-pointer"
                   >
                     <div className="bg-white/20 p-2 rounded-lg">
                       <User size={18} />
                     </div>
                     <div className="text-left">
-                      <p className="text-xs font-black uppercase tracking-widest leading-none mb-1">Patient Portal</p>
-                      <p className="text-[10px] opacity-70 font-medium">Book & Track Serial</p>
+                      <p className="text-[14px] font-medium leading-none mb-1">Patient Portal</p>
+                      <p className="text-[12px] opacity-80">Book & Track Serial</p>
                     </div>
                   </button>
 
                   <button
                     onClick={() => { onNavigate('/doctor-login'); setIsMobileMenuOpen(false); }}
-                    className="w-full p-4 rounded-[16px] bg-white border border-slate-200 text-slate-900 flex items-center gap-4 hover:border-medical-600 transition-all active:scale-95"
+                    className="w-full p-4 rounded-2xl bg-white border border-ink-200 text-content-primary flex items-center gap-4 hover:border-primary-500 transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none cursor-pointer"
                   >
-                    <div className="bg-slate-50 p-2 rounded-lg text-medical-600">
+                    <div className="bg-ink-50 p-2 rounded-lg text-primary-500">
                       <Stethoscope size={18} />
                     </div>
                     <div className="text-left">
-                      <p className="text-xs font-black uppercase tracking-widest leading-none mb-1">Doctor Portal</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Queue & Prescriptions</p>
+                      <p className="text-[14px] font-medium leading-none mb-1">Doctor Portal</p>
+                      <p className="text-[12px] text-content-tertiary">Queue & Prescriptions</p>
                     </div>
                   </button>
                 </div>
               </div>
 
               {/* Supporting Links */}
-              <div className="space-y-4 pt-4 border-t border-slate-50">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Resources</h3>
+              <div className="space-y-4 pt-4 border-t border-ink-100">
+                <h3 className="text-[12px] font-medium text-content-tertiary px-1">Resources</h3>
                 <div className="space-y-1">
                   {[
                     { icon: Activity, label: 'About DocOclock' },
                     { icon: Gift, label: 'Help & Support' },
                     { icon: ShieldCheck, label: 'Privacy Policy' }
                   ].map((item, i) => (
-                    <button key={i} className="w-full flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors text-slate-600 group">
-                      <item.icon size={16} className="text-slate-400 group-hover:text-medical-600" />
-                      <span className="text-sm font-bold">{item.label}</span>
+                    <button key={i} className="w-full flex items-center gap-4 p-3 hover:bg-ink-50 rounded-xl transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none text-content-secondary group cursor-pointer">
+                      <item.icon size={16} className="text-content-tertiary group-hover:text-primary-500" />
+                      <span className="text-[14px]">{item.label}</span>
                     </button>
                   ))}
                 </div>
@@ -406,17 +328,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-6 border-t border-slate-50 text-center">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">© {new Date().getFullYear()} DocOclock v2.0</p>
+            <div className="p-6 border-t border-ink-100 text-center">
+              <p className="text-[12px] text-content-tertiary">© {new Date().getFullYear()} DocOclock v2.0</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* MAIN CONTENT AREA - Accounts for safe area top */}
-      <main className={`pt-[calc(6.5rem+env(safe-area-inset-top))] ${hideMobileBottomNav ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-32'} max-w-7xl mx-auto min-h-screen`}>
-        <div className="w-full">
-          {children}
+      {/* MAIN CONTENT AREA */}
+      <main className={mainClass}>
+        <div className={innerClass}>
+          {/* While the doctor navbar shows the tabs, per-page <DoctorTabBar/> copies render nothing (see DoctorTabBar.tsx). */}
+          <DoctorNavbarContext.Provider value={isDoctorConsole}>
+            {children}
+          </DoctorNavbarContext.Provider>
         </div>
       </main>
 
@@ -424,73 +349,26 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
       {/* BROWSE MODE BANNER — shown when admin/doctor views the public site */}
       {browseMode && onReturnToDashboard && (
-        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md text-white pl-4 pr-2 py-2 rounded-2xl shadow-2xl border border-white/10 text-sm whitespace-nowrap">
-          <Globe size={14} className="text-medical-400 shrink-0" />
-          <span className="font-bold text-slate-300 text-xs">Viewing as visitor</span>
+        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-content-primary/95 backdrop-blur-md text-white pl-4 pr-2 py-2 rounded-2xl shadow-2xl border border-white/10 text-sm whitespace-nowrap">
+          <Globe size={14} className="text-primary-400 shrink-0" />
+          <span className="font-medium text-content-disabled text-xs">Viewing as visitor</span>
           <button
             onClick={onReturnToDashboard}
-            className="flex items-center gap-1.5 bg-medical-600 hover:bg-medical-700 text-white px-3 py-1.5 rounded-xl text-xs font-black transition-colors"
+            className="flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none cursor-pointer"
           >
             <ArrowLeft size={12} /> Dashboard
           </button>
         </div>
       )}
 
-      {/* DOCTOR MOBILE BOTTOM NAV - FLOATING DOCK - Respects safe area bottom */}
-      {isDoctor && !hideMobileBottomNav && !browseMode && (
-        <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[420px] z-50">
-          <div className="bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-2xl px-2 flex justify-around items-center h-16 rounded-[32px] ring-1 ring-white/5">
-            <button onClick={() => onNavigate('/doctor/dashboard')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
-              <LayoutDashboard size={20} /> <span className="scale-90">Dash</span>
-            </button>
-            <button onClick={() => onNavigate('/doctor/serial-manager')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
-              <Users size={20} /> <span className="scale-90">Queue</span>
-            </button>
-            <button onClick={() => onNavigate('/doctor/manual-booking')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-medical-400 hover:text-medical-300 transition-all">
-              <PlusCircle size={22} className="shadow-lg shadow-medical-500/20" /> <span className="scale-90">Enroll</span>
-            </button>
-            <button onClick={() => onNavigate('/doctor/prescription')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
-              <FileText size={20} /> <span className="scale-90">Rx</span>
-            </button>
-            <button onClick={() => onNavigate('/doctor/analytics')} className="flex flex-col items-center gap-1 font-bold text-[10px] text-slate-400 hover:text-white transition-all">
-              <BarChart2 size={20} /> <span className="scale-90">Analytics</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* PATIENT MOBILE BOTTOM NAV - REFINED PREMIUM DOCK - Respects safe area bottom */}
-      {(isPatient || browseMode) && !hideMobileBottomNav && (
-        <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[340px] z-50">
-          <div className="bg-white border-t border-slate-100/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)] px-1.5 flex justify-around items-center h-[54px] rounded-[20px]">
-            {[
-              { path: '/patient/home', icon: Home, label: 'Home' },
-              { path: '/patient/appointments', icon: Calendar, label: 'Apps' },
-              { path: '/patient/medicine-tracker', icon: Pill, label: 'Meds' },
-              { path: '/patient/prescriptions', icon: FileText, label: 'Rx' }
-            ].map((item) => {
-              const isActive = (currentPath || '/') === item.path || (item.path === '/patient/home' && ((currentPath || '/') === '/' || (currentPath || '/') === '/index.html'));
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => onNavigate(item.path)}
-                  className="relative flex-1 flex flex-col items-center justify-center min-h-[48px] min-w-[48px] transition-all duration-300 group"
-                >
-                  <div className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all duration-500 ${isActive ? 'bg-medical-50/60 shadow-sm shadow-medical-500/5 text-medical-600' : 'text-slate-400'}`}>
-                    <item.icon
-                      size={isActive ? 19 : 18}
-                      className={`transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}
-                      strokeWidth={isActive ? 2.5 : 2}
-                    />
-                    <span className={`text-[9px] font-black uppercase tracking-widest transition-opacity duration-300 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
-                      {item.label}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* PHONE / TABLET BOTTOM BAR — Figma Card 4 (570:20777). Desktop uses the navbar tabs instead. */}
+      {showBottomBar && (
+        <BottomTabBar
+          className="lg:hidden"
+          items={isDoctorConsole ? DOCTOR_BOTTOM_TABS : PATIENT_BOTTOM_TABS}
+          activeId={isDoctorConsole ? getDoctorActiveTab(path) : path}
+          onSelect={onNavigate}
+        />
       )}
     </div>
   );

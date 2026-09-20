@@ -1,0 +1,21 @@
+/*
+ * Main landing page (views/patient/Home.tsx) — page-level rules that Tailwind utilities cannot express.
+ * Imported by Home.tsx.
+ */
+
+/*
+ * Figma's landing frames are full-bleed (hero photo, specialty rows) and the page content sits in a
+ * 1200 column INSIDE them. Layout.tsx wraps every page in `<main class="max-w-7xl ...">` and index.css
+ * gives `main` a fixed 24/40px gutter plus `overflow-x: hidden !important`, which clips anything wider
+ * than 1280px. While the landing root (.dc-landing) is on screen we lift that clamp on the main element
+ * only; Home.tsx lays out its own 1200 columns and the hero's top offset (the fixed navbar floats over
+ * the photo exactly as in Figma, where the hero starts at y = 0).
+ * Local workaround: the proper fix is a full-bleed opt-out in Layout.tsx (reported as a shared gap).
+ */
+main:has(.dc-landing) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0 !important;
+  max-width: none !important;
+  overflow-x: clip !important;
+}

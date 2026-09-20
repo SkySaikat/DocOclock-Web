@@ -1,5 +1,6 @@
 import React from 'react';
 import { Star, MapPin, ChevronRight, Users, Clock } from 'lucide-react';
+import { DoctorRevealCard } from '../landing/DoctorRevealCard';
 
 interface DoctorCardProps {
     doctor: {
@@ -12,22 +13,50 @@ interface DoctorCardProps {
         totalPatients?: number;
         image?: string;
         hospitalName?: string;
+        /** e.g. "MBBS, FCPS(CARDIOLOGY)" — used by `reveal` mode. */
+        degrees?: string;
     };
     ctaLabel?: string;
     onCtaClick?: () => void;
     /** Figma "variant2" — photo, specialty pill, name, qualification, rating.
      *  No stat panels, no CTA button. Used by the "Meet Our Medical Experts" carousel. */
     compact?: boolean;
+    /** Figma "Doctor Card - Final" (80:4685): resting photo card that morphs into the full info card
+     *  (stat panels + "Get an Appointment") on hover / keyboard focus. Used by the landing page's
+     *  "Meet Our Medical Experts" row. Takes precedence over `compact`. */
+    reveal?: boolean;
     onClick?: () => void;
+    /** Extra classes for the root element (`reveal` mode only). */
+    className?: string;
 }
 
 export const DoctorCard: React.FC<DoctorCardProps> = ({
     doctor,
-    ctaLabel = 'Book Appointment',
+    ctaLabel,
     onCtaClick,
     compact = false,
+    reveal = false,
     onClick,
+    className,
 }) => {
+    if (reveal) {
+        return (
+            <DoctorRevealCard
+                name={doctor.name}
+                specialty={doctor.specialty}
+                degrees={doctor.degrees}
+                image={doctor.image}
+                rating={doctor.rating}
+                experience={doctor.experience}
+                totalPatients={doctor.totalPatients}
+                ctaLabel={ctaLabel}
+                onClick={onClick}
+                onCtaClick={onCtaClick}
+                className={className}
+            />
+        );
+    }
+
     if (compact) {
         return (
             <div
@@ -128,7 +157,7 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
                         }}
                         className="btn-sheen w-full h-11 rounded-full bg-gradient-to-b from-medical-500 to-medical-600 text-white font-display font-semibold text-[13px] flex items-center justify-center gap-2 transition-all hover:brightness-105 active:scale-95"
                     >
-                        {ctaLabel}
+                        {ctaLabel ?? 'Book Appointment'}
                         <ChevronRight size={14} />
                     </button>
                 )}

@@ -1,5 +1,5 @@
 /**
- * Sort menu (Figma frame "4" 368:16699): 136px white popover, r16, 1px `background` border, shadow 0 -4 12 .04, rows 39px / 12px text,
+ * Sort menu (Figma frame "4" 368:16699): 136px white popover, r16, 1px inside `surface` (Fill Color) stroke, shadow 0 -4 12 .04, rows 39px / 12px text,
  * selected row = primary-50 fill + secondary-500 text, 1px ink-50 dividers.
  * <SortMenu options={[{id,label}]} value onSelect(id) onClose /> — render it inside the filter button's `relative` wrapper (SearchField `filterSlot`);
  * it positions itself `absolute top-[calc(100%+6px)] left-[-5px]` and fades in 300ms (DISSOLVE). Dismissal (outside click / Esc) is the parent's job — see useDismiss.
@@ -22,7 +22,7 @@ interface SortMenuProps {
 export const SortMenu: React.FC<SortMenuProps> = ({ options, value, onSelect, onClose, className = '' }) => (
   <div
     role="menu"
-    className={`ds-fade-in absolute top-[calc(100%+6px)] left-[-5px] z-30 w-[136px] rounded-2xl bg-white border border-background shadow-ds-rise-lg overflow-hidden ${className}`}
+    className={`ds-fade-in absolute top-[calc(100%+6px)] left-[-5px] z-30 w-[136px] rounded-2xl bg-white outline outline-1 -outline-offset-1 outline-surface shadow-ds-rise-lg overflow-hidden ${className}`}
   >
     {options.map((o, i) => {
       const selected = o.id === value;

@@ -1,66 +1,67 @@
 import React, { useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { Button } from './ui/Button';
+import { SectionEyebrowHeader } from './ui/SectionEyebrowHeader';
 
+// Figma "Footer" 80:1932 (1460 x 897.73, clip): dark CTA band + logo / newsletter row + legal line.
 export const Footer: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   const [email, setEmail] = useState('');
 
   return (
     <footer
-      className="relative overflow-hidden flex flex-col items-center gap-[80px] md:gap-[120px] py-16 md:py-[64px]"
-      style={{ backgroundImage: 'linear-gradient(180deg, rgb(48,47,52) 0%, rgb(10,10,10) 100%)' }}
+      // visible fill = linear #302f34 -> #0a0a0a top-to-bottom (Figma literals; the layers underneath are fully covered)
+      className="relative flex flex-col items-center gap-16 overflow-hidden bg-[linear-gradient(180deg,#302f34_0%,#0a0a0a_100%)] py-16 font-display md:gap-[120px]"
     >
-      {/* Landscape photo overlay — exact Figma asset, darkened via mix-blend-multiply */}
-      <div className="absolute inset-0 mix-blend-multiply pointer-events-none">
-        <img src="/assets/figma/footer-bg.png" alt="" className="w-full h-full object-cover" />
+      {/* Rectangle 4995: landscape photo, blend MULTIPLY */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 mix-blend-multiply">
+        <img src="/assets/figma/footer-bg.png" alt="" className="h-full w-full object-cover" />
       </div>
-      {/* Decorative texture overlay — exact Figma asset */}
-      <div className="absolute -inset-x-1/2 -inset-y-1/3 mix-blend-exclusion pointer-events-none opacity-60">
-        <img src="/assets/figma/footer-texture.svg" alt="" className="w-full h-full object-cover" />
-      </div>
-
-      {/* CTA band */}
-      <div className="relative z-10 flex flex-col items-center gap-7 w-full max-w-[808px] px-6 text-center">
-        <span className="inline-flex items-center gap-2.5 bg-white/10 px-3 py-2 rounded-full">
-          <span className="w-[21px] h-2 rounded-full bg-medical-500" />
-          <span className="text-white text-[14px] font-normal">Join Dococlock</span>
-        </span>
-        <h2 className="font-sans font-normal text-white text-[32px] md:text-[46px] leading-[1.2] md:leading-[58px] tracking-[0.92px]">
-          Healthcare made simple with smarter appointment scheduling.
-        </h2>
-        <p className="text-ink-400 text-[16px] tracking-[0.32px] max-w-[600px]">
-          Book verified doctors, track your live queue, and manage prescriptions — all from one account.
-        </p>
-        <button
-          onClick={() => onNavigate('/patient/doctors')}
-          className="btn-sheen inline-flex items-center rounded-full text-white overflow-hidden mt-2 hover:brightness-105 active:scale-[0.98] transition-all bg-gradient-to-b from-medical-300 to-medical-500"
-        >
-          <span className="pl-6 text-[16px] font-display">Register</span>
-          <span className="flex items-center justify-center px-[18px] py-4">
-            <ArrowRight size={16} />
-          </span>
-        </button>
+      {/* Group 1000009031: four blurred circles, blend EXCLUSION (opacity 0.4 is baked into the exported SVG,
+          which is 3000.8 x 2341.8 at (-739.4, -846) from the footer's top-left) */}
+      <div aria-hidden="true" className="pointer-events-none absolute left-[-50.64%] top-[-846px] h-[2341.8px] w-[205.54%] mix-blend-exclusion">
+        <img src="/assets/figma/footer-texture.svg" alt="" className="h-full w-full" />
       </div>
 
-      {/* Logo/description + newsletter */}
-      <div className="relative z-10 flex flex-col gap-[120px] w-full max-w-[1200px] px-6">
-        <div className="flex flex-col md:flex-row gap-10 md:gap-[80px] items-start justify-between">
-          <div className="flex flex-col gap-7 w-full md:w-[375px] shrink-0">
+      {/* CTA band 80:1939 (808 wide, gap 28) */}
+      <div className="relative z-10 flex w-full max-w-[808px] flex-col items-center gap-7 px-6 text-center">
+        <SectionEyebrowHeader
+          variant="figma"
+          tone="light"
+          center
+          eyebrow="Join to Dococlock"
+          title="Healthcare made simple with smarter appointment scheduling."
+          titleClassName="max-w-[759px]"
+        />
+        <div className="flex w-full flex-col items-center gap-9">
+          <p className="text-[16px] leading-[normal] tracking-[0.02em] text-content-tertiary md:max-w-[808px]">
+            Book verified doctors, track your live queue, and manage prescriptions — all from one account.
+          </p>
+          <div className="flex items-center justify-center gap-[10px]">
+            <Button variant="figma-primary" onClick={() => onNavigate('/patient/doctors')}>Register</Button>
+            <Button variant="figma-secondary" onClick={() => onNavigate('/patient/doctors')}>Register</Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Logo / description + newsletter (80:1942) */}
+      <div className="relative z-10 flex w-full max-w-[1248px] flex-col gap-16 px-6 md:gap-[120px]">
+        <div className="flex flex-col items-start justify-between gap-10 md:flex-row md:gap-[80px]">
+          <div className="flex w-full shrink-0 flex-col gap-7 md:w-[375px]">
             <div className="flex items-center gap-1">
-              <img src="/assets/figma/logo-mark.svg" alt="" className="w-[50px] h-[50px]" />
-              <span className="text-white text-[28px] font-sans">Dococlock</span>
+              <img src="/assets/figma/logo-mark.svg" alt="" className="h-[50px] w-[50px]" />
+              <span className="font-inter text-[28px] leading-[normal] text-white">Dococlock</span>
             </div>
-            <p className="text-ink-400 text-[16px] tracking-[0.32px] leading-relaxed">
+            <p className="text-[16px] leading-[normal] tracking-[0.02em] text-content-tertiary">
               Dococlock is a doctor-appointment platform that helps patients find BMDC-verified doctors,
               track their live queue position, and manage digital prescriptions in one place.
             </p>
           </div>
-          <div className="flex flex-col gap-7 w-full md:w-[492px] shrink-0">
-            <p className="text-ink-400 text-[16px] tracking-[0.32px]">
+          <div className="flex w-full shrink-0 flex-col gap-7 md:w-[492px]">
+            <p className="text-[16px] leading-[normal] tracking-[0.02em] text-content-tertiary">
               "Subscribe to receive appointment reminders, health tips, and product updates."
             </p>
             <form
               onSubmit={(e) => { e.preventDefault(); setEmail(''); }}
-              className="bg-white flex items-center justify-between pl-4 pr-1 py-1 rounded-full w-full"
+              className="flex w-full items-center justify-between rounded-full bg-white py-1 pl-4 pr-1"
             >
               <input
                 type="email"
@@ -68,22 +69,15 @@ export const Footer: React.FC<{ onNavigate: (path: string) => void }> = ({ onNav
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email Address"
-                className="flex-1 min-w-0 text-[#2b2929] text-[16px] outline-none bg-transparent"
+                aria-label="Email address"
+                className="min-w-0 flex-1 bg-transparent font-inter text-[16px] text-[#2b2929] outline-none placeholder:text-[#2b2929]"
               />
-              <button
-                type="submit"
-                className="btn-sheen inline-flex items-center rounded-full text-white shrink-0 bg-gradient-to-b from-medical-300 to-medical-500"
-              >
-                <span className="pl-4 text-[16px] font-display">Subscribe</span>
-                <span className="flex items-center justify-center px-[18px] py-4">
-                  <ArrowRight size={16} />
-                </span>
-              </button>
+              <Button variant="figma-gradient" type="submit">Subscribe</Button>
             </form>
           </div>
         </div>
 
-        <p className="text-ink-400 text-[16px] tracking-[0.32px] text-center md:text-left">
+        <p className="text-center text-[16px] leading-[normal] tracking-[0.02em] text-content-tertiary md:text-left">
           © {new Date().getFullYear()} Dococlock. All rights reserved.
         </p>
       </div>

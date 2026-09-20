@@ -1,10 +1,20 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Bell, Calendar, Clock, ShieldCheck, FileText, Star, X, CheckCheck } from 'lucide-react';
 import { useNotifications, AppNotification } from '../../hooks/useNotifications';
+import { MaskIcon } from '../dashboard/MaskIcon';
+import { useDismiss } from '../dashboard/useDismiss';
+import { DS_ICONS } from '../dashboard/assets';
+import '../dashboard/dashboard.css';
 
 interface NotificationBellProps {
   recipientId: string | undefined;
   onNavigate: (path: string) => void;
+  /**
+   * `default` = the original 40px rounded-xl bell (AdminLayout and any un-restyled chrome).
+   * `dashboard` = Figma's Misc. Icons bell cell (317:13566): fills its 44x49 parent cell, 20px `notification-3-line` glyph in Text/tertiary,
+   * panel anchored to the right edge of the white Misc pill and faded in (300ms EASE_OUT).
+   */
+  variant?: 'default' | 'dashboard';
 }
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; border: string; bg: string }> = {
@@ -28,21 +38,15 @@ function relativeTime(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export const NotificationBell: React.FC<NotificationBellProps> = ({ recipientId, onNavigate }) => {
+export const NotificationBell: React.FC<NotificationBellProps> = ({ recipientId, onNavigate, variant = 'default' }) => {
+  const isDash = variant === 'dashboard';
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(recipientId);
 
-  // Close on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    if (open) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  // Close on outside click / touch / Escape
+  const closePanel = useCallback(() => setOpen(false), []);
+  useDismiss(panelRef, open, closePanel);
 
   const handleNotificationClick = useCallback((n: AppNotification) => {
     if (!n.is_read) markAsRead(n.id);
@@ -53,22 +57,31 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ recipientId,
   }, [markAsRead, onNavigate]);
 
   return (
-    <div ref={panelRef} className="relative">
+    <div ref={panelRef} className={isDash ? 'relative flex-1 h-full' : 'relative'}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700"
-        aria-label="Notifications"
+        className={isDash
+          ? 'relative w-full h-full flex items-center justify-center p-3 rounded-lg cursor-pointer text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500'
+          : 'relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700'}
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        aria-haspopup="dialog"
+        aria-expanded={open}
       >
-        <Bell size={20} />
+        {isDash ? <MaskIcon src={DS_ICONS.notification} size={20} /> : <Bell size={20} />}
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-sm animate-pulse">
+          // Unread badge = functional (not in Figma); fixed semantic red, pinned to the glyph's top-right corner in the dashboard cell.
+          <span className={`absolute ${isDash ? 'top-[9px] right-[8px]' : 'top-1 right-1'} w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-sm animate-pulse motion-reduce:animate-none`}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-3 w-80 bg-white rounded-ds-lg shadow-2xl border border-slate-100 z-[70] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+        <div
+          role="dialog"
+          aria-label="Notifications"
+          className={`absolute w-80 max-w-[calc(100vw-32px)] bg-white rounded-ds-lg shadow-2xl border border-slate-100 z-[70] overflow-hidden ${isDash ? 'ds-fade-in right-[-52px] top-[calc(100%+6px)]' : 'right-0 top-full mt-3 animate-in fade-in zoom-in-95 duration-200'}`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-50">
             <div className="flex items-center gap-2">

@@ -1,0 +1,103 @@
+/*
+ * Figma "Button Usual Hover" (set 80:4768) and "Button Featured Hover" (set 80:4763).
+ * Prototype reaction on both: ON_HOVER -> CHANGE_TO, SMART_ANIMATE, EASE_OUT, 0.3s.
+ * Numbers below were read from Figma (docs/figma/specs/landing-components.md 3.2, 3.3, 5.1, 5.2).
+ * Imported by components/ui/Button.tsx; only the `figma-*` Button variants use these classes,
+ * so every existing variant keeps its old look.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Usual Hover: a hard-edged, soft-light blended ellipse ("Ellipse 51") parked just below the
+ * 44.728px-high pill. On hover it rises over the whole pill, grows 45 -> 123 high and dims
+ * #ffffff -> #bebebe. Anchored with left/right (Figma STRETCH constraint) + top/height so it
+ * works at any button width. #fff / #bebebe are Figma's literal, brand-independent blend colours.
+ * ------------------------------------------------------------------------- */
+.fbtn-sheen::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  left: 40.778px;
+  right: 36px;
+  top: 46px;
+  height: 45px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  mix-blend-mode: soft-light;
+  transition:
+    left var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)),
+    right var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)),
+    top var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)),
+    height var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)),
+    background-color var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1));
+}
+
+/* hover only where a real pointer exists (touch browsers keep :hover after a tap) */
+@media (hover: hover) {
+  .fbtn-sheen:not(:disabled):hover::after {
+    left: -1.222px;
+    right: 0;
+    top: -39.727px;
+    height: 123px;
+    background-color: #bebebe;
+  }
+}
+
+/* keyboard parity (not in Figma) */
+.fbtn-sheen:not(:disabled):focus-visible::after {
+  left: -1.222px;
+  right: 0;
+  top: -39.727px;
+  height: 123px;
+  background-color: #bebebe;
+}
+
+/* ---------------------------------------------------------------------------
+ * Featured Hover: icon-only 43.778 x 44.728 circle that grows to 113.778 wide, revealing the label
+ * (label frame = 16 + text + 16 with an auto-layout gap of -24 => advances text + 8, then the
+ * 43.778 chevron frame). grid 0fr -> 1fr animates the label's auto width; opacity is the
+ * SMART_ANIMATE dissolve of the appearing label layer.
+ * ------------------------------------------------------------------------- */
+.fbtn-featured__label {
+  display: grid;
+  grid-template-columns: 0fr;
+  margin-right: 0;
+  opacity: 0;
+  transition:
+    grid-template-columns var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)),
+    margin-right var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)),
+    opacity var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1));
+}
+
+.fbtn-featured__label > span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.fbtn-featured__label > span > span {
+  display: block;
+  padding-left: 16px;
+}
+
+.fbtn-featured--expanded .fbtn-featured__label,
+.fbtn-featured:focus-visible .fbtn-featured__label {
+  grid-template-columns: 1fr;
+  margin-right: -8px;
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .fbtn-featured:hover .fbtn-featured__label {
+    grid-template-columns: 1fr;
+    margin-right: -8px;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fbtn-sheen::after,
+  .fbtn-featured__label {
+    transition: none;
+  }
+}
