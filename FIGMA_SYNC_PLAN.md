@@ -1,5 +1,7 @@
 # DocOClock — Figma-Exact Sync Plan
 
+> **STATUS (2026-09-21): superseded by [`docs/figma/PROGRESS.md`](docs/figma/PROGRESS.md)** — that file is the live status board, resume guide and commit log. The data-access blocker described in §0/§1 below was **resolved on 2026-09-20** (Figma plan upgraded; the Figma MCP works). Foundation, shared chrome and the landing page are done; the doctor/patient screens are in progress. Section 3 (node map) and §4 (landing structure) below are still accurate; per-unit build rules live in `docs/figma/BUILD_RULES.md`.
+
 Goal: make the running app match the Figma file **DocOClock** exactly (layout, components, hover/prototype motion) for the doctor side, the patient dashboard and the landing page — **without changing behaviour**.
 
 - Figma file key: `zJRyAML8hv0uEBOXtu5Hpn` (pages: *Design System*, **Web Version V1**, *App Version V1*)
