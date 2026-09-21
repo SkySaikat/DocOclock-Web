@@ -1,12 +1,23 @@
-/* Doctor Overview overlay motion (docs/figma/specs/doctor-overview.md §3-4).
-   Figma EASE_OUT = cubic-bezier(0,0,.58,1), 0.3s.
-   - Desktop (>=1024px): hospital switcher = MANUAL overlay, DISSOLVE (opacity 0 -> 1). Reuses `ds-fade-in` from dashboard.css.
-   - Phone / tablet (<1024px): App Version V1 Flow 14 = BOTTOM_CENTER sheet, MOVE_IN from the TOP: the sheet starts just above the
-     viewport and travels down to its resting place (distance = the viewport height, since its bottom edge starts at y = 0). */
+/* Doctor Overview overlay motion (docs/figma/specs/doctor-overview.md §3, §6).
+   Figma EASE_OUT = cubic-bezier(0,0,.58,1), 0.3s (tokens --ds-ease-out / --ds-duration-fast from index.css).
+   - Desktop (>=1024px): hospital switcher = MANUAL overlay, DISSOLVE (opacity 0 -> 1) — Figma 339:17421 reaction on 341:18169.
+   - Phone / tablet (<1024px): App Version V1 Flow 14 = BOTTOM_CENTER sheet, MOVE_IN from the TOP — Figma 572:26252 -> 572:26261: the sheet
+     starts just above the viewport and travels down to its resting place (distance = the viewport height, since its bottom edge starts at y = 0).
+   The 25% black scrim (overlayBackground rgba(0,0,0,.25), CLOSE_ON_CLICK_OUTSIDE) dissolves in with the same timing on both.
+   Keyframes are local so the overlay does not depend on which other screens happen to have loaded dashboard.css. */
+
+@keyframes ov-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 @keyframes ov-move-in-top {
   from { transform: translateY(-100vh); }
   to { transform: translateY(0); }
+}
+
+.ov-scrim {
+  animation: ov-fade-in var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)) both;
 }
 
 .ov-popover {
@@ -15,11 +26,12 @@
 
 @media (min-width: 1024px) {
   .ov-popover {
-    animation-name: ds-fade-in;
+    animation-name: ov-fade-in;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ov-scrim,
   .ov-popover {
     animation: none;
   }

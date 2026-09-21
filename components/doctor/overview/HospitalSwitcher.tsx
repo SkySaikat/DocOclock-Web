@@ -2,9 +2,11 @@
  * Hospital switcher of the Doctor Overview: the translucent pill with the active hospital + a primary icon circle (Figma 341:18166 / phone
  * 572:26252) and the popover it opens (Figma `7` 368:18696, phone 572:26261).
  *
- * Prototype behaviour (docs/figma/specs/doctor-overview.md §3-4): click -> OVERLAY with a 25% black scrim, closes on click outside.
+ * Prototype behaviour (docs/figma/specs/doctor-overview.md §3, §6): click -> OVERLAY with a 25% black scrim (overlayBackground rgba(0,0,0,.25)),
+ * closes on click outside (CLOSE_ON_CLICK_OUTSIDE). Figma makes only the 42px icon circle the hotspot on desktop (the whole pill on phone);
+ * the whole pill is one button here so the visible name is clickable too.
  *  - lg+ : MANUAL popover, DISSOLVE 0.3s EASE_OUT, placed at offset (-145, +56) from the 42px icon circle (14px under it, right edge 8px inside its right edge).
- *  - <lg : App Version V1 BOTTOM_CENTER sheet (387 wide, 63px rows), MOVE_IN from the TOP 0.3s EASE_OUT.
+ *  - <lg : App Version V1 BOTTOM_CENTER sheet (387 wide, 63px rows + 30px bottom strip), MOVE_IN from the TOP 0.3s EASE_OUT.
  * Scrim + popover are portalled to <body> so the scrim really covers the sticky navbar / bottom bar whatever ancestor stacking contexts exist.
  * Presentational: the caller owns the hospital list, the selection and the per-hospital counts.
  */
@@ -101,8 +103,9 @@ export const HospitalSwitcher: React.FC<HospitalSwitcherProps> = ({ hospitals, s
         aria-expanded={open}
         aria-label={`${name}, change hospital`}
         onClick={() => setOpen(o => !o)}
-        // Figma: rgba(255,255,255,.5) fill, r32, pad 16/12, 225 wide, shadow 0 -1 12 .04 (= shadow-ds-rise). Desktop grows for long names (right-aligned, so it extends leftwards).
-        className="flex w-[225px] max-w-full cursor-pointer items-center justify-between gap-2 rounded-ds-xl bg-white/50 px-4 py-3 text-left shadow-ds-rise focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 lg:w-auto lg:min-w-[225px] lg:max-w-[360px]"
+        // Figma: rgba(255,255,255,.5) fill, r32, pad 16/12, 225 wide, shadow 0 -1 12 .04 (= shadow-ds-rise). Phone: fills its (<=225px) slot, the name truncates.
+        // Desktop grows for long names (right-aligned, so it extends leftwards).
+        className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-ds-xl bg-white/50 px-4 py-3 text-left shadow-ds-rise focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 lg:w-auto lg:min-w-[225px] lg:max-w-[360px]"
       >
         <span title={name} className="min-w-0 truncate font-inter text-[16px] leading-[19px] text-content-primary">{name}</span>
         <span ref={iconRef} aria-hidden="true" className="grid size-[42px] shrink-0 place-items-center rounded-[21px] bg-primary-500 text-white">
@@ -112,14 +115,16 @@ export const HospitalSwitcher: React.FC<HospitalSwitcherProps> = ({ hospitals, s
 
       {open && typeof document !== 'undefined' && createPortal(
         <>
-          <div aria-hidden="true" className="ds-fade-in fixed inset-0 z-[200] bg-black/25" onClick={close} />
+          <div aria-hidden="true" className="ov-scrim fixed inset-0 z-[200] bg-black/25" onClick={close} />
           <div
             ref={listRef}
             role="listbox"
             aria-label="Select hospital"
             onKeyDown={onListKeyDown}
             style={pos ? ({ '--ov-top': `${pos.top}px`, '--ov-right': `${pos.right}px` } as React.CSSProperties) : undefined}
-            className="ov-popover fixed inset-x-0 bottom-0 z-[201] mx-auto w-[387px] max-w-[calc(100vw-13px)] overflow-hidden rounded-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-ds-rise-lg outline outline-1 -outline-offset-1 outline-surface lg:inset-x-auto lg:bottom-auto lg:right-[var(--ov-right)] lg:top-[var(--ov-top)] lg:mx-0 lg:w-max lg:min-w-[179px] lg:max-w-[320px] lg:pb-0"
+            // Phone sheet: Figma's 219px frame = 3 x 63px rows + a 30px empty strip at the bottom (home-indicator room), so the padding is at least 30px.
+            // max-h + scroll only matter for doctors with many chambers (Figma shows three).
+            className="ov-popover fixed inset-x-0 bottom-0 z-[201] mx-auto max-h-[80vh] w-[387px] max-w-[calc(100vw-13px)] overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl bg-white pb-[max(30px,env(safe-area-inset-bottom))] shadow-ds-rise-lg outline outline-1 -outline-offset-1 outline-surface lg:inset-x-auto lg:bottom-auto lg:right-[var(--ov-right)] lg:top-[var(--ov-top)] lg:mx-0 lg:max-h-[calc(100vh-var(--ov-top,200px)-16px)] lg:w-max lg:min-w-[179px] lg:max-w-[320px] lg:pb-0"
           >
             {hospitals.map(h => {
               const active = String(h.id) === String(selectedId);

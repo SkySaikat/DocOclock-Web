@@ -10,6 +10,15 @@ interface EarningCardProps {
   className?: string;
 }
 
+// Inter has no glyph for the taka sign, so the browser falls back to a system Bengali font whose taller line box stretches Figma's 15px
+// row to 18px (the card grew 123 -> 129). A zero-line-height wrapper keeps the row on Inter's own line box whichever font draws the sign.
+const Taka: React.FC<{ amount: number }> = ({ amount }) => (
+  <>
+    <span className="leading-[0]">৳</span>
+    {amount}
+  </>
+);
+
 const Row: React.FC<{ label: string; dot: string; title?: string; loading?: boolean; children: React.ReactNode }> = ({ label, dot, title, loading, children }) => (
   <div className="flex items-center justify-between" title={title}>
     <span className="flex items-center gap-1">
@@ -32,14 +41,14 @@ export const EarningCard: React.FC<EarningCardProps> = ({ earned, total, loading
   <section aria-label="Earning" className={`flex flex-col gap-6 rounded-ds-lg bg-white p-4 ${className}`}>
     <CardHeader title="Earning" chipTone="earning" />
     <div className="flex w-full flex-col gap-2">
-      <Row label="Earning" dot="bg-primary-500" loading={loading}>৳{earned}</Row>
+      <Row label="Earning" dot="bg-primary-500" loading={loading}><Taka amount={earned} /></Row>
       <Row
         label="Total"
         dot="bg-ink-300"
         title="What today's earning will be once every non-cancelled appointment is completed"
         loading={loading}
       >
-        ৳{total}
+        <Taka amount={total} />
       </Row>
     </div>
   </section>

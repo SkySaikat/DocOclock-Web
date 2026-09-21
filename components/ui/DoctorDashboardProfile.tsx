@@ -34,10 +34,10 @@ export const DoctorDashboardProfile: React.FC<DoctorDashboardProfileProps> = ({
     const openProfile = onProfileClick ?? onManageClick;
 
     return (
-        // Figma drop-shadow(0 -1px 6px rgba(0,0,0,.04)) on the card = this box-shadow (no token: ds-rise is blur 12).
+        // Figma effect DROP_SHADOW y-1 blur12 4% (design-context code writes it as drop-shadow(0 -1px 6px), whose sigma equals box-shadow blur 12) = shadow-ds-rise.
         <section
             aria-label="Doctor profile"
-            className="w-full bg-white rounded-ds-xl p-6 shadow-[0_-1px_6px_0_rgba(0,0,0,0.04)] flex gap-6 lg:flex-col lg:w-[388px] lg:shrink-0 lg:min-h-[513px]"
+            className="w-full bg-white rounded-ds-xl p-6 shadow-ds-rise flex gap-6 lg:flex-col lg:w-[388px] lg:shrink-0 lg:min-h-[513px]"
         >
             {/* Photo */}
             <div className="relative flex-1 min-w-0 h-[228px] rounded-ds-lg overflow-hidden lg:flex-none lg:w-full lg:h-[298px]">
@@ -55,7 +55,8 @@ export const DoctorDashboardProfile: React.FC<DoctorDashboardProfileProps> = ({
             </div>
 
             {/* Contents */}
-            <div className="flex-1 min-w-0 flex flex-col gap-6 lg:gap-0 lg:justify-between">
+            {/* Desktop: the 143px Contents box spreads name row (42) and Stats (88) 13px apart (Figma y 0 / 55); gap-3 is only the floor if a long name wraps. */}
+            <div className="flex-1 min-w-0 flex flex-col gap-6 lg:gap-3 lg:justify-between">
                 <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between lg:gap-3">
                     <h2 className="min-w-0 break-words font-inter font-normal text-[24px] leading-[normal] text-content-primary lg:flex-1">
                         {doctor.name}

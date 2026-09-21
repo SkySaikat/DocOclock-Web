@@ -158,8 +158,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
       {onNavigate && <DoctorTabBar currentPath="/doctor/dashboard" onNavigate={onNavigate} />}
 
       {/* DASHBOARD HEADER — "Welcome" + subtitle (desktop) and the hospital switcher pill (absolute at the right on desktop, beside the title on phone) */}
-      <div className="relative flex flex-wrap items-center justify-between gap-x-[10px] gap-y-3 lg:block">
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 lg:h-[72px]">
+      {/* While the chambers load the pill is not rendered yet; on phone the row reserves its 66px so the cards below do not jump when it appears.
+          Phone: "Welcome" keeps its width and the pill takes the rest up to Figma's 225px, so on 360px screens (Layout gutters are 24, Figma's 16) the name truncates instead of the pill covering the title. */}
+      <div className={`relative flex items-center justify-between gap-x-[10px] lg:block ${isResolving ? 'min-h-[66px] lg:min-h-0' : ''}`}>
+        <div className="flex shrink-0 flex-col justify-center gap-2 lg:h-[72px]">
           <h1 className="font-display text-[24px] font-normal leading-[normal] text-ink-800 lg:text-ds-h36">Welcome</h1>
           {/* Figma #8a94a3 has no token; `steel` is the established stand-in (see IconButtons). */}
           <p className="hidden w-[380px] max-w-full font-display text-ds-paragraph text-steel lg:block">Track Your Queue and arrive on time</p>
@@ -167,7 +169,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
 
         {hospitals.length > 0 && (
           <HospitalSwitcher
-            className="shrink-0 lg:absolute lg:right-0 lg:top-[11px]"
+            className="min-w-0 max-w-[225px] flex-1 lg:absolute lg:right-0 lg:top-[11px] lg:max-w-none lg:flex-none"
             hospitals={hospitals}
             selectedId={selectedHospitalId}
             selectedName={selectedHospitalName}
@@ -205,7 +207,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
               total={totalPatients}
               className="lg:w-[536px] lg:max-w-full"
             />
-            <EarningCard earned={revenueTotal} total={potentialRevenueTotal} loading={isResolving} className="lg:min-w-[280px] lg:flex-1" />
+            {/* Figma: the card fills what the 536px Queue Status card leaves (344px at 1440). It shrinks to 240px, then wraps under Queue Status (still at most 344px wide). */}
+            <EarningCard earned={revenueTotal} total={potentialRevenueTotal} loading={isResolving} className="lg:min-w-[240px] lg:max-w-[344px] lg:flex-1" />
           </div>
         </div>
       </div>

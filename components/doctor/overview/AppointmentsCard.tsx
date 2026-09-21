@@ -37,8 +37,8 @@ export const AppointmentsCard: React.FC<AppointmentsCardProps> = ({ today, month
   return (
     <section
       aria-label="Appointments"
-      // Gradient = Figma 210.96deg (desktop) / 234.39deg (phone), white 67.488% -> #f6f6f6 (ink-100) 96.269%; shadow = Figma drop-shadow(0 -1px 6px .04).
-      className={`flex flex-col gap-4 rounded-ds-xl p-6 shadow-[0_-1px_6px_0_rgba(0,0,0,0.04)] bg-[linear-gradient(234.39deg,theme(colors.white)_67.488%,theme(colors.ink.100)_96.269%)] lg:min-h-[205px] lg:justify-between lg:gap-0 lg:bg-[linear-gradient(210.96deg,theme(colors.white)_67.488%,theme(colors.ink.100)_96.269%)] ${className}`}
+      // Gradient = Figma 210.96deg (desktop) / 234.39deg (phone), white 67.488% -> #f6f6f6 (ink-100) 96.269%; shadow = Figma effect y-1 blur12 4% (shadow-ds-rise).
+      className={`flex flex-col gap-4 rounded-ds-xl p-6 shadow-ds-rise bg-[linear-gradient(234.39deg,theme(colors.white)_67.488%,theme(colors.ink.100)_96.269%)] lg:min-h-[205px] lg:justify-between lg:gap-0 lg:bg-[linear-gradient(210.96deg,theme(colors.white)_67.488%,theme(colors.ink.100)_96.269%)] ${className}`}
     >
       <h3 className="font-inter text-ds-title-24 font-normal text-content-primary">Appointments</h3>
 
