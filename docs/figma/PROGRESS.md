@@ -5,6 +5,8 @@
 
 ## 0. Resume in 60 seconds
 
+> **MODE: LEAN (user decision 2026-09-22 — the multi-agent pipelines cost millions of tokens).** Do NOT use `Workflow`/subagents/reviewers. Work directly, one screen at a time: one `get_design_context` call for the frame (its React+Tailwind output is near-final) → edit the owned file → `tsc` + `npm run build` → one screenshot vs the reference → commit that screen → update §3. Keep tool outputs small; prefer starting a fresh session (this file + memory carry all state). Steps 3-4 below describe the old workflow route and are kept only for reference.
+
 1. `git log --oneline -12` and `git status --short` (in-progress agent files show up as modified / untracked).
 2. Read, in order: this file → `docs/figma/BUILD_RULES.md` (ownership, no-behaviour-change, verification) → `docs/figma/tokens.md` → `docs/figma/flows.md`.
 3. Pick the next unit(s) from §3 (status **PENDING** or **IN PROGRESS**). Run **two units at a time** (usage-limit friendly):
