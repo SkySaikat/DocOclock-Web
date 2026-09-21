@@ -283,13 +283,19 @@ const EXTRA = [
   '(4) Be economical: do not re-read large files repeatedly, do not paste full design-context outputs into notes, keep tool outputs small.',
 ].join('\n')
 const withExtra = (p) => p + '\n' + EXTRA
+const RESUME_NOTE = (u) => (args && args.baseline && !args.skipBuild) ? [
+  '',
+  'RESUME CONTEXT (important): an earlier builder for this unit was INTERRUPTED mid-build. It never returned a result and never ran any verification. Its work-in-progress is ALREADY COMMITTED on main, so `git diff HEAD` is empty and will NOT show what exists. To see exactly what exists compare with the last reviewed state: `git diff --stat ' + args.baseline + ' -- <owned files>`, `git diff ' + args.baseline + ' -- <owned files>`, and list the new-file locations; read docs/figma/specs/' + u.key + '.md (its "not implemented" section lists known gaps - treat EVERY "Not built" item as a TODO and build it unless Figma proves it has no counterpart in the app), and look at docs/figma/reference/' + u.key + '/.',
+  'DO NOT restart from scratch and do not discard working code: audit what exists against the Figma frames and the reference PNGs, then COMPLETE the unit - every listed Figma frame in all its states (live / paused / empty / modals / phone layouts), every interaction, every hover / press / keyboard state - and run the FULL verification from docs/figma/BUILD_RULES.md.',
+  'Add a COMPLETENESS CHECKLIST table to docs/figma/specs/' + u.key + '.md: every Figma frame id of the unit -> implemented (yes / partial / no + why) and every interaction row -> implemented (yes / no). "partial" or "no" is acceptable ONLY when Figma has no counterpart in the app (feature/data absent) and you say so explicitly; otherwise finish it. Your final summary must list the same checklist results (framesImplemented / notImplemented).',
+].join('\n') : ''
 const BASELINE_NOTE = (args && args.baseline) ? ('\nDIFF BASELINE: the unit\'s work-in-progress is already committed, so `git diff HEAD` shows nothing. Audit against the last reviewed state instead: `git diff ' + args.baseline + ' -- <owned files>` and `git diff --stat ' + args.baseline + ' -- <new-file locations>`; read the ORIGINAL logic with `git show ' + args.baseline + ':<file>`.') : ''
 phase('Build')
 const results = await pipeline(
   RUN,
   (u) => (args && args.skipBuild)
     ? Promise.resolve({ unit: u.key, summary: 'The builder was interrupted; its work-in-progress is already on main (see docs/figma/PROGRESS.md section 3b and docs/figma/specs/' + u.key + '.md). NOTHING is verified yet - treat every claim as unverified and audit everything, including completeness against ALL Figma frames listed for the unit.', filesChanged: u.owned, newFiles: [], framesImplemented: [], verification: [], notImplemented: [], sharedGaps: [], risks: ['unreviewed WIP'] })
-    : agent(withExtra(buildPrompt(u)), { label: 'build: ' + u.key, phase: 'Build', schema: SCHEMAS.build }),
+    : agent(withExtra(buildPrompt(u)) + RESUME_NOTE(u), { label: 'build: ' + u.key, phase: 'Build', schema: SCHEMAS.build }),
   (built, u) => built ? agent(withExtra(reviewPrompt(u, built)) + BASELINE_NOTE, { label: 'review: ' + u.key, phase: 'Review', schema: SCHEMAS.review }).then(rv => ({ built, rv })) : null,
   (r, u) => (r && r.rv && r.rv.blocking && r.rv.blocking.length > 0)
     ? agent(withExtra(fixPrompt(u, r)) + BASELINE_NOTE, { label: 'fix: ' + u.key, phase: 'Fix', schema: SCHEMAS.build }).then(fx => Object.assign({}, r, { fx }))
