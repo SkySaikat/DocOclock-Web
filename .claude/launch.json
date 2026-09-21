@@ -4,9 +4,25 @@
     {
       "name": "dococlock-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "mock",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--config",
+        "vite.mock.config.ts",
+        "--port",
+        "3100",
+        "--strictPort"
+      ],
+      "port": 3100
     }
   ]
 }
