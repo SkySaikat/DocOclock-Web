@@ -1,7 +1,7 @@
 # Figma sync — PROGRESS & RESUME GUIDE
 
 > Single source of truth for "where did we stop". Update the status board (§3) and the commit log (§8) after every unit.
-> Last updated: 2026-09-21 ~12:20 (+06). Baseline commit before any Figma work: `2dd66ce v4 main`.
+> Last updated: 2026-09-21 ~12:35 (+06) — **run stopped by the user; see §3b for the exact stop state.** Baseline commit before any Figma work: `2dd66ce v4 main`.
 
 ## 0. Resume in 60 seconds
 
@@ -41,8 +41,8 @@ Legend: ✅ done & committed · 🔄 in progress · ⏳ pending
 | foundation (tokens/theme/fonts) | tokens.md | `tailwind.config.js`, `index.css`, `index.html`, `utils/colorScale.ts`, `contexts/ThemeContext.tsx` | ✅ `bd9c392` |
 | chrome (navbar, avatar menu, bottom bar, toasts, tab bar) | Navbar - Dashboard `396:12116`, Navbar `80:7429`, Bottombar `368:16140`, Profile menu `368:17693`, Toaster | `components/Layout.tsx`, `components/dashboard/**`, `components/doctor/DoctorTabBar.tsx`, `components/ToastProvider.tsx`, `components/ui/NotificationBell.tsx` | ✅ `bd9c392` (+ sticky-navbar fix by hand) |
 | landing (doctor-card hover morph, Button Usual/Featured Hover, tabs, all sections) | `80:1754`, After Hero `80:1794` | `views/patient/Home.tsx`, `components/landing/**`, `components/ui/{Button,DoctorCard,SectionEyebrowHeader}.tsx`, `components/Footer.tsx` | ✅ `bd9c392` |
-| `doctor-queue` ("Doctor Q") | Section `255:6533` (Queue `368:14306`, `328:14902`, Modal `368:14285`, Card 3 `368:15791`, Queue Card `255:9358`), flow frames `328:13919`, `255:8163`, phone `341:18476`, `368:17738` | `views/doctor/SerialManager.tsx`, `components/doctor/queue/**` | 🔄 run `wf_347a89f1-721` |
-| `doctor-overview` | `368:18645` / page `339:17421`, popover `368:18696` | `views/doctor/Dashboard.tsx`, `components/ui/{ArcGauge,StatCard,DoctorDashboardProfile,ChamberCard}.tsx`, `components/doctor/overview/**` | 🔄 run `wf_347a89f1-721` |
+| `doctor-queue` ("Doctor Q") | Section `255:6533` (Queue `368:14306`, `328:14902`, Modal `368:14285`, Card 3 `368:15791`, Queue Card `255:9358`), flow frames `328:13919`, `255:8163`, phone `341:18476`, `368:17738` | `views/doctor/SerialManager.tsx`, `components/doctor/queue/**` | ⏸ **STOPPED mid-build (WIP, unreviewed)** — see §3b |
+| `doctor-overview` | `368:18645` / page `339:17421`, popover `368:18696` | `views/doctor/Dashboard.tsx`, `components/ui/{ArcGauge,StatCard,DoctorDashboardProfile,ChamberCard}.tsx`, `components/doctor/overview/**` | ⏸ **STOPPED mid-build (WIP, unreviewed)** — see §3b |
 | `patient-live-appts` | Live Queue `339:15916`, `297:12283`, phone `357:19153`/`357:19210`, Appointments `191:5570`, Sort menu `368:16699`, Pickers `396:12025` | `views/patient/{LiveSerial,Appointments}.tsx`, `components/ui/AppointmentCard.tsx` | ⏳ |
 | `patient-rx-meds` | Prescriptions `297:12584`, Medicines `339:16108`/`191:5104`, Modal `339:15402`, Toasters `399:12826`/`399:12818` | `views/patient/{Prescriptions,MedicineTracker}.tsx` | ⏳ |
 | `doctor-appointments` | `255:11599` (Appointments `255:11674`, `255:12102`, modals, pickers) | `views/doctor/DoctorAppointments.tsx` | ⏳ |
@@ -56,6 +56,21 @@ Legend: ✅ done & committed · 🔄 in progress · ⏳ pending
 | final regression QA (all roles, mock harness, build, theme change, reduced motion) | — | whole app | ⏳ |
 
 Extraction artefacts already on disk (do not redo): `docs/figma/specs/{landing-home (§1-5 only), landing-components, landing-pages, dashboard-components}.md`, `docs/figma/tokens.md`, `docs/figma/flows.md`, `docs/figma/reference/**` (2x PNGs), `docs/figma/interactions/*.json`, `public/assets/figma/**` (≈128 unit assets + 36 originals).
+
+## 3b. STOPPED here — exact state of the two in-progress units (user stopped the run on 2026-09-21 ~12:28 +06)
+
+Legend for this section: **the code is in the working tree (uncommitted, NOT on `main`) and mirrored in the private snapshot ref `refs/checkpoints/figma-*-stopped`** (see §8). At the stop moment `npx tsc --noEmit … | grep -v supabase/functions` printed **nothing** (WIP compiles). Not yet done for either unit: independent review, `npm run build`, visual comparison against the reference PNGs, hover/interaction verification, mobile check, commit. The workflow journal shows the build agents were relaunched once and never returned a result, so treat both units as "builder ~partially done".
+
+**doctor-queue ("Doctor Q")** — `views/doctor/SerialManager.tsx` rewritten (JSX restyled, ≈ −927/+ lines; logic must be audited by the reviewer); new presentational components in `components/doctor/queue/`: `ConfirmCompleteModal`, `PatientAvatar`, `QueueClock`, `QueueHeader`, `QueueListPanel`, `QueuePatientCard`, `QueueProgress`, `QueueStatusCards`, `QueueStatusModal`, `UpNextRow`, `queueUtils.ts`. Notes: `docs/figma/specs/doctor-queue.md` (frames, layout facts, interactions with exact values, decisions, deviations). Extracted: 10 reference PNGs (`docs/figma/reference/doctor-queue/`), 3 assets (`public/assets/figma/doctor-queue/`).
+
+**doctor-overview** — `views/doctor/Dashboard.tsx` restyled (≈ −183 lines), `components/ui/ArcGauge.tsx` and `components/ui/DoctorDashboardProfile.tsx` modified (not yet checked for out-of-scope usages); new components in `components/doctor/overview/`: `AppointmentsCard`, `CardHeader`, `EarningCard`, `HospitalSwitcher`, `QueueStatusCard`, `assets.ts`, `overview.css`. **Not touched yet:** `components/ui/StatCard.tsx`, `components/ui/ChamberCard.tsx`. Notes: `docs/figma/specs/doctor-overview.md` (no ON_HOVER/CHANGE_TO on this frame — only click reactions; hospital switcher popover `368:18696`). Extracted: 4 reference PNGs (`docs/figma/reference/doctor-overview/`), 9 assets.
+
+**How to continue (pick one):**
+1. `git checkout refs/checkpoints/<latest-stopped> -- .` is NOT needed — the files are already in the working tree. First run `git status`, `npx tsc --noEmit -p tsconfig.json 2>&1 | grep -v "^supabase/functions"`, `npm run build`.
+2. Re-run the two units (agents continue from the files/notes on disk, then review → fix → commit):
+   `Workflow({ scriptPath: "<abs path>/docs/figma/workflows/build-screens.js", args: { only: ["doctor-queue", "doctor-overview"] } })`
+3. If the working tree was lost or reset: `git checkout refs/checkpoints/<latest-stopped> -- views components docs public` restores the WIP files.
+4. If you would rather review by hand: start `npx vite --config vite.mock.config.ts --port 3100` → `/?as=doctor` → Overview tab and Queue tab; compare with `docs/figma/reference/doctor-overview/queue-overview-339_17421.png` and `docs/figma/reference/doctor-queue/*.png`.
 
 ## 4. Decisions taken (and deliberate deviations)
 
@@ -82,12 +97,15 @@ Chrome: profile menu 3 rows on desktop vs Figma 6; phone bar inactive-icon tints
 |---|---|---|
 | `docs/figma/workflows/extract.js` | read-only Figma extraction + mock harness | `wf_b6a5df17-117` — tokens ✅, harness ✅ (31/31 routes), landing-components ✅, landing-pages ✅, dashboard-components ✅, landing-home §1-5 ✅; interrupted by the usage limit before doctor-overview and the 8 later units (superseded: the build script now extracts per unit) |
 | `docs/figma/workflows/build-1-foundation-chrome-landing.js` | foundation → chrome + landing (build/review/fix) | `wf_fe0dcab1-fec` ✅ complete |
-| `docs/figma/workflows/build-screens.js` | **the one to use**: 11 units, args `{only:[...]}`, build → review → fix → commit | `wf_3f4d3173-571` (interrupted at launch), `wf_347a89f1-721` (doctor-queue + doctor-overview, running/interrupted) |
+| `docs/figma/workflows/build-screens.js` | **the one to use**: 11 units, args `{only:[...]}`, build → review → fix → commit | `wf_3f4d3173-571` (interrupted at launch by the usage limit), `wf_347a89f1-721` (doctor-queue + doctor-overview; **stopped by the user ~12:28 on 2026-09-21** mid-build, no builder result recorded) |
 
 Session-only cache (same session can `resumeFromRunId`; otherwise just re-run the unit — files on disk are the real cache): `~/.claude/projects/-Users-saikatchowdhury444gmail-com-Desktop-DocOclock-Web/<session>/subagents/workflows/<run>/journal.jsonl`.
 
 ## 8. Commit log (newest first — append as you go)
 
+- **STOP CHECKPOINT** `refs/checkpoints/figma-20260921-1236-stopped` (`62dfe91`, 45 files vs HEAD) — full snapshot at the moment the user stopped the run (doctor-queue + doctor-overview WIP, tsc clean, unreviewed). Older snapshot: `refs/checkpoints/figma-20260921-1214` (`537f35e`).
+- `b7e4e86` chore(figma) — this resume guide, BUILD_RULES, re-runnable workflow scripts, port-safe dev preview (`vite.config.ts` PORT + `autoPort`)
+- **WIP checkpoint ref** `refs/checkpoints/figma-20260921-1214` (`537f35e`) — private snapshot (not on `main`) of the working tree *including the doctor-queue / doctor-overview agents' unfinished edits* (44 files). List: `git for-each-ref refs/checkpoints`; restore a file: `git checkout <ref> -- <path>`. Create a new one any time without touching HEAD/index: temp `GIT_INDEX_FILE` → `git read-tree HEAD; git add -A; git write-tree; git commit-tree … -p HEAD; git update-ref refs/checkpoints/<name> <commit>`.
 - `bd9c392` v6 (user) — foundation + chrome + landing + sticky navbar + build rules groundwork
 - `a8e1b0a` v6 (user) — extraction specs, reference PNGs, assets, mock-Supabase harness, partial chrome
 - `2dd66ce` v4 main — baseline before Figma work

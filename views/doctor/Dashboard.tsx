@@ -1,8 +1,10 @@
 
-import React, { useEffect, useState, useRef } from 'react';
-import { TrendingUp, TrendingDown, Building2, ChevronDown } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { DoctorDashboardProfile } from '../../components/ui/DoctorDashboardProfile';
-import { ArcGauge } from '../../components/ui/ArcGauge';
+import { HospitalSwitcher } from '../../components/doctor/overview/HospitalSwitcher';
+import { AppointmentsCard } from '../../components/doctor/overview/AppointmentsCard';
+import { QueueStatusCard } from '../../components/doctor/overview/QueueStatusCard';
+import { EarningCard } from '../../components/doctor/overview/EarningCard';
 import { DoctorStorage, fetchAppointmentCountInRange } from '../../storage';
 import { Appointment } from '../../types';
 
@@ -23,8 +25,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [monthCount, setMonthCount] = useState(0);
   const [progressionPct, setProgressionPct] = useState<number | null>(null);
-  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-  const switcherRef = useRef<HTMLDivElement>(null);
   const today = getLocalISODate();
 
   const fetchData = async () => {
@@ -121,18 +121,12 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
         fetchAppointmentCountInRange(doctorId, selectedHospitalId, lastMonthStart, lastMonthEnd),
       ]);
       setMonthCount(thisMonth);
-      setProgressionPct(lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null);
+      // One decimal, like Figma's "-10.4%" (was rounded to a whole percent).
+      setProgressionPct(lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 1000) / 10 : null);
     })();
   }, [doctorId, selectedHospitalId, today]);
 
-  // Close the hospital switcher on outside click.
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) setIsSwitcherOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  // The hospital switcher (open / close / outside click / Esc) lives in <HospitalSwitcher/>.
 
   if (!doctor) return null;
 
@@ -158,12 +152,33 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
   const selectedHospitalName = hospitals.find((h: any) => String(h.id) === String(selectedHospitalId))?.hospitalName;
 
   return (
-    <div className="space-y-8 pb-10 animate-fade-in max-w-6xl mx-auto px-4 md:px-0">
+    // Figma "Doctor Overview" (339:17421 / phone 572:25777): Welcome header + hospital pill, then the Queue Manage Row.
+    // Page background + gutters come from Layout; root font is Instrument Sans (Inter only where the spec says so).
+    <div className="flex animate-fade-in flex-col gap-6 font-display">
       {onNavigate && <DoctorTabBar currentPath="/doctor/dashboard" onNavigate={onNavigate} />}
 
-      {/* SECTION 1: DOCTOR PROFILE HEADER */}
-      <div className="space-y-6">
-        {/* Doctor Header Section */}
+      {/* DASHBOARD HEADER — "Welcome" + subtitle (desktop) and the hospital switcher pill (absolute at the right on desktop, beside the title on phone) */}
+      <div className="relative flex flex-wrap items-center justify-between gap-x-[10px] gap-y-3 lg:block">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 lg:h-[72px]">
+          <h1 className="font-display text-[24px] font-normal leading-[normal] text-ink-800 lg:text-ds-h36">Welcome</h1>
+          {/* Figma #8a94a3 has no token; `steel` is the established stand-in (see IconButtons). */}
+          <p className="hidden w-[380px] max-w-full font-display text-ds-paragraph text-steel lg:block">Track Your Queue and arrive on time</p>
+        </div>
+
+        {hospitals.length > 0 && (
+          <HospitalSwitcher
+            className="shrink-0 lg:absolute lg:right-0 lg:top-[11px]"
+            hospitals={hospitals}
+            selectedId={selectedHospitalId}
+            selectedName={selectedHospitalName}
+            getCount={id => doctorTodayAppointments.filter(a => String(a.hospitalId) === id && a.status !== 'cancelled').length}
+            onSelect={setSelectedHospitalId}
+          />
+        )}
+      </div>
+
+      {/* QUEUE MANAGE ROW — profile card | Appointments, Queue Status, Earning */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <DoctorDashboardProfile
           doctor={{
             name: doctor.name || doctor.full_name,
@@ -176,129 +191,23 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onNavigate }) 
             totalPatients: doctor.total_patients || 0
           }}
           onManageClick={() => onNavigate?.('/doctor/practice-settings')}
+          onProfileClick={() => onNavigate?.('/doctor/profile')}
         />
 
-        {/* WELCOME + HOSPITAL SWITCHER — matches the Figma "Doctor Overview" header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-display text-3xl font-bold text-ink-800">Welcome</h2>
-            <p className="text-ink-500 text-sm mt-1">Track your queue and arrive on time</p>
-          </div>
+        <div className="flex min-w-0 flex-col gap-4 lg:max-w-[896px] lg:flex-1">
+          <AppointmentsCard today={totalPatients} month={monthCount} progressionPct={progressionPct} loading={isResolving} />
 
-          {hospitals.length > 0 && (
-            <div className="relative shrink-0" ref={switcherRef}>
-              <button
-                onClick={() => setIsSwitcherOpen(o => !o)}
-                className="flex items-center gap-3 bg-white pl-4 pr-3 py-2.5 rounded-full shadow-ds-card border border-slate-100 font-bold text-sm text-ink-800"
-              >
-                <span className="truncate max-w-[140px]">{selectedHospitalName || 'Select Hospital'}</span>
-                <span className="w-7 h-7 rounded-full bg-medical-500 text-white flex items-center justify-center shrink-0">
-                  <ChevronDown size={14} className={`transition-transform ${isSwitcherOpen ? 'rotate-180' : ''}`} />
-                </span>
-              </button>
-
-              {isSwitcherOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                  {hospitals.map((h: any) => {
-                    const hospApps = doctorTodayAppointments.filter(a => String(a.hospitalId) === String(h.id) && a.status !== 'cancelled');
-                    const isActive = String(h.id) === String(selectedHospitalId);
-                    return (
-                      <button
-                        key={h.id}
-                        onClick={() => { setSelectedHospitalId(h.id); setIsSwitcherOpen(false); }}
-                        className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-bold transition-colors ${isActive ? 'bg-medical-50 text-medical-600' : 'text-ink-600 hover:bg-ink-50'}`}
-                      >
-                        <span className="flex items-center gap-2 truncate">
-                          <Building2 size={14} className="shrink-0" />
-                          <span className="truncate">{h.hospitalName}</span>
-                        </span>
-                        <span className="shrink-0 text-xs font-black">{hospApps.length}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* QUEUE MANAGE ROW — Appointments / Queue Status / Earning, matching Figma's "Doctor Overview" layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)] gap-4">
-          {/* Appointments stat row */}
-          <div className="bg-white rounded-[32px] p-6 shadow-ds-soft">
-            <h3 className="font-display text-xl text-ink-800 mb-4">Appointments</h3>
-            <div className="grid grid-cols-3 divide-x divide-slate-100">
-              <div className="pr-2 sm:pr-6 min-w-0">
-                <p className="font-stat text-2xl sm:text-4xl md:text-5xl font-medium text-medical-600 tracking-tight truncate">
-                  {isResolving ? <span className="inline-block w-12 h-8 bg-slate-50 animate-pulse rounded-lg align-middle" /> : totalPatients}
-                </p>
-                <p className="text-[10px] sm:text-xs text-ink-500 mt-1">Today</p>
-              </div>
-              <div className="px-2 sm:px-6 min-w-0">
-                <p className="font-stat text-2xl sm:text-4xl md:text-5xl font-medium text-medical-600 tracking-tight truncate">
-                  {isResolving ? <span className="inline-block w-12 h-8 bg-slate-50 animate-pulse rounded-lg align-middle" /> : monthCount}
-                </p>
-                <p className="text-[10px] sm:text-xs text-ink-500 mt-1">This Month</p>
-              </div>
-              <div className="pl-2 sm:pl-6 min-w-0">
-                <p className={`font-stat text-2xl sm:text-4xl md:text-5xl font-medium tracking-tight flex items-center gap-1 sm:gap-1.5 truncate ${progressionPct != null && progressionPct < 0 ? 'text-red-500' : 'text-medical-600'}`}>
-                  {progressionPct == null ? '—' : `${progressionPct > 0 ? '+' : ''}${progressionPct}%`}
-                  {progressionPct != null && (progressionPct < 0 ? <TrendingDown size={20} className="shrink-0" /> : <TrendingUp size={20} className="shrink-0" />)}
-                </p>
-                <p className="text-[10px] sm:text-xs text-ink-500 mt-1">Progression</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Queue Status arc gauge */}
-            <div className="bg-white rounded-3xl p-5 shadow-ds-soft">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-display text-xl text-ink-800">Queue Status</h3>
-                <span className="text-[10px] font-bold text-ink-500 border border-slate-200 rounded-full px-3 py-1">Today</span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-                <ArcGauge progress={queueProgress} size={170} />
-                <div className="flex-1 w-full space-y-2.5 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm text-ink-600 min-w-0"><span className="w-2.5 h-2.5 rounded-full bg-medical-800 shrink-0" />Completed</span>
-                    <span className="font-bold text-ink-700 shrink-0">{finishedCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm text-ink-600 min-w-0"><span className="w-2.5 h-2.5 rounded-full bg-medical-400 shrink-0" />In Consultation</span>
-                    <span className="font-bold text-ink-700 shrink-0">{consultingCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm text-ink-600 min-w-0"><span className="w-2.5 h-2.5 rounded-full bg-medical-100 shrink-0" />Waiting</span>
-                    <span className="font-bold text-ink-700 shrink-0">{waitingCount}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Earning */}
-            <div className="bg-white rounded-3xl p-5 shadow-ds-soft flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-display text-xl text-ink-800">Earning</h3>
-                <span className="text-[10px] font-bold text-ink-500 border border-slate-200 rounded-full px-3 py-1">Today</span>
-              </div>
-              <div className="space-y-3 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sm text-ink-600"><span className="w-2.5 h-2.5 rounded-full bg-medical-500" />Earned</span>
-                  {isResolving ? <div className="w-12 h-4 bg-slate-50 animate-pulse rounded" /> : <span className="font-bold text-ink-700">৳{revenueTotal}</span>}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sm text-ink-600"><span className="w-2.5 h-2.5 rounded-full bg-ink-200" />Potential (if all completed)</span>
-                  {isResolving ? <div className="w-12 h-4 bg-slate-50 animate-pulse rounded" /> : <span className="font-bold text-ink-700">৳{potentialRevenueTotal}</span>}
-                </div>
-              </div>
-              <div className="w-full bg-ink-100 rounded-full h-2 mt-4">
-                <div className="bg-medical-500 h-2 rounded-full transition-all" style={{ width: `${potentialRevenueTotal > 0 ? Math.min(100, (revenueTotal / potentialRevenueTotal) * 100) : 0}%` }} />
-              </div>
-            </div>
+          <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-start">
+            <QueueStatusCard
+              completed={finishedCount}
+              consulting={consultingCount}
+              waiting={waitingCount}
+              total={totalPatients}
+              className="lg:w-[536px] lg:max-w-full"
+            />
+            <EarningCard earned={revenueTotal} total={potentialRevenueTotal} loading={isResolving} className="lg:min-w-[280px] lg:flex-1" />
           </div>
         </div>
-
       </div>
     </div>
   );

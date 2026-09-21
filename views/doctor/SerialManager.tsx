@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Button } from '../../components/ui/Button';
 import { Appointment, AppointmentStatus } from '../../types';
-import {
-   Clock, Activity, X, Phone, CheckCircle, Bell,
-   FileText, UserCheck, ChevronRight, ClipboardList,
-   History, Plus, Minus, MapPin, Calendar
-} from 'lucide-react';
+import { Clock, Activity, X, CheckCircle, FileText } from 'lucide-react';
 import {
    DoctorStorage,
    fetchAppointments, upsertAppointment,
@@ -17,6 +11,20 @@ import {
 import { getLocalISODate } from '../../utils/date';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
+import { DashboardButton, StatusUpdateModal, MaskIcon, DS_ICONS } from '../../components/dashboard';
+import { QueueHeader } from '../../components/doctor/queue/QueueHeader';
+import { QueueClock } from '../../components/doctor/queue/QueueClock';
+import { QueueProgress } from '../../components/doctor/queue/QueueProgress';
+import { LiveQueueCard, IdleQueueCard, PausedQueueCard } from '../../components/doctor/queue/QueueStatusCards';
+import { UpNextRow } from '../../components/doctor/queue/UpNextRow';
+import { QueuePatientCard } from '../../components/doctor/queue/QueuePatientCard';
+import { QueueListPanel } from '../../components/doctor/queue/QueueListPanel';
+import { QueueStatusModal } from '../../components/doctor/queue/QueueStatusModal';
+import { ConfirmCompleteModal } from '../../components/doctor/queue/ConfirmCompleteModal';
+import { buildStatusOptions, isOpenReservedSlot, statusLabelOf, toneOf } from '../../components/doctor/queue/queueUtils';
+
+// Quick delay presets (same values as before; rendered as Figma's chips in the Queue Status modal).
+const DELAY_PRESETS = [15, 30, 45, 60, 90, 120] as const;
 
 interface SerialManagerProps {
    onNavigate: (path: string) => void;
@@ -86,6 +94,13 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
    const [filterStatus, setFilterStatus] = useState<AppointmentStatus | 'all'>('all');
    const [showAssignModal, setShowAssignModal] = useState(false);
    const [assignData, setAssignData] = useState({ name: '', phone: '', appId: '' });
+
+   // Figma overlays (view state only): Card 3 "Queue Status", the "complete this session?" confirm, the "Queue List" panel and the
+   // per-row "Update Status" sheet (holds the appointment id it was opened for).
+   const [showStatusModal, setShowStatusModal] = useState(false);
+   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+   const [showQueueList, setShowQueueList] = useState(false);
+   const [statusSheetAppId, setStatusSheetAppId] = useState<string | null>(null);
 
    // Unified state sync for persistent status from Supabase
    useEffect(() => {
@@ -235,7 +250,59 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
       }
    };
 
-   const sortedAppointments = useMemo(() => {
+   // The Arrived / Away / End Break actions used to be inline onClick closures of the availability toggle and the break banner.
+   // Same bodies, now named so the Figma "Queue Status" modal and the Paused card can call them.
+   const handleMarkArrived = async () => {
+      if (doctor && activeChamber) {
+         const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
+         await upsertQueueSession({
+            doctorId: doctor.id,
+            hospitalId: activeChamber.id,
+            date: today,
+            isDoctorArrived: true,
+            sessionStatus: queueSessionStatus,
+            reservedSlotsCount,
+            meta
+         });
+         setDoctorStatus('arrived');
+         setSessionMeta(meta);
+      }
+   };
+
+   const handleMarkAway = async () => {
+      if (doctor && activeChamber) {
+         await upsertQueueSession({
+            doctorId: doctor.id,
+            hospitalId: activeChamber.id,
+            date: today,
+            isDoctorArrived: false,
+            sessionStatus: queueSessionStatus,
+            reservedSlotsCount,
+            meta: sessionMeta
+         });
+         setDoctorStatus('not-arrived');
+      }
+   };
+
+   const handleEndBreak = async () => {
+      if (doctor && activeChamber) {
+         const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
+         await upsertQueueSession({
+            doctorId: doctor.id,
+            hospitalId: activeChamber.id,
+            date: today,
+            isDoctorArrived: true,
+            sessionStatus: queueSessionStatus,
+            reservedSlotsCount,
+            meta
+         });
+         setSessionMeta(meta);
+      }
+   };
+
+   // Queue order (consulting, waiting, late, then finished) is `orderedAppointments`; `sortedAppointments` is that list after the
+   // status filter (the filter chips now live in the Queue List panel, the Up Next strip always shows the unfiltered upcoming rows).
+   const orderedAppointments = useMemo(() => {
       const list = [...filteredAppointments];
 
       // Calculate max serial for the day
@@ -282,18 +349,42 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
       const finished = list.filter(a => a.status === 'completed' || a.status === 'cancelled')
          .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
-      let final = [...consulting, ...waitingAll, ...late, ...finished];
+      return [...consulting, ...waitingAll, ...late, ...finished];
+   }, [filteredAppointments, reservedSlotsCount, activeChamber, currentDoctorId, doctor?.name, today, activeHospitalId]);
 
+   const sortedAppointments = useMemo(() => {
       const strictFilter = filterStatus as string;
-      if (strictFilter !== 'all') {
-         final = final.filter(a => a.status === strictFilter);
-      }
-      return final;
-   }, [filteredAppointments, filterStatus, reservedSlotsCount, activeChamber, currentDoctorId, doctor?.name, today, activeHospitalId]);
+      return strictFilter !== 'all' ? orderedAppointments.filter(a => a.status === strictFilter) : orderedAppointments;
+   }, [orderedAppointments, filterStatus]);
 
    const currentApp = useMemo(() =>
       filteredAppointments.find(a => a.status === 'consulting'),
       [filteredAppointments]
+   );
+
+   // Figma "Queue Progress" counts (real appointment records only, like the old Operational Insights):
+   // Completed / Remaining (waiting + consulting) / Cancelled / No Show (= late).
+   const queueCounts = useMemo(() => ({
+      completed: filteredAppointments.filter(a => a.status === 'completed').length,
+      remaining: filteredAppointments.filter(a => a.status === 'waiting' || a.status === 'consulting').length,
+      cancelled: filteredAppointments.filter(a => a.status === 'cancelled').length,
+      noShow: filteredAppointments.filter(a => a.status === 'late').length,
+   }), [filteredAppointments]);
+
+   // Figma "Session ... (approx.)": average length of today's finished consultations (null until one has both timestamps).
+   const avgSessionMins = useMemo(() => {
+      const durations = filteredAppointments
+         .filter(a => a.status === 'completed' && a.consultationStartTime && a.consultationEndTime)
+         .map(a => (a.consultationEndTime as number) - (a.consultationStartTime as number))
+         .filter(ms => ms > 0);
+      if (durations.length === 0) return null;
+      return Math.max(1, Math.round(durations.reduce((sum, ms) => sum + ms, 0) / durations.length / 60000));
+   }, [filteredAppointments]);
+
+   // "Up Next" strip = upcoming rows (waiting + late, incl. reserved slots) in queue order, independent of the panel's filter.
+   const upNextApps = useMemo(
+      () => orderedAppointments.filter(a => a.status === 'waiting' || a.status === 'late'),
+      [orderedAppointments]
    );
 
    const updateAppStatus = async (appId: string, newStatus: AppointmentStatus) => {
@@ -425,10 +516,64 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
    const selectedApp = allAppointments.find(a => a.id === selectedAppId);
 
+   // Figma PAUSED frame = a delay (doctor not arrived) or a break is active. These are the two conditions the old
+   // "Delayed Session" / "Break In Progress" banners and the disabled "Session Paused" button used.
+   const isPaused = sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK';
+   const statusSheetApp = statusSheetAppId ? orderedAppointments.find(a => a.id === statusSheetAppId) : undefined;
+   const statusSheet = statusSheetApp ? buildStatusOptions(statusSheetApp) : null;
+   const assignSerial = selectedApp?.serialNumber ?? orderedAppointments.find(a => a.id === assignData.appId)?.serialNumber;
+
+   // Reserved-slot "Release to Public" (same body the row button had for virtual and materialized slots).
+   const releaseReservedSlot = (app: Appointment) => {
+      // Always decrement count when releasing a slot (whether virtual or materialized)
+      handleSaveReservedCount(Math.max(0, reservedSlotsCount - 1));
+
+      if (!app.id.startsWith('virtual-reserved-')) {
+         // If materialized, also cancel the record
+         updateAppStatus(app.id, 'cancelled');
+      }
+   };
+
+   const openAssignFor = (appId: string) => {
+      setAssignData({ name: '', phone: '', appId });
+      setShowAssignModal(true);
+   };
+
+   // Figma "Update Status" sheet -> the existing per-row actions (see queueUtils.buildStatusOptions for the allowed set).
+   const handleStatusSheetSelect = (app: Appointment, optionId: string) => {
+      const { value } = buildStatusOptions(app);
+      setStatusSheetAppId(null);
+      if (optionId === value) return; // already in that status ("Arrived" = waiting)
+      switch (optionId) {
+         case 'consulting': updateAppStatus(app.id, 'consulting'); break;
+         case 'late':
+         case 'push-late': updateAppStatus(app.id, 'late'); break;
+         case 'cancelled': updateAppStatus(app.id, 'cancelled'); break;
+         case 'completed': updateAppStatus(app.id, 'completed'); break;
+         case 'assign': openAssignFor(app.id); break;
+         case 'release': releaseReservedSlot(app); break;
+         default: break;
+      }
+   };
+
+   // "Prescribe & End": the same hand-off "Open Prescription" in the patient record used.
+   const handlePrescribeCurrent = () => {
+      if (!currentApp) return;
+      onStartPrescription({
+         id: currentApp.patientId,
+         name: currentApp.patientName,
+         phone: currentApp.patientPhone,
+         gender: 'Male',
+         appointmentId: currentApp.id,
+         hospitalId: currentApp.hospitalId
+      });
+      onNavigate('/doctor/prescription');
+   };
+
    if (!doctor || isLoadingQueue) {
       return (
          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
+            <div className="animate-pulse text-content-tertiary font-bold uppercase tracking-widest text-xs">
                Syncing with DocOclock Cloud...
             </div>
          </div>
@@ -436,586 +581,236 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
    }
 
    return (
-      <div className="space-y-4 max-w-6xl mx-auto px-2 md:px-0 pb-20 animate-fade-in">
+      <div className="font-display">
+      {/* The page content fades in (animate-fade-in creates a stacking context), the overlays below sit outside it so their z-[200]
+          stays above the sticky navbar. */}
+      <div className="flex flex-col gap-6 animate-fade-in">
          {onNavigate && <DoctorTabBar currentPath="/doctor/serial-manager" onNavigate={onNavigate} />}
-         {/* Unified Grid-Based Control Panel */}
-         <div className="bg-white border border-slate-200/50 shadow-ds-card rounded-ds-md overflow-hidden">
-            {/* Row 1: Context Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50/50 bg-white">
-               <div className="flex items-baseline gap-2.5">
-                  <h1 className="font-display text-base font-black text-ink-800 tracking-tighter leading-none">Today's Queue</h1>
-               </div>
-               <div className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50 border border-slate-200/40 rounded-lg shrink-0">
-                  <Calendar size={12} className="text-slate-400" />
-                  <span className="text-[10px] font-black text-ink-600 uppercase tracking-tighter">
-                     {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </span>
-               </div>
-            </div>
 
-            {/* Row 2: Operational Controls (Centered) */}
-            <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 px-5 py-5 bg-white">
+         <QueueHeader onUpdateStatus={() => setShowStatusModal(true)} />
 
-               {/* Availability Block */}
-               <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-end md:items-start">
-                     <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Availability</span>
-                     <span className="text-[9px] font-black text-ink-800 uppercase tracking-tighter leading-none">{doctorStatus === 'arrived' ? 'Live Now' : 'Off-Duty'}</span>
-                  </div>
-                  <div className="flex p-0.5 bg-slate-100/80 rounded-full w-40 relative border border-slate-200/20">
-                     <button
-                        onClick={async () => {
-                           if (doctor && activeChamber) {
-                              const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
-                              await upsertQueueSession({
-                                 doctorId: doctor.id,
-                                 hospitalId: activeChamber.id,
-                                 date: today,
-                                 isDoctorArrived: true,
-                                 sessionStatus: queueSessionStatus,
-                                 reservedSlotsCount,
-                                 meta
-                              });
-                              setDoctorStatus('arrived');
-                              setSessionMeta(meta);
-                           }
-                        }}
-                        className={`flex-1 text-[8px] font-black uppercase py-2 rounded-full transition-all duration-300 z-10 ${doctorStatus === 'arrived' ? 'text-white' : 'text-slate-400'}`}
-                     >
-                        Arrived
-                     </button>
-                     <button
-                        onClick={async () => {
-                           if (doctor && activeChamber) {
-                              await upsertQueueSession({
-                                 doctorId: doctor.id,
-                                 hospitalId: activeChamber.id,
-                                 date: today,
-                                 isDoctorArrived: false,
-                                 sessionStatus: queueSessionStatus,
-                                 reservedSlotsCount,
-                                 meta: sessionMeta
-                              });
-                              setDoctorStatus('not-arrived');
-                           }
-                        }}
-                        className={`flex-1 text-[8px] font-black uppercase py-2 rounded-full transition-all duration-300 z-10 ${doctorStatus === 'not-arrived' ? 'text-white' : 'text-slate-400'}`}
-                     >
-                        Away
-                     </button>
-                     <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full transition-all duration-300 shadow-lg ${doctorStatus === 'arrived' ? 'left-0.5 bg-green-600 shadow-green-500/20' : 'left-[calc(50%+0.5px)] bg-navy-900'}`} />
-                  </div>
-               </div>
-
-               <div className="hidden md:block w-px h-8 bg-slate-100/80" />
-
-               {/* Operations Block: Delay + Action */}
-               <div className="flex flex-col gap-2">
-                  {/* Direct number input + human-readable display */}
-                  <div className="flex items-center gap-2">
-                     <div className="flex items-center gap-1 p-1 bg-slate-50 border border-slate-200/40 rounded-2xl">
-                        <button onClick={() => setLocalDelay(Math.max(0, localDelay - 5))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200/60 rounded-xl text-slate-500 hover:text-slate-900 transition-all active:scale-95 shadow-sm"><Minus size={11} /></button>
-                        <input
-                           type="number"
-                           min={0}
-                           max={480}
-                           value={localDelay}
-                           onChange={e => setLocalDelay(Math.max(0, Math.min(480, parseInt(e.target.value) || 0)))}
-                           className="w-14 text-center font-black text-sm text-slate-900 bg-transparent outline-none"
-                        />
-                        <span className="text-[9px] font-bold text-slate-400 -ml-1">m</span>
-                        <button onClick={() => setLocalDelay(localDelay + 5)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200/60 rounded-xl text-slate-500 hover:text-slate-900 transition-all active:scale-95 shadow-sm"><Plus size={11} /></button>
-                     </div>
-                     {localDelay > 0 && (
-                        <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-1 rounded-lg border border-orange-100">
-                           {localDelay >= 60 ? `${Math.floor(localDelay / 60)}h${localDelay % 60 > 0 ? ` ${localDelay % 60}m` : ''}` : `${localDelay}m`}
-                        </span>
-                     )}
-                  </div>
-                  {/* Quick presets */}
-                  <div className="flex gap-1 flex-wrap">
-                     {[15, 30, 45, 60, 90, 120].map(v => (
-                        <button key={v} onClick={() => setLocalDelay(v)} className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${localDelay === v ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                           {v >= 60 ? `${v/60}h` : `${v}m`}
-                        </button>
-                     ))}
-                  </div>
-
-                  <Button
-                     onClick={handleSaveDelay}
-                     disabled={!activeChamber || isSavingDelay}
-                     className={`h-9 px-5 rounded-xl font-black text-[10px] tracking-widest transition-all shadow-md active:translate-y-px ${isSavingDelay ? 'bg-green-600 text-white border-0' : 'bg-navy-900 text-white hover:bg-black active:shadow-none'}`}
-                  >
-                     {isSavingDelay ? 'DONE' : 'SET DELAY'}
-                  </Button>
+         {isPaused ? (
+            // Figma 328:14902: orange Paused card + 36px clock + "Doctor hasn't arrived yet".
+            <div className="flex flex-col gap-6 md:flex-row md:items-start">
+               <PausedQueueCard
+                  minutes={sessionMeta.delayMinutes}
+                  resumeLabel={doctorStatus === 'arrived' ? 'End Break' : 'Mark Arrived'}
+                  onResume={doctorStatus === 'arrived' ? handleEndBreak : handleMarkArrived}
+               />
+               <div className="w-full md:w-[412px] md:shrink-0 md:py-2">
+                  <QueueClock size="md" note={doctorStatus === 'arrived' ? 'Doctor is on a break' : 'Doctor hasn’t arrived yet'} />
                </div>
             </div>
-         </div>
-
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-               {sessionMeta.status === 'DELAYED' && doctorStatus === 'not-arrived' && (
-                  <div className="p-6 rounded-ds-xl border-2 border-orange-200 bg-amber-50/50 space-y-3 shadow-ds-soft">
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 bg-orange-500 text-white rounded-xl flex items-center justify-center shadow-lg">
-                              <History size={20} />
-                           </div>
-                           <div>
-                              <h2 className="font-display text-xl font-black text-orange-950 tracking-tight">Delayed Session</h2>
-                              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest bg-orange-100 px-2 py-0.5 rounded">Doctor not arrived</span>
-                           </div>
-                        </div>
-                        <div className="text-right">
-                           <p className="font-stat text-2xl font-bold text-orange-600">{sessionMeta.delayMinutes}m</p>
-                        </div>
-                     </div>
-                     <p className="text-sm font-bold text-orange-800/70 pl-1">Patients have been notified of the delay.</p>
-                  </div>
+         ) : (
+            // Figma 368:14306: live card (524) + clock and Queue Progress column (412).
+            <div className="flex flex-col gap-6 lg:flex-row">
+               {currentApp ? (
+                  <LiveQueueCard
+                     isArrived={isArrived}
+                     name={currentApp.patientName}
+                     subtitle={currentApp.patientPhone}
+                     serialNo={currentApp.serialNumber}
+                     startedAt={currentApp.consultationStartTime}
+                     avgSessionMins={avgSessionMins}
+                     onOpenRecords={() => setSelectedAppId(currentApp.id)}
+                     onPrescribe={handlePrescribeCurrent}
+                     onConsultNext={handleNextPatient}
+                     onEndSession={() => setShowCompleteConfirm(true)}
+                  />
+               ) : (
+                  <IdleQueueCard
+                     isArrived={isArrived}
+                     hint={isArrived ? 'Call the next patient when you are ready.' : 'Mark yourself as Arrived from Update Queue Status to start today’s session.'}
+                     ctaLabel={!activeChamber ? 'No Active Chamber' : 'Consult Next'}
+                     ctaDisabled={!activeChamber}
+                     onConsultNext={handleNextPatient}
+                  />
                )}
-
-               {sessionMeta.status === 'BREAK' && doctorStatus === 'arrived' && (
-                  <div className="p-6 rounded-ds-xl border-2 border-medical-200 bg-medical-50/50 space-y-4 shadow-ds-soft">
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 bg-medical-600 text-white rounded-xl flex items-center justify-center shadow-lg">
-                              <Clock size={20} />
-                           </div>
-                           <div>
-                              <h2 className="font-display text-xl font-black text-medical-700 tracking-tight">Break In Progress</h2>
-                              <span className="text-[10px] font-black text-medical-600 uppercase tracking-widest bg-medical-100 px-2 py-0.5 rounded">Doctor is on break</span>
-                           </div>
-                        </div>
-                        <div className="text-right">
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Duration</p>
-                           <p className="font-stat text-xl font-bold text-medical-600">{sessionMeta.delayMinutes} Minutes</p>
-                        </div>
-                     </div>
-                     <div className="flex gap-4 items-center">
-                        <p className="text-sm font-bold text-medical-800/70 flex-1">Break duration: {sessionMeta.delayMinutes} minutes</p>
-                        <button
-                           onClick={async () => {
-                              if (doctor && activeChamber) {
-                                 const meta: DoctorSessionMeta = { ...DEFAULT_SESSION_META, status: 'ACTIVE', delayMinutes: 0 };
-                                 await upsertQueueSession({
-                                    doctorId: doctor.id,
-                                    hospitalId: activeChamber.id,
-                                    date: today,
-                                    isDoctorArrived: true,
-                                    sessionStatus: queueSessionStatus,
-                                    reservedSlotsCount,
-                                    meta
-                                 });
-                                 setSessionMeta(meta);
-                              }
-                           }}
-                           className="bg-medical-500 hover:bg-medical-600 text-white px-6 font-black rounded-full shadow-md shadow-medical-200 uppercase tracking-widest text-xs h-11"
-                        >
-                           End Break
-                        </button>
-                     </div>
-                  </div>
-               )}
-
-               <div className="relative">
-                  <GlassCard className="p-8 bg-navy-900 text-white border-0 relative overflow-hidden rounded-ds-xl shadow-ds-soft">
-                     <div className="relative z-10">
-                        <div className="flex justify-between items-start mb-6">
-                           <div className="flex items-center gap-2 px-3 py-1 bg-medical-500/20 text-medical-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 backdrop-blur-sm">
-                              <Activity size={12} className="animate-pulse" /> Current Patient
-                           </div>
-                        </div>
-
-                        {currentApp ? (
-                           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-                              <div className="text-center md:text-left">
-                                 <h2 className="font-display text-4xl md:text-5xl font-black mb-2 tracking-tight">{currentApp.patientName}</h2>
-                                 <p className="text-medical-200/60 font-bold flex items-center justify-center md:justify-start gap-4">
-                                    <span className="bg-white/10 px-3 py-1 rounded-lg">Serial #{currentApp.serialNumber}</span>
-                                    <span className="flex items-center gap-1"><Phone size={14} /> {currentApp.patientPhone}</span>
-                                 </p>
-                              </div>
-                              <div className="flex flex-col sm:flex-row gap-4 shrink-0 w-full sm:w-auto">
-                                 <Button
-                                    onClick={() => setSelectedAppId(currentApp.id)}
-                                    variant="outline"
-                                    className="!bg-white/10 hover:!bg-white/20 !text-white !border-white/20 px-8 py-4 h-16 rounded-full font-black text-lg shadow-none"
-                                 >
-                                    Patient Records
-                                 </Button>
-                                 <Button
-                                    className="btn-sheen h-16 px-10 gap-3 !bg-medical-500 hover:!bg-medical-400 shadow-lg shadow-medical-500/20 active:scale-95 transition-all font-black text-lg rounded-full !text-white"
-                                    onClick={handleNextPatient}
-                                    disabled={sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK'}
-                                 >
-                                    <Bell size={24} />
-                                    {sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK' ? 'Session Paused' : 'Consult Next'}
-                                 </Button>
-                              </div>
-                           </div>
-                        ) : (
-                           <div className="flex flex-col md:flex-row justify-between items-center py-4 gap-8">
-                              <h2 className="font-display text-3xl font-black text-slate-500 tracking-tight">No Active Patient</h2>
-                              <Button
-                                 className="h-16 px-10 gap-3 !bg-white hover:!bg-slate-100 !text-navy-900 shadow-xl transition-all font-black text-lg rounded-full w-full md:w-auto"
-                                 onClick={handleNextPatient}
-                                 disabled={!activeChamber || sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK'}
-                              >
-                                 <Bell size={24} />
-                                 {!activeChamber ? 'No Active Chamber' : sessionMeta.status === 'DELAYED' || sessionMeta.status === 'BREAK' ? 'Session Paused' : 'Consult Next'}
-                              </Button>
-                           </div>
-                        )}
-                     </div>
-                  </GlassCard>
-               </div>
-
-               <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 gap-4">
-                     <h3 className="font-display text-[10px] font-black text-ink-500 uppercase tracking-[0.2em]">Live Timeline</h3>
-                     <div className="flex overflow-x-auto pb-2 -mb-2 no-scrollbar gap-2 flex-nowrap">
-                        {['all', 'waiting', 'late', 'completed', 'cancelled'].map((status) => (
-                           <button
-                              key={status}
-                              onClick={() => setFilterStatus(status as any)}
-                              className={`px-3.5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filterStatus === status
-                                 ? 'bg-navy-900 text-white border-navy-900 shadow-md'
-                                 : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'
-                                 }`}
-                           >
-                              {status}
-                           </button>
-                        ))}
-                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                     {sortedAppointments.length > 0 ? sortedAppointments.map(app => {
-                        const isCurrent = app.status === 'consulting';
-
-                        return (
-                           <div
-                              key={app.id}
-                              onClick={() => setSelectedAppId(app.id)}
-                              className={`group p-4 rounded-ds-md flex items-center justify-between cursor-pointer transition-all border
-                                  ${isCurrent ? 'bg-teal-50/50 border-teal-500/50 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}
-                               `}
-                           >
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 min-w-0">
-                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 transition-all
-                                     ${isCurrent ? 'bg-teal-600 text-white shadow-lg' :
-                                       app.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                                          'bg-slate-100 text-slate-500'}
-                                  `}>
-                                    {app.serialNumber}
-                                 </div>
-
-                                 <div className="min-w-0 flex flex-col justify-center flex-1">
-                                    <h4 className={`font-display text-base font-black tracking-tight truncate ${app.status === 'cancelled' ? 'text-slate-300 line-through' : (app.isReserved ? 'text-slate-400 italic' : 'text-ink-800')}`}>
-                                       {app.isReserved ? 'Reserved Slot' : app.patientName}
-                                    </h4>
-                                    <div className="text-[10px] text-slate-400 font-bold flex items-center gap-2 mt-0.5">
-                                       {app.isReserved ? (
-                                          <span className="text-teal-500/60 uppercase tracking-widest text-[8px]">Restricted Action</span>
-                                       ) : (
-                                          <>
-                                             <span className="flex items-center gap-1"><Phone size={10} className="text-slate-300" /> {app.patientPhone}</span>
-                                             <span className="hidden sm:inline w-0.5 h-0.5 rounded-full bg-slate-300" />
-                                             <span className={`uppercase tracking-tighter ${app.status === 'late' ? 'text-amber-600' : ''}`}>{app.status}</span>
-                                          </>
-                                       )}
-                                    </div>
-
-                                    {/* MOBILE-ONLY ACTION ROW */}
-                                    <div className="flex sm:hidden items-center gap-2 mt-3">
-                                       {app.isReserved && app.patientId === 'RESERVED' && (
-                                          <>
-                                             {app.status === 'waiting' && (
-                                                <button onClick={(e) => { e.stopPropagation(); setAssignData({ name: '', phone: '', appId: app.id }); setShowAssignModal(true); }} className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-black text-[8px] uppercase tracking-widest">ASSIGN</button>
-                                             )}
-                                             <button onClick={(e) => { e.stopPropagation(); handleSaveReservedCount(Math.max(0, reservedSlotsCount - 1)); if (!app.id.startsWith('virtual-reserved-')) updateAppStatus(app.id, 'cancelled'); }} className="p-1.5 bg-slate-50 text-slate-400 border border-slate-100 rounded-lg"><Plus size={14} className="rotate-45" /></button>
-                                          </>
-                                       )}
-                                       {!app.isReserved && ['waiting', 'late'].includes(app.status) && (
-                                          <>
-                                             <button onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'consulting'); }} className="p-1.5 bg-teal-600 text-white rounded-lg"><Activity size={14} /></button>
-                                             <button onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'cancelled'); }} className="p-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg"><X size={14} /></button>
-                                          </>
-                                       )}
-                                       {app.status === 'consulting' && (
-                                          <button onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'completed'); }} className="px-3 py-1 bg-teal-600 text-white rounded-lg font-black text-[9px] uppercase">COMPLETE</button>
-                                       )}
-                                    </div>
-                                 </div>
-                              </div>
-
-                              {/* DESKTOP-ONLY ACTION ROW */}
-                              <div className="hidden sm:flex items-center gap-2 shrink-0">
-                                 {app.isReserved && app.patientId === 'RESERVED' && (
-                                    <>
-                                       {app.status === 'waiting' && (
-                                          <button
-                                             onClick={(e) => {
-                                                e.stopPropagation();
-                                                setAssignData({ name: '', phone: '', appId: app.id });
-                                                setShowAssignModal(true);
-                                             }}
-                                             className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-black transition-colors shadow-sm"
-                                          >
-                                             ASSIGN
-                                          </button>
-                                       )}
-                                       {app.status === 'late' && (
-                                          <button
-                                             onClick={(e) => {
-                                                e.stopPropagation();
-                                                setAssignData({ name: '', phone: '', appId: app.id });
-                                                setShowAssignModal(true);
-                                             }}
-                                             className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-black transition-colors shadow-sm"
-                                          >
-                                             ASSIGN
-                                          </button>
-                                       )}
-                                       {app.status === 'waiting' && (
-                                          <button
-                                             onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'late'); }}
-                                             className="p-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors"
-                                             title="Push to Late"
-                                          >
-                                             <Clock size={16} />
-                                          </button>
-                                       )}
-                                       <button
-                                          onClick={(e) => {
-                                             e.stopPropagation();
-                                             // Always decrement count when releasing a slot (whether virtual or materialized)
-                                             handleSaveReservedCount(Math.max(0, reservedSlotsCount - 1));
-
-                                             if (!app.id.startsWith('virtual-reserved-')) {
-                                                // If materialized, also cancel the record
-                                                updateAppStatus(app.id, 'cancelled');
-                                             }
-                                          }}
-                                          className="p-2 bg-slate-50 text-slate-400 border border-slate-100 rounded-lg hover:bg-slate-100 transition-colors"
-                                          title="Release to Public"
-                                       >
-                                          <Plus size={16} className="rotate-45" />
-                                       </button>
-                                    </>
-                                 )}
-
-                                 {!app.isReserved && app.status === 'waiting' && (
-                                    <>
-                                       <button
-                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'consulting'); }}
-                                          className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
-                                          title="Start Consultation"
-                                       >
-                                          <Activity size={16} />
-                                       </button>
-                                       <button
-                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'late'); }}
-                                          className="p-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors"
-                                          title="Mark Late"
-                                       >
-                                          <Clock size={16} />
-                                       </button>
-                                       <button
-                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'cancelled'); }}
-                                          className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-colors"
-                                          title="Cancel"
-                                       >
-                                          <X size={16} />
-                                       </button>
-                                    </>
-                                 )}
-
-                                 {!app.isReserved && app.status === 'late' && (
-                                    <>
-                                       <button
-                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'consulting'); }}
-                                          className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
-                                          title="Start Consultation"
-                                       >
-                                          <Activity size={16} />
-                                       </button>
-                                       <button
-                                          onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'cancelled'); }}
-                                          className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-colors"
-                                          title="Cancel"
-                                       >
-                                          <X size={16} />
-                                       </button>
-                                    </>
-                                 )}
-
-                                 {app.status === 'consulting' && (
-                                    <button
-                                       onClick={(e) => { e.stopPropagation(); updateAppStatus(app.id, 'completed'); }}
-                                       className="px-3 py-1.5 bg-teal-600 text-white rounded-lg font-black text-[10px] uppercase tracking-wider hover:bg-teal-700 transition-colors shadow-sm"
-                                    >
-                                       COMPLETE
-                                    </button>
-                                 )}
-
-                                 {['completed', 'cancelled'].includes(app.status) && (
-                                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300">
-                                       <History size={16} />
-                                    </div>
-                                 )}
-
-                                 <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-100 transition-all ml-2">
-                                    <ChevronRight size={16} />
-                                 </div>
-                              </div>
-                           </div>
-                        );
-                     }) : (
-                        <div className="text-center py-20 bg-white rounded-ds-xl border-2 border-dashed border-slate-100">
-                           <ClipboardList className="mx-auto text-slate-200 mb-4" size={48} />
-                           <p className="text-slate-400 font-bold">No appointments found matching this filter.</p>
-                        </div>
-                     )}
-                  </div>
+               <div className="flex w-full flex-col justify-between gap-6 lg:w-[412px] lg:shrink-0 lg:py-2">
+                  <QueueClock size="lg" />
+                  <QueueProgress {...queueCounts} />
                </div>
             </div>
+         )}
 
-            <div className="space-y-6">
-               <GlassCard className="p-8 bg-white border-0 shadow-ds-soft rounded-ds-xl">
-                  <h3 className="font-display text-[10px] font-black text-ink-500 uppercase tracking-[0.2em] mb-8 text-center">Operational Insights</h3>
-                  <div className="space-y-8">
-                     <div className="flex justify-between items-center">
-                        <div>
-                           <p className="text-sm font-black text-ink-800">Total Patients</p>
-                           <p className="text-[10px] text-slate-400 font-bold">Today's registry</p>
-                        </div>
-                        <span className="font-stat text-3xl font-bold text-ink-800">{filteredAppointments.length}</span>
-                     </div>
-                     <div className="flex justify-between items-center">
-                        <div>
-                           <p className="text-sm font-black text-ink-800">Remaining</p>
-                           <p className="text-[10px] text-slate-400 font-bold">Waiting in queue</p>
-                        </div>
-                        {/* Signature pastel dashed-ring motif — reserved for live queue/countdown numbers */}
-                        <div
-                           className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
-                           style={{ background: 'conic-gradient(#96ced7,#d6b2ba,#c8db9c,#8ec7b7,#e9e8ef,#96bce6,#93d3fd,#96ced7)', padding: 4 }}
-                        >
-                           <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
-                              <span className="font-stat text-lg font-bold text-ink-800">{filteredAppointments.filter(a => a.status === 'waiting').length}</span>
-                           </div>
-                        </div>
-                     </div>
-                     <div className="flex justify-between items-center">
-                        <div>
-                           <p className="text-sm font-black text-ink-800">Finished</p>
-                           <p className="text-[10px] text-slate-400 font-bold">Consultations ended</p>
-                        </div>
-                        <span className="font-stat text-3xl font-bold text-teal-600">{filteredAppointments.filter(a => a.status === 'completed').length}</span>
-                     </div>
-                  </div>
-                  <div className="mt-10 pt-8 border-t border-slate-50 space-y-4">
-                     <Button fullWidth variant="outline" className="h-14 rounded-full gap-3 border-slate-200 font-black" onClick={() => window.print()}>
-                        <ClipboardList size={20} /> Export Queue List
-                     </Button>
-                  </div>
-               </GlassCard>
+         <UpNextRow
+            count={orderedAppointments.length}
+            onViewAll={() => setShowQueueList(true)}
+            empty={upNextApps.length === 0}
+            emptyText="No upcoming patients in the queue."
+         >
+            {upNextApps.map(app => (
+               <QueuePatientCard
+                  key={app.id}
+                  name={app.isReserved ? 'Reserved Slot' : app.patientName}
+                  subtitle={app.isReserved ? 'Restricted Action' : app.patientPhone}
+                  serialNo={app.serialNumber}
+                  tone={toneOf(app.status)}
+                  statusLabel={isOpenReservedSlot(app) && app.status === 'waiting' ? 'Reserved' : statusLabelOf(app.status)}
+                  onStatusClick={buildStatusOptions(app).options.length > 0 ? () => setStatusSheetAppId(app.id) : undefined}
+                  onOpen={() => setSelectedAppId(app.id)}
+                  phone={!app.isReserved && app.patientPhone && app.patientPhone !== 'N/A' ? app.patientPhone : undefined}
+               />
+            ))}
+         </UpNextRow>
+      </div>
 
-            </div>
-         </div>
+         {showStatusModal && (
+            <QueueStatusModal
+               isArrived={doctorStatus === 'arrived'}
+               delayMinutes={localDelay}
+               presets={DELAY_PRESETS}
+               isSaving={isSavingDelay}
+               saveDisabled={!activeChamber}
+               onArrived={async () => {
+                  if (doctorStatus !== 'arrived' || isPaused) await handleMarkArrived();
+                  setShowStatusModal(false);
+               }}
+               onAway={handleMarkAway}
+               onDelayChange={setLocalDelay}
+               onConfirm={async () => {
+                  if (localDelay > 0) await handleSaveDelay();
+                  setShowStatusModal(false);
+               }}
+               onClose={() => setShowStatusModal(false)}
+            />
+         )}
+
+         {showCompleteConfirm && currentApp && (
+            <ConfirmCompleteModal
+               onCancel={() => setShowCompleteConfirm(false)}
+               onConfirm={() => {
+                  updateAppStatus(currentApp.id, 'completed');
+                  setShowCompleteConfirm(false);
+               }}
+            />
+         )}
+
+         {statusSheetApp && statusSheet && statusSheet.options.length > 0 && (
+            <StatusUpdateModal
+               options={statusSheet.options}
+               value={statusSheet.value}
+               onSelect={id => handleStatusSheetSelect(statusSheetApp, id)}
+               onClose={() => setStatusSheetAppId(null)}
+            />
+         )}
+
+         {showQueueList && (
+            <QueueListPanel
+               appointments={sortedAppointments}
+               filterStatus={filterStatus}
+               onFilter={setFilterStatus}
+               onSelect={id => { setShowQueueList(false); setSelectedAppId(id); }}
+               onClose={() => setShowQueueList(false)}
+               onExport={() => window.print()}
+            />
+         )}
 
          {selectedApp && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-2xl animate-fade-in p-4">
-               <div className="bg-white w-full max-w-4xl rounded-ds-xl shadow-2xl flex flex-col max-h-[90vh] relative overflow-hidden">
-                  <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center">
-                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-medical-500 text-white rounded-2xl flex items-center justify-center font-black text-lg">
+            <div
+               className="ds-fade-in fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
+               onMouseDown={e => { if (e.target === e.currentTarget) setSelectedAppId(null); }}
+            >
+               <div role="dialog" aria-modal="true" aria-label="Patient records" className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-ds-xl bg-white shadow-ds-modal">
+                  <div className="flex items-center justify-between gap-4 border-b border-ink-100 p-6 md:p-8">
+                     <div className="flex min-w-0 items-center gap-4">
+                        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-500 font-display text-ds-title-20 text-white">
                            {selectedApp.serialNumber}
-                        </div>
-                        <div>
-                           <h2 className="font-display text-2xl font-black text-ink-800">{selectedApp.patientName}</h2>
-                           <p className="text-xs font-bold text-slate-400">Patient ID: {selectedApp.patientId}</p>
+                        </span>
+                        <div className="min-w-0">
+                           <h2 className="truncate font-display text-ds-title-24 font-normal text-content-primary">{selectedApp.patientName}</h2>
+                           <p className="font-display text-ds-small text-content-tertiary">Patient ID: {selectedApp.patientId}</p>
                         </div>
                      </div>
-                     <button onClick={() => setSelectedAppId(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><X size={24} /></button>
+                     <button
+                        type="button"
+                        onClick={() => setSelectedAppId(null)}
+                        aria-label="Close"
+                        className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-steel shadow-ds-pill cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+                     >
+                        <MaskIcon src={DS_ICONS.close} size={11.5} />
+                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                         <section className="space-y-4">
-                           <h3 className="font-display text-xs font-black text-ink-500 uppercase tracking-widest border-b pb-2">Medical History</h3>
-                           <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 min-h-[150px] flex items-center justify-center italic text-slate-400">
+                           <h3 className="border-b border-ink-100 pb-2 font-display text-ds-body text-content-secondary">Medical History</h3>
+                           <div className="flex min-h-[150px] items-center justify-center rounded-ds-lg bg-page p-6 text-center font-display text-ds-body italic text-content-tertiary">
                               No previous prescriptions found in system.
                            </div>
                         </section>
                         <section className="space-y-4">
-                           <h3 className="font-display text-xs font-black text-ink-500 uppercase tracking-widest border-b pb-2">Action Center</h3>
-                           <div className="space-y-3">
+                           <h3 className="border-b border-ink-100 pb-2 font-display text-ds-body text-content-secondary">Action Center</h3>
+                           <div className="flex flex-col gap-3">
                               {selectedApp.status === 'consulting' && (
-                                 <Button
-                                    fullWidth
-                                    className="btn-sheen h-16 text-lg font-black rounded-2xl bg-teal-600 shadow-xl shadow-teal-100 flex items-center gap-3 !text-white"
+                                 <DashboardButton
+                                    variant="primary"
+                                    icon={<CheckCircle size={18} />}
+                                    className="w-full"
                                     onClick={() => {
                                        updateAppStatus(selectedApp.id, 'completed');
                                        setSelectedAppId(null);
                                     }}
                                  >
-                                    <CheckCircle size={24} /> Complete Consultation
-                                 </Button>
+                                    Complete Consultation
+                                 </DashboardButton>
                               )}
 
                               {(selectedApp.status === 'waiting' || selectedApp.status === 'late') && (
-                                 <Button
-                                    fullWidth
-                                    className="btn-sheen h-16 text-lg font-black rounded-2xl bg-teal-600 shadow-xl shadow-teal-100 flex items-center gap-3 !text-white"
+                                 <DashboardButton
+                                    variant="primary"
+                                    icon={<Activity size={18} />}
+                                    className="w-full"
                                     onClick={() => {
                                        updateAppStatus(selectedApp.id, 'consulting');
                                        setSelectedAppId(null);
                                     }}
                                  >
-                                    <Activity size={24} /> Start Consultation
-                                 </Button>
+                                    Start Consultation
+                                 </DashboardButton>
                               )}
 
                               {selectedApp.status === 'waiting' && (
-                                 <Button
-                                    fullWidth
-                                    variant="outline"
-                                    className="h-14 text-sm font-black rounded-xl border-amber-200 text-amber-600 hover:bg-amber-50 flex items-center gap-2"
+                                 <DashboardButton
+                                    variant="monochrome"
+                                    icon={<Clock size={18} />}
+                                    className="w-full"
                                     onClick={() => {
                                        updateAppStatus(selectedApp.id, 'late');
                                        setSelectedAppId(null);
                                     }}
                                  >
-                                    <Clock size={18} /> Mark as Late
-                                 </Button>
+                                    Mark as Late
+                                 </DashboardButton>
                               )}
 
                               {(selectedApp.status === 'waiting' || selectedApp.status === 'late') && (
-                                 <Button
-                                    fullWidth
-                                    variant="outline"
-                                    className="h-14 text-sm font-black rounded-xl border-red-200 text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                 // #ce4747 = the fixed semantic danger colour (same as the profile menu's Logout row).
+                                 <DashboardButton
+                                    variant="monochrome"
+                                    icon={<X size={18} />}
+                                    className="w-full !text-[#ce4747]"
                                     onClick={() => {
                                        updateAppStatus(selectedApp.id, 'cancelled');
                                        setSelectedAppId(null);
                                     }}
                                  >
-                                    <X size={18} /> Cancel Appointment
-                                 </Button>
+                                    Cancel Appointment
+                                 </DashboardButton>
                               )}
 
                               {!['waiting', 'late', 'consulting'].includes(selectedApp.status) && (
-                                 <div className="bg-slate-50 p-6 rounded-2xl text-center">
-                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Consultation {selectedApp.status}</p>
-                                    <p className="text-[10px] font-bold text-slate-400 mt-1 italic">No further actions available for this record.</p>
+                                 <div className="rounded-ds-lg bg-page p-6 text-center">
+                                    <p className="font-display text-ds-small uppercase tracking-widest text-content-tertiary">Consultation {selectedApp.status}</p>
+                                    <p className="mt-1 font-display text-ds-small italic text-content-tertiary">No further actions available for this record.</p>
                                  </div>
                               )}
 
-                              <Button
-                                 fullWidth
-                                 className="btn-sheen h-16 text-lg font-black rounded-2xl bg-navy-900 shadow-xl shadow-slate-100 flex items-center gap-3 !text-white"
+                              <DashboardButton
+                                 variant="gradient"
+                                 icon={<FileText size={18} />}
+                                 className="w-full"
                                  onClick={() => {
                                     if (selectedApp.isReserved) {
                                        setAssignData({ name: '', phone: '', appId: selectedApp.id });
@@ -1034,8 +829,8 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                                     onNavigate('/doctor/prescription');
                                  }}
                               >
-                                 <FileText size={24} /> {selectedApp.isReserved ? 'Assign Patient' : 'Open Prescription'}
-                              </Button>
+                                 {selectedApp.isReserved ? 'Assign Patient' : 'Open Prescription'}
+                              </DashboardButton>
                            </div>
                         </section>
                      </div>
@@ -1045,54 +840,60 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
          )}
 
          {showAssignModal && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
-               <GlassCard className="w-full max-w-md p-8 bg-white overflow-hidden rounded-ds-xl shadow-2xl border-0 animate-scale-up">
-                  <div className="flex justify-between items-start mb-6">
+            <div className="ds-fade-in fixed inset-0 z-[200] flex items-center justify-center bg-black/25 p-4">
+               <div role="dialog" aria-modal="true" aria-label="Assign Patient" className="flex w-full max-w-md flex-col gap-6 overflow-hidden rounded-ds-lg bg-white p-6 shadow-ds-modal">
+                  <div className="flex items-start justify-between gap-4">
                      <div>
-                        <h2 className="font-display text-2xl font-black text-ink-800 tracking-tight">Assign Patient</h2>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Manual entry for Serial #{selectedApp?.serialNumber}</p>
+                        <h2 className="font-display text-ds-title-24 font-normal text-content-primary">Assign Patient</h2>
+                        <p className="mt-1 font-display text-ds-small text-content-tertiary">Manual entry for Serial #{assignSerial}</p>
                      </div>
-                     <button onClick={() => setShowAssignModal(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
-                        <X size={20} />
+                     <button
+                        type="button"
+                        onClick={() => setShowAssignModal(false)}
+                        aria-label="Close"
+                        className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-steel shadow-ds-pill cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+                     >
+                        <MaskIcon src={DS_ICONS.close} size={11.5} />
                      </button>
                   </div>
 
-                  <div className="space-y-5">
-                     <div>
-                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Patient Name</label>
+                  <div className="flex flex-col gap-5">
+                     <div className="flex flex-col gap-2">
+                        <label className="font-display text-ds-body text-content-secondary">Patient Name</label>
                         <input
                            type="text"
                            autoFocus
-                           className="w-full bg-slate-50 border border-slate-100 p-4 rounded-ds-sm font-bold text-ink-800 outline-none focus:ring-2 focus:ring-medical-500 transition-all h-14"
+                           className="h-10 w-full rounded-ds-sm border border-ink-50 bg-ink-50 px-3 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus:ring-2 focus:ring-primary-500"
                            placeholder="Enter name"
                            value={assignData.name}
                            onChange={e => setAssignData({ ...assignData, name: e.target.value })}
                         />
                      </div>
-                     <div>
-                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Phone Number</label>
+                     <div className="flex flex-col gap-2">
+                        <label className="font-display text-ds-body text-content-secondary">Phone Number</label>
                         <input
                            type="tel"
-                           className="w-full bg-slate-50 border border-slate-100 p-4 rounded-ds-sm font-bold text-ink-800 outline-none focus:ring-2 focus:ring-medical-500 transition-all h-14"
+                           className="h-10 w-full rounded-ds-sm border border-ink-50 bg-ink-50 px-3 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus:ring-2 focus:ring-primary-500"
                            placeholder="01XXXXXXXXX"
                            value={assignData.phone}
                            onChange={e => setAssignData({ ...assignData, phone: e.target.value })}
                         />
                      </div>
 
-                     <div className="flex gap-3 pt-2">
-                        <Button
-                           variant="outline"
-                           fullWidth
-                           className="h-14 rounded-full font-black text-slate-500 border-slate-200"
+                     <div className="flex gap-[10px] pt-2">
+                        <DashboardButton
+                           variant="monochrome"
+                           icon={false}
+                           className="min-w-0 flex-1"
                            onClick={() => setShowAssignModal(false)}
                         >
                            Cancel
-                        </Button>
-                        <Button
-                           fullWidth
+                        </DashboardButton>
+                        <DashboardButton
+                           variant="primary"
+                           icon={false}
                            disabled={!assignData.name || !assignData.phone}
-                           className="btn-sheen h-14 rounded-full font-black bg-medical-500 shadow-md shadow-medical-200 disabled:opacity-50 disabled:shadow-none"
+                           className="min-w-0 flex-1"
                            onClick={async () => {
                               if (assignData.appId && assignData.name && assignData.phone) {
                                  let slot = allAppointments.find(a => a.id === assignData.appId);
@@ -1146,10 +947,10 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                            }}
                         >
                            Confirm
-                        </Button>
+                        </DashboardButton>
                      </div>
                   </div>
-               </GlassCard>
+               </div>
             </div>
          )}
       </div>
