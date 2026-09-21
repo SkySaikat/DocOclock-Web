@@ -10,12 +10,14 @@ import {
 } from '../../storage';
 import { getLocalISODate } from '../../utils/date';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
+import { useToast } from '../../components/ToastProvider';
 import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
 import { DashboardButton, StatusUpdateModal, MaskIcon, DS_ICONS } from '../../components/dashboard';
 import { QueueHeader } from '../../components/doctor/queue/QueueHeader';
 import { QueueClock } from '../../components/doctor/queue/QueueClock';
 import { QueueProgress } from '../../components/doctor/queue/QueueProgress';
 import { LiveQueueCard, IdleQueueCard, PausedQueueCard } from '../../components/doctor/queue/QueueStatusCards';
+import { AvailabilityCard } from '../../components/doctor/queue/AvailabilityCard';
 import { UpNextRow } from '../../components/doctor/queue/UpNextRow';
 import { QueuePatientCard } from '../../components/doctor/queue/QueuePatientCard';
 import { QueueListPanel } from '../../components/doctor/queue/QueueListPanel';
@@ -35,6 +37,8 @@ interface SerialManagerProps {
 export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStartPrescription, overrideDoctorId }) => {
    const doctor = DoctorStorage.get();
    const { autoSync, syncDelay } = useGoogleCalendar();
+   // window.alert is avoided on Capacitor (CLAUDE.md): the two "mark yourself as Arrived" prompts use the design-system toast instead.
+   const { showToast } = useToast();
    const currentDoctorId = overrideDoctorId || doctor?.id;
    const [activeHospitalId, setActiveHospitalId] = useState<string | null>(null);
    const today = getLocalISODate();
@@ -439,7 +443,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
          if (!app) return;
 
          if (newStatus === 'consulting' && !isArrived) {
-            alert("Please mark yourself as Arrived to start today’s session.");
+            showToast("Please mark yourself as Arrived to start today’s session.", 'warning');
             return;
          }
 
@@ -468,7 +472,7 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
 
    const handleNextPatient = async () => {
       if (!isArrived) {
-         alert("Please mark yourself as Arrived to start today’s session.");
+         showToast("Please mark yourself as Arrived to start today’s session.", 'warning');
          return;
       }
 
@@ -602,10 +606,13 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                </div>
             </div>
          ) : (
-            // Figma 368:14306: live card (524) + clock and Queue Progress column (412).
-            <div className="flex flex-col gap-6 lg:flex-row">
+            // Figma 368:14306: live card (524) + clock and Queue Progress column (412). With no patient in the chair the row follows the
+            // flow-start frame 328:13919 instead: card | Availability (308) | clock + progress. Below `lg` the row dissolves into the page
+            // column (`contents`) so the phone order matches Figma 341:18476 / 368:17738: clock, card, Up Next, then Queue Progress.
+            <div className="contents lg:flex lg:flex-row lg:gap-6">
                {currentApp ? (
                   <LiveQueueCard
+                     className="order-2 lg:order-none"
                      isArrived={isArrived}
                      name={currentApp.patientName}
                      subtitle={currentApp.patientPhone}
@@ -618,22 +625,33 @@ export const SerialManager: React.FC<SerialManagerProps> = ({ onNavigate, onStar
                      onEndSession={() => setShowCompleteConfirm(true)}
                   />
                ) : (
-                  <IdleQueueCard
-                     isArrived={isArrived}
-                     hint={isArrived ? 'Call the next patient when you are ready.' : 'Mark yourself as Arrived from Update Queue Status to start today’s session.'}
-                     ctaLabel={!activeChamber ? 'No Active Chamber' : 'Consult Next'}
-                     ctaDisabled={!activeChamber}
-                     onConsultNext={handleNextPatient}
-                  />
+                  <>
+                     <IdleQueueCard
+                        className="order-2 lg:order-none"
+                        isArrived={isArrived}
+                        hint={isArrived ? 'Call the next patient when you are ready.' : 'Mark yourself as Arrived from Update Queue Status to start today’s session.'}
+                        ctaLabel={!activeChamber ? 'No Active Chamber' : 'Consult Next'}
+                        ctaDisabled={!activeChamber}
+                        onConsultNext={handleNextPatient}
+                     />
+                     <AvailabilityCard
+                        className="max-xl:hidden xl:w-auto xl:basis-[308px] xl:shrink xl:min-w-[260px]"
+                        isArrived={isArrived}
+                        onArrived={() => { if (doctorStatus !== 'arrived') handleMarkArrived(); }}
+                        onAway={() => { if (doctorStatus === 'arrived') handleMarkAway(); }}
+                        onSetDelay={() => setShowStatusModal(true)}
+                     />
+                  </>
                )}
-               <div className="flex w-full flex-col justify-between gap-6 lg:w-[412px] lg:shrink-0 lg:py-2">
-                  <QueueClock size="lg" />
-                  <QueueProgress {...queueCounts} />
+               <div className="contents lg:flex lg:basis-[412px] lg:shrink lg:min-w-[300px] lg:flex-col lg:justify-between lg:gap-6 lg:py-2">
+                  <QueueClock size="lg" className="order-1 lg:order-none" />
+                  <QueueProgress {...queueCounts} className="order-4 lg:order-none" />
                </div>
             </div>
          )}
 
          <UpNextRow
+            className="order-3 lg:order-none"
             count={orderedAppointments.length}
             onViewAll={() => setShowQueueList(true)}
             empty={upNextApps.length === 0}

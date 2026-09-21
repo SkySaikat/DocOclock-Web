@@ -1,0 +1,29 @@
+/* Doctor Queue overlay motion on phone (docs/figma/specs/doctor-queue.md).
+   Figma App Version Queue flow 13: Card 3 (569:13616) and Queue Card (569:13410) are full-width BOTTOM_CENTER sheets opened with
+   OVERLAY MOVE_IN TOP 0.3s EASE_OUT (they slide up from the bottom edge); on desktop the Queue List panel is MOVE_IN LEFT
+   (slides in from the right edge, keyframes `ds-move-in-right` from components/dashboard/dashboard.css). Off under reduced motion. */
+
+@keyframes dq-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Queue List panel: right-edge drawer >= 640px, bottom sheet below. */
+.dq-panel-in {
+  animation: ds-move-in-right var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)) both;
+}
+
+/* Queue Status card: no own motion on desktop (the scrim's DISSOLVE carries it), bottom sheet on phone. */
+@media (max-width: 639px) {
+  .dq-panel-in,
+  .dq-sheet-in {
+    animation: dq-sheet-up var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dq-panel-in,
+  .dq-sheet-in {
+    animation: none;
+  }
+}

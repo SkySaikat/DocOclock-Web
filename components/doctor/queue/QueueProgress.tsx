@@ -12,6 +12,7 @@ interface QueueProgressProps {
   remaining: number;
   cancelled: number;
   noShow: number;
+  className?: string;
 }
 
 const GROUPS = [
@@ -21,14 +22,14 @@ const GROUPS = [
   { key: 'noShow', label: 'No Show', bar: 'border border-ink-500', swatch: 'border border-ink-500' },
 ] as const;
 
-export const QueueProgress: React.FC<QueueProgressProps> = ({ completed, remaining, cancelled, noShow }) => {
+export const QueueProgress: React.FC<QueueProgressProps> = ({ completed, remaining, cancelled, noShow, className = '' }) => {
   const counts = [completed, remaining, cancelled, noShow];
   const segments = useMemo(() => allocateSegments(counts), [completed, remaining, cancelled, noShow]);
   const bars = GROUPS.flatMap((g, gi) => Array.from({ length: segments[gi] }, (_, i) => ({ id: `${g.key}-${i}`, cls: g.bar })));
   const empty = bars.length === 0;
 
   return (
-    <section aria-label="Queue progress" className="flex flex-col items-center gap-6 rounded-3xl p-[15px] w-full">
+    <section aria-label="Queue progress" className={`flex flex-col items-center gap-6 rounded-3xl p-[15px] w-full ${className}`}>
       <div className="flex items-center justify-between w-full">
         <DsText variant="title24" tone="primary">Queue Progress</DsText>
         <span className="rounded-full border border-page px-3 py-1 font-display text-ds-small text-content-secondary">Today</span>

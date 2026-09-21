@@ -8,6 +8,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { DashboardButton } from '../../dashboard';
+import './queue.css';
 
 const MAX_DELAY = 480;
 const clampDelay = (n: number) => Math.max(0, Math.min(MAX_DELAY, n));
@@ -53,7 +54,7 @@ export const QueueStatusModal: React.FC<QueueStatusModalProps> = ({
   };
 
   return (
-    <div className="ds-fade-in fixed inset-0 z-[200] flex items-center justify-center bg-black/25 p-4" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="ds-fade-in fixed inset-0 z-[200] flex items-center justify-center bg-black/25 p-4 max-sm:items-end max-sm:p-0" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div
         ref={cardRef}
         role="dialog"
@@ -61,7 +62,8 @@ export const QueueStatusModal: React.FC<QueueStatusModalProps> = ({
         aria-labelledby="queue-status-title"
         tabIndex={-1}
         // Figma: white -> primary-50 vertical gradient (#eefff8 literal there), shadow 0 0 6px 6% (drop-shadow) = ds-queue.
-        className="flex max-h-full w-[447px] max-w-full flex-col items-start gap-6 overflow-y-auto rounded-3xl p-6 shadow-ds-queue outline-none bg-[linear-gradient(180deg,#fff_71.19%,rgb(var(--color-primary-50))_100.07%)]"
+        // Phone (App 569:13616): full-width bottom sheet (BOTTOM_CENTER), slides up (`dq-sheet-in`), keeps the home-indicator inset.
+        className="dq-sheet-in flex max-h-full w-[447px] max-w-full flex-col items-start gap-6 overflow-y-auto rounded-3xl p-6 shadow-ds-queue outline-none bg-[linear-gradient(180deg,#fff_71.19%,rgb(var(--color-primary-50))_100.07%)] max-sm:w-full max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex w-full flex-col items-center justify-center gap-1 rounded-xl">
           <h2 id="queue-status-title" className="w-full font-display text-ds-title-20 font-normal text-content-primary">Queue Status</h2>

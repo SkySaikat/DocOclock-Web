@@ -10,6 +10,7 @@ import type { Appointment, AppointmentStatus } from '../../../types';
 import { DashboardButton, MaskIcon, DS_ICONS } from '../../dashboard';
 import { PatientAvatar, AvatarTone } from './PatientAvatar';
 import { statusLabelOf } from './queueUtils';
+import './queue.css';
 
 export const QUEUE_FILTERS = ['all', 'waiting', 'late', 'completed', 'cancelled'] as const;
 
@@ -44,7 +45,8 @@ export const QueueListPanel: React.FC<QueueListPanelProps> = ({ appointments, fi
         aria-label="Queue List"
         tabIndex={-1}
         // Figma shadow -4px 0 12px 4% (cast to the left of a right-docked panel); to-ink-200 = #f2f2f2 gradient end.
-        className="ds-drawer-in absolute bottom-4 right-4 top-4 flex w-[363px] max-w-[calc(100vw-2rem)] flex-col gap-6 overflow-clip rounded-3xl bg-gradient-to-b from-white to-ink-200 p-4 shadow-[-4px_0_12px_rgba(0,0,0,0.04)] outline-none"
+        // Phone (App 569:13410, 400x801): full-width sheet docked to the bottom edge, slides up (`dq-panel-in` switches keyframes below 640px).
+        className="dq-panel-in absolute bottom-4 right-4 top-4 flex w-[363px] max-w-[calc(100vw-2rem)] flex-col gap-6 overflow-clip rounded-3xl bg-gradient-to-b from-white to-ink-200 p-4 shadow-[-4px_0_12px_rgba(0,0,0,0.04)] outline-none max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-[71px] max-sm:w-auto max-sm:max-w-none max-sm:pb-[calc(1rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-display text-ds-title-24 font-normal text-ink-800">Queue List</h2>

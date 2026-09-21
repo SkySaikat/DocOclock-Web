@@ -13,9 +13,10 @@ const STETHOSCOPE = '/assets/figma/doctor-queue/icon-stethoscope.svg';
 interface QueueClockProps {
   size?: 'lg' | 'md';
   note?: string;
+  className?: string;
 }
 
-export const QueueClock: React.FC<QueueClockProps> = ({ size = 'lg', note }) => {
+export const QueueClock: React.FC<QueueClockProps> = ({ size = 'lg', note, className = '' }) => {
   const [label, setLabel] = useState(() => formatClock(new Date()));
   useEffect(() => {
     const id = window.setInterval(() => setLabel(formatClock(new Date())), 1000);
@@ -23,7 +24,7 @@ export const QueueClock: React.FC<QueueClockProps> = ({ size = 'lg', note }) => 
   }, []);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className={`flex flex-col gap-6 ${className}`}>
       <div className="flex items-start justify-between gap-4 px-2">
         <div className="flex flex-col gap-1 min-w-0">
           <p className={`font-display text-ds-body ${size === 'lg' ? 'text-content-tertiary' : 'text-ink-600'}`}>It’s</p>

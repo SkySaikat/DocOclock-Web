@@ -14,10 +14,11 @@ interface UpNextRowProps {
   empty?: boolean;
   emptyText?: string;
   children?: React.ReactNode;
+  className?: string;
 }
 
-export const UpNextRow: React.FC<UpNextRowProps> = ({ count, onViewAll, empty, emptyText = 'No appointments found matching this filter.', children }) => (
-  <section aria-label="Up next" className="flex flex-col gap-4 w-full">
+export const UpNextRow: React.FC<UpNextRowProps> = ({ count, onViewAll, empty, emptyText = 'No appointments found matching this filter.', children, className = '' }) => (
+  <section aria-label="Up next" className={`flex flex-col gap-4 w-full ${className}`}>
     <div className="flex items-center justify-between w-full">
       <h2 className="flex items-center gap-0.5 font-display text-[16px] leading-[normal] tracking-[0.16px] text-ink-600 font-normal">
         Up Next
