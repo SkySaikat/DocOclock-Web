@@ -3,6 +3,7 @@
 // Units (see UNITS below): doctor-queue, doctor-overview, patient-live-appts, patient-rx-meds, doctor-appointments, doctor-prescription,
 // doctor-analytics, doctor-manage, doctor-account, patient-doctors, marketing-pages.  Run TWO units at a time (usage-limit friendly).
 // Each unit = build -> independent review -> fix (if blocking) -> commit (only that unit's files, on main).
+// Options: args.only=[keys]; args.skipBuild=true (WIP already on disk -> straight to review/fix/commit); args.baseline='<commit>' (git ref of the last reviewed state, used by reviewer/fixer for diffs).
 // Progress + resume guide: docs/figma/PROGRESS.md
 export const meta = {
   name: 'figma-build-2',
@@ -282,13 +283,16 @@ const EXTRA = [
   '(4) Be economical: do not re-read large files repeatedly, do not paste full design-context outputs into notes, keep tool outputs small.',
 ].join('\n')
 const withExtra = (p) => p + '\n' + EXTRA
+const BASELINE_NOTE = (args && args.baseline) ? ('\nDIFF BASELINE: the unit\'s work-in-progress is already committed, so `git diff HEAD` shows nothing. Audit against the last reviewed state instead: `git diff ' + args.baseline + ' -- <owned files>` and `git diff --stat ' + args.baseline + ' -- <new-file locations>`; read the ORIGINAL logic with `git show ' + args.baseline + ':<file>`.') : ''
 phase('Build')
 const results = await pipeline(
   RUN,
-  (u) => agent(withExtra(buildPrompt(u)), { label: 'build: ' + u.key, phase: 'Build', schema: SCHEMAS.build }),
-  (built, u) => built ? agent(withExtra(reviewPrompt(u, built)), { label: 'review: ' + u.key, phase: 'Review', schema: SCHEMAS.review }).then(rv => ({ built, rv })) : null,
+  (u) => (args && args.skipBuild)
+    ? Promise.resolve({ unit: u.key, summary: 'The builder was interrupted; its work-in-progress is already on main (see docs/figma/PROGRESS.md section 3b and docs/figma/specs/' + u.key + '.md). NOTHING is verified yet - treat every claim as unverified and audit everything, including completeness against ALL Figma frames listed for the unit.', filesChanged: u.owned, newFiles: [], framesImplemented: [], verification: [], notImplemented: [], sharedGaps: [], risks: ['unreviewed WIP'] })
+    : agent(withExtra(buildPrompt(u)), { label: 'build: ' + u.key, phase: 'Build', schema: SCHEMAS.build }),
+  (built, u) => built ? agent(withExtra(reviewPrompt(u, built)) + BASELINE_NOTE, { label: 'review: ' + u.key, phase: 'Review', schema: SCHEMAS.review }).then(rv => ({ built, rv })) : null,
   (r, u) => (r && r.rv && r.rv.blocking && r.rv.blocking.length > 0)
-    ? agent(withExtra(fixPrompt(u, r)), { label: 'fix: ' + u.key, phase: 'Fix', schema: SCHEMAS.build }).then(fx => Object.assign({}, r, { fx }))
+    ? agent(withExtra(fixPrompt(u, r)) + BASELINE_NOTE, { label: 'fix: ' + u.key, phase: 'Fix', schema: SCHEMAS.build }).then(fx => Object.assign({}, r, { fx }))
     : r,
   (r, u) => r ? agent(commitPrompt(u, r), { label: 'commit: ' + u.key, phase: 'Commit', schema: COMMIT_SCHEMA }).then(commit => Object.assign({}, r, { commit })) : null,
 )

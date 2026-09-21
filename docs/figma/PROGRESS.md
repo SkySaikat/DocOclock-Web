@@ -1,7 +1,7 @@
 # Figma sync — PROGRESS & RESUME GUIDE
 
 > Single source of truth for "where did we stop". Update the status board (§3) and the commit log (§8) after every unit.
-> Last updated: 2026-09-21 ~12:35 (+06) — **run stopped by the user; see §3b for the exact stop state.** Baseline commit before any Figma work: `2dd66ce v4 main`.
+> Last updated: 2026-09-21 ~12:46 (+06) — resumed after the user's stop; review of doctor-queue + doctor-overview running (see §3b for the state it started from). Baseline commit before any Figma work: `2dd66ce v4 main`.
 
 ## 0. Resume in 60 seconds
 
@@ -41,8 +41,8 @@ Legend: ✅ done & committed · 🔄 in progress · ⏳ pending
 | foundation (tokens/theme/fonts) | tokens.md | `tailwind.config.js`, `index.css`, `index.html`, `utils/colorScale.ts`, `contexts/ThemeContext.tsx` | ✅ `bd9c392` |
 | chrome (navbar, avatar menu, bottom bar, toasts, tab bar) | Navbar - Dashboard `396:12116`, Navbar `80:7429`, Bottombar `368:16140`, Profile menu `368:17693`, Toaster | `components/Layout.tsx`, `components/dashboard/**`, `components/doctor/DoctorTabBar.tsx`, `components/ToastProvider.tsx`, `components/ui/NotificationBell.tsx` | ✅ `bd9c392` (+ sticky-navbar fix by hand) |
 | landing (doctor-card hover morph, Button Usual/Featured Hover, tabs, all sections) | `80:1754`, After Hero `80:1794` | `views/patient/Home.tsx`, `components/landing/**`, `components/ui/{Button,DoctorCard,SectionEyebrowHeader}.tsx`, `components/Footer.tsx` | ✅ `bd9c392` |
-| `doctor-queue` ("Doctor Q") | Section `255:6533` (Queue `368:14306`, `328:14902`, Modal `368:14285`, Card 3 `368:15791`, Queue Card `255:9358`), flow frames `328:13919`, `255:8163`, phone `341:18476`, `368:17738` | `views/doctor/SerialManager.tsx`, `components/doctor/queue/**` | ⏸ **STOPPED mid-build (WIP, unreviewed)** — see §3b |
-| `doctor-overview` | `368:18645` / page `339:17421`, popover `368:18696` | `views/doctor/Dashboard.tsx`, `components/ui/{ArcGauge,StatCard,DoctorDashboardProfile,ChamberCard}.tsx`, `components/doctor/overview/**` | ⏸ **STOPPED mid-build (WIP, unreviewed)** — see §3b |
+| `doctor-queue` ("Doctor Q") | Section `255:6533` (Queue `368:14306`, `328:14902`, Modal `368:14285`, Card 3 `368:15791`, Queue Card `255:9358`), flow frames `328:13919`, `255:8163`, phone `341:18476`, `368:17738` | `views/doctor/SerialManager.tsx`, `components/doctor/queue/**` | 🔄 **review → fix → commit running** (run `wf_0a2e36af-6cc`, started 2026-09-21 ~12:45; WIP from §3b) |
+| `doctor-overview` | `368:18645` / page `339:17421`, popover `368:18696` | `views/doctor/Dashboard.tsx`, `components/ui/{ArcGauge,StatCard,DoctorDashboardProfile,ChamberCard}.tsx`, `components/doctor/overview/**` | 🔄 **review → fix → commit running** (run `wf_0a2e36af-6cc`, started 2026-09-21 ~12:45; WIP from §3b) |
 | `patient-live-appts` | Live Queue `339:15916`, `297:12283`, phone `357:19153`/`357:19210`, Appointments `191:5570`, Sort menu `368:16699`, Pickers `396:12025` | `views/patient/{LiveSerial,Appointments}.tsx`, `components/ui/AppointmentCard.tsx` | ⏳ |
 | `patient-rx-meds` | Prescriptions `297:12584`, Medicines `339:16108`/`191:5104`, Modal `339:15402`, Toasters `399:12826`/`399:12818` | `views/patient/{Prescriptions,MedicineTracker}.tsx` | ⏳ |
 | `doctor-appointments` | `255:11599` (Appointments `255:11674`, `255:12102`, modals, pickers) | `views/doctor/DoctorAppointments.tsx` | ⏳ |
@@ -98,6 +98,7 @@ Chrome: profile menu 3 rows on desktop vs Figma 6; phone bar inactive-icon tints
 | `docs/figma/workflows/extract.js` | read-only Figma extraction + mock harness | `wf_b6a5df17-117` — tokens ✅, harness ✅ (31/31 routes), landing-components ✅, landing-pages ✅, dashboard-components ✅, landing-home §1-5 ✅; interrupted by the usage limit before doctor-overview and the 8 later units (superseded: the build script now extracts per unit) |
 | `docs/figma/workflows/build-1-foundation-chrome-landing.js` | foundation → chrome + landing (build/review/fix) | `wf_fe0dcab1-fec` ✅ complete |
 | `docs/figma/workflows/build-screens.js` | **the one to use**: 11 units, args `{only:[...]}`, build → review → fix → commit | `wf_3f4d3173-571` (interrupted at launch by the usage limit), `wf_347a89f1-721` (doctor-queue + doctor-overview; **stopped by the user ~12:28 on 2026-09-21** mid-build, no builder result recorded) |
+| | | `wf_0a2e36af-6cc` — resume of doctor-queue + doctor-overview with `args {only:[…], skipBuild:true, baseline:'b7e4e86'}` (review → fix → per-unit commit). If it is interrupted again, just re-run the same call: reviewers/fixers start from the files on disk. |
 
 Session-only cache (same session can `resumeFromRunId`; otherwise just re-run the unit — files on disk are the real cache): `~/.claude/projects/-Users-saikatchowdhury444gmail-com-Desktop-DocOclock-Web/<session>/subagents/workflows/<run>/journal.jsonl`.
 
