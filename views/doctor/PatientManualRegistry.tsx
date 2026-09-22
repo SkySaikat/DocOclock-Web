@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Button } from '../../components/ui/Button';
-import { Appointment, AppointmentStatus, Gender } from '../../types';
-import {
-    UserPlus, Phone, MapPin, Calendar,
-    ChevronLeft, Loader2, CheckCircle2, User,
-    Hash, Users, UserCheck, Minus, Plus
-} from 'lucide-react';
+import { Appointment, Gender } from '../../types';
+import { Loader2, Minus, Plus, X, CalendarCheck, UserSquare, FileText, ChevronDown } from 'lucide-react';
+import { DashboardButton, MaskIcon } from '../../components/dashboard';
+import { useToast } from '../../components/ToastProvider';
 import {
     DoctorStorage,
     fetchDoctorChambers,
@@ -26,6 +22,9 @@ interface PatientManualRegistryProps {
 
 export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ onNavigate }) => {
     const doctor = DoctorStorage.get();
+    const { showToast } = useToast();
+    // Figma "Book an appointment" (255:12870 → 255:13068 → 255:14107): Appointment → Patient Details → Reserved slot / serial.
+    const [step, setStep] = useState<0 | 1 | 2>(0);
     const [chambers, setChambers] = useState<PracticeChamber[]>([]);
     const [selectedChamberId, setSelectedChamberId] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
@@ -152,7 +151,7 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
         const requestedSerial = parseInt(formData.serialNumber) || 1;
 
         if (requestedSerial > maxCapacity) {
-            alert(`This chamber has a total limit of ${maxCapacity} patients.`);
+            showToast(`This chamber has a total limit of ${maxCapacity} patients.`, 'warning');
             return;
         }
         try {
@@ -166,7 +165,7 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
             });
             const isTaken = existingApps.some(a => Number(a.serialNumber) === finalSerial && a.status !== 'cancelled');
             if (isTaken) {
-                alert(`Serial #${finalSerial} is already assigned to another patient. Please choose a different number.`);
+                showToast(`Serial #${finalSerial} is already assigned to another patient. Please choose a different number.`, 'warning');
                 setIsSubmitting(false);
                 return;
             }
@@ -202,222 +201,150 @@ export const PatientManualRegistry: React.FC<PatientManualRegistryProps> = ({ on
             await upsertAppointment(newApp);
 
             setSuccessMessage(true);
+            showToast(`${formData.name} registered as serial #${finalSerial} and added to today's queue.`, 'success');
+            setStep(0);
             // Refresh serial for next entry
             const nextSerial = finalSerial + 1;
             setFormData({ name: '', phone: '', age: '', gender: 'Male', serialNumber: nextSerial.toString() });
             setTimeout(() => setSuccessMessage(false), 3000);
         } catch (error) {
             console.error('Error booking walk-in:', error);
-            alert('Failed to register patient. Please try again.');
+            showToast('Failed to register patient. Please try again.', 'error');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                <Loader2 className="w-8 h-8 text-medical-500 animate-spin" />
-                <p className="text-xs font-black text-ink-500 uppercase tracking-widest">Accessing Registry...</p>
-            </div>
-        );
-    }
+    const closeTo = () => onNavigate('/doctor/appointments');
+    const maxCapacity = selectedChamber?.dailyBookingLimit || 30;
+    const canNext = step === 0 ? !!selectedChamber : step === 1 ? !!formData.name && !!formData.phone : true;
 
     return (
-        <div className="max-w-xl mx-auto px-4 pb-20 pt-2 animate-fade-in transition-all duration-300">
-            {/* Top Navigation Row - Ultra Concise */}
-            <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => onNavigate('/doctor/dashboard')}
-                        className="w-9 h-9 bg-white rounded-ds-sm shadow-ds-card flex items-center justify-center text-ink-500 hover:text-ink-800 transition-all active:scale-95"
-                    >
-                        <ChevronLeft size={18} />
-                    </button>
-                    <div>
-                        <h1 className="font-display text-xl font-black text-ink-800 tracking-tight leading-none">Manual Enrollment</h1>
-                        <p className="text-[8px] font-black text-ink-500 uppercase tracking-widest mt-1">Registry / Walk-in Patient</p>
+        // Rendered as Figma's centred booking modal (612 wide) on the page; the route stays /doctor/manual-booking.
+        <div className="flex animate-fade-in justify-center py-4 font-display md:py-10">
+            <form
+                onSubmit={step === 2 ? handleBooking : (e) => { e.preventDefault(); if (canNext) setStep((step + 1) as 1 | 2); }}
+                className="flex w-full max-w-[612px] flex-col gap-6 rounded-ds-xl bg-white p-6 shadow-ds-modal md:p-6"
+                aria-labelledby="book-title"
+            >
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-2">
+                        <h1 id="book-title" className="text-ds-title-24 text-content-primary">Book an appointment</h1>
+                        <p className="text-ds-body text-content-secondary">Walk-in patients join today's queue as soon as you confirm.</p>
                     </div>
+                    <button type="button" onClick={closeTo} aria-label="Close" className="grid size-9 shrink-0 place-items-center rounded-full text-content-secondary transition-colors duration-ds-fast ease-ds-out hover:text-[#ed7272]"><X size={22} /></button>
                 </div>
 
-                <div className="bg-medical-50 border border-medical-100 rounded-ds-sm px-3 py-1.5 flex items-center gap-2 max-w-[150px]">
-                    <div className="w-1.5 h-1.5 rounded-full bg-medical-500 animate-pulse shrink-0" />
-                    <span className="text-[9px] font-black text-medical-600 uppercase tracking-tight truncate">
-                        {selectedChamber?.hospitalName || "Today's Session"}
-                    </span>
-                </div>
-            </div>
+                <BookSteps step={step} />
 
-            {/* Reserved Registry Section - Integrated here */}
-            <div className="mb-4 bg-white rounded-ds-lg shadow-ds-card overflow-hidden animate-in fade-in slide-in-from-top-2 duration-500">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-medical-50 text-medical-600 rounded-ds-sm flex items-center justify-center">
-                            <UserCheck size={16} />
-                        </div>
-                        <div>
-                            <span className="text-[10px] font-black text-ink-800 uppercase tracking-tighter block leading-none">Reserved Registry</span>
-                            <span className="text-[9px] font-bold text-ink-500 block mt-0.5">Slots at end of capacity</span>
+                {isLoading ? (
+                    <div className="flex min-h-[160px] items-center justify-center gap-3 text-ds-body text-content-tertiary">
+                        <Loader2 className="size-5 animate-spin text-primary-500" /> Loading chambers...
+                    </div>
+                ) : step === 0 ? (
+                    <div className="flex flex-col gap-4">
+                        <Field label="Choose Hospital">
+                            <Select value={selectedChamberId} onChange={setSelectedChamberId} placeholder="Select Hospital"
+                                options={chambers.map(c => ({ value: c.id, label: c.hospitalName }))} />
+                        </Field>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Field label="Choose Date">
+                                <div className={`${FIELD} flex items-center text-content-secondary`}>{new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}</div>
+                            </Field>
+                            <Field label="Session Type">
+                                <div className={`${FIELD} flex items-center text-content-secondary`}>Walk-in</div>
+                            </Field>
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5 p-0.5 bg-white border border-ink-200 rounded-full shadow-ds-pill">
-                            <button
-                                type="button"
-                                onClick={() => handleSaveReservedCount(Math.max(0, reservedSlotsCount - 1))}
-                                disabled={isSavingReserved}
-                                className="w-8 h-8 flex items-center justify-center bg-white border border-ink-200 rounded-full text-ink-500 hover:text-medical-600 transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                <Minus size={12} />
-                            </button>
-                            <div className="px-2 text-center min-w-[32px]">
-                                <span className="font-black text-xs text-ink-800 leading-none">{reservedSlotsCount}</span>
-                                <span className="text-[8px] font-black text-ink-500 ml-0.5 uppercase tracking-tighter">Slots</span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => handleSaveReservedCount(reservedSlotsCount + 1)}
-                                disabled={isSavingReserved || (selectedChamber ? reservedSlotsCount >= selectedChamber.dailyBookingLimit : false)}
-                                className="w-8 h-8 flex items-center justify-center bg-white border border-ink-200 rounded-full text-ink-500 hover:text-medical-600 transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                <Plus size={12} />
-                            </button>
-                        </div>
-
-                        <div className="text-[10px] font-black text-ink-500 uppercase tracking-widest hidden sm:block">
-                            End Serials: <span className="text-medical-600">{(selectedChamber?.dailyBookingLimit || 30) - reservedSlotsCount + 1} - {selectedChamber?.dailyBookingLimit || 30}</span>
+                ) : step === 1 ? (
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-4">
+                        <Field label="Name">
+                            <input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={FIELD} placeholder="Enter patient name" />
+                        </Field>
+                        <Field label="Age">
+                            <input type="number" value={formData.age} onChange={e => setFormData({ ...formData, age: e.target.value })} className={FIELD} placeholder="Enter Age" />
+                        </Field>
+                        <Field label="Gender">
+                            <Select value={formData.gender} onChange={v => setFormData({ ...formData, gender: v as Gender })} options={['Male', 'Female'].map(g => ({ value: g, label: g }))} />
+                        </Field>
+                        <div />
+                        <div className="col-span-2">
+                            <Field label="Phone Number">
+                                <input type="tel" required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className={`${FIELD} border border-ink-100 bg-white`} placeholder="01XXXXXXXXX" />
+                            </Field>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <form onSubmit={handleBooking} className="mt-4 space-y-3">
-                <div className="bg-white rounded-ds-lg shadow-ds-soft p-6 md:p-8">
-                    {/* Visible & Editable Serial Number - Moved to Top */}
-                    <div className="mb-6">
-                        <div className="bg-medical-50 rounded-ds-md p-4 border border-medical-100">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                    <label className="block text-[11px] font-black text-medical-700 uppercase tracking-[0.2em]">Serial</label>
-                                    <p className="text-[8px] font-bold text-ink-500 tracking-tight leading-none italic">Assigned automatically (Editable)</p>
-                                </div>
-                                <div className="relative group w-20">
-                                    <input
-                                        type="number"
-                                        value={formData.serialNumber}
-                                        onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
-                                        className="w-full px-3 py-2 bg-white border border-medical-100 rounded-ds-sm focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 outline-none font-black text-medical-600 text-center text-base transition-all shadow-ds-input"
-                                    />
-                                </div>
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        <Field label="Reserved Slot">
+                            <div className={`${FIELD} flex items-center justify-between`}>
+                                <span className="text-content-secondary">{reservedSlotsCount} reserved · serials {maxCapacity - reservedSlotsCount + 1}–{maxCapacity}</span>
+                                <span className="flex items-center gap-1">
+                                    <button type="button" aria-label="Fewer reserved slots" onClick={() => handleSaveReservedCount(Math.max(0, reservedSlotsCount - 1))} disabled={isSavingReserved}
+                                        className="grid size-7 place-items-center rounded-full bg-white text-content-secondary disabled:opacity-50"><Minus size={12} /></button>
+                                    <button type="button" aria-label="More reserved slots" onClick={() => handleSaveReservedCount(reservedSlotsCount + 1)} disabled={isSavingReserved || (selectedChamber ? reservedSlotsCount >= selectedChamber.dailyBookingLimit : false)}
+                                        className="grid size-7 place-items-center rounded-full bg-white text-content-secondary disabled:opacity-50"><Plus size={12} /></button>
+                                </span>
                             </div>
-                        </div>
+                        </Field>
+                        <Field label="Slot No">
+                            <input type="number" value={formData.serialNumber} onChange={e => setFormData({ ...formData, serialNumber: e.target.value })} className={FIELD} aria-describedby="slot-hint" />
+                            <span id="slot-hint" className="text-ds-small text-content-tertiary">Assigned automatically — you can change it.</span>
+                        </Field>
                     </div>
+                )}
 
-                    <h3 className="text-[9px] font-black text-ink-400 uppercase tracking-[0.2em] mb-6 border-b border-ink-100 pb-3">Patient Particulars</h3>
-
-                    <div className="space-y-4">
-                        {/* Full Name */}
-                        <div className="space-y-1.5">
-                            <label className="block text-[9px] font-black text-ink-500 uppercase tracking-widest px-1">Full Name</label>
-                            <div className="relative group">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-300 group-focus-within:text-medical-600 transition-colors" size={16} />
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full pl-11 pr-4 py-3 bg-ink-50 border border-transparent rounded-ds-sm focus:bg-white focus:border-medical-500/30 focus:ring-4 focus:ring-medical-500/5 outline-none font-bold text-ink-800 text-sm transition-all placeholder:text-ink-300"
-                                    placeholder="Enter patient name"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Phone Number */}
-                        <div className="space-y-1.5">
-                            <label className="block text-[9px] font-black text-ink-500 uppercase tracking-widest px-1">Phone Number</label>
-                            <div className="relative group">
-                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-300 group-focus-within:text-medical-600 transition-colors" size={16} />
-                                <input
-                                    type="tel"
-                                    required
-                                    value={formData.phone}
-                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                    className="w-full pl-11 pr-4 py-3 bg-ink-50 border border-transparent rounded-ds-sm focus:bg-white focus:border-medical-500/30 focus:ring-4 focus:ring-medical-500/5 outline-none font-bold text-ink-800 text-sm transition-all placeholder:text-ink-300"
-                                    placeholder="01XXXXXXXXX"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* Age */}
-                            <div className="space-y-1.5">
-                                <label className="block text-[9px] font-black text-ink-500 uppercase tracking-widest px-1">Age</label>
-                                <div className="relative group">
-                                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-300 group-focus-within:text-medical-600 transition-colors" size={14} />
-                                    <input
-                                        type="number"
-                                        value={formData.age}
-                                        onChange={e => setFormData({ ...formData, age: e.target.value })}
-                                        className="w-full pl-11 px-4 py-3 bg-ink-50 border border-transparent rounded-ds-sm focus:bg-white focus:border-medical-500/30 focus:ring-4 focus:ring-medical-500/5 outline-none font-bold text-ink-800 text-sm transition-all placeholder:text-ink-300"
-                                        placeholder="Enter age"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Gender Selection */}
-                            <div className="space-y-1.5">
-                                <label className="block text-[9px] font-black text-ink-500 uppercase tracking-widest px-1">Gender</label>
-                                <div className="flex bg-ink-50 p-1 rounded-ds-sm border border-ink-100">
-                                    {['Male', 'Female'].map((g) => (
-                                        <button
-                                            key={g}
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, gender: g as Gender })}
-                                            className={`flex-1 py-2 rounded-ds-sm font-black text-[9px] uppercase tracking-widest transition-all ${formData.gender === g
-                                                ? 'bg-white text-medical-600 shadow-ds-card'
-                                                : 'text-ink-400'
-                                                }`}
-                                        >
-                                            {g}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="pt-2">
-                    <Button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="btn-sheen w-full h-14 rounded-full bg-medical-500 hover:bg-medical-600 text-white font-display font-black text-base shadow-md shadow-medical-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 className="animate-spin" size={20} />
-                                ENROLLING...
-                            </>
-                        ) : (
-                            <>
-                                <UserPlus size={20} />
-                                COMPLETE REGISTRY
-                            </>
-                        )}
-                    </Button>
+                <div className="flex items-center gap-2">
+                    {step > 0 && <DashboardButton type="button" variant="secondary" icon={false} onClick={() => setStep((step - 1) as 0 | 1)} className="flex-1 px-4">Back</DashboardButton>}
+                    <DashboardButton type="submit" variant="primary" icon={false} disabled={!canNext || isSubmitting || isLoading} className={`${step > 0 ? 'flex-[2]' : 'w-full'} px-4`}>
+                        {step < 2 ? 'Next' : isSubmitting ? 'Registering...' : 'Confirm'}
+                    </DashboardButton>
                 </div>
             </form>
+        </div>
+    );
+};
 
-            {successMessage && (
-                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] bg-navy-900 text-white px-6 py-4 rounded-ds-md flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 shadow-2xl">
-                    <CheckCircle2 size={18} className="text-medical-400" />
-                    <div className="flex flex-col">
-                        <p className="font-black text-[10px] uppercase tracking-wider leading-none">Registered Successfully</p>
-                        <p className="text-[8px] font-bold opacity-60 mt-1 uppercase">Added to Queue</p>
-                    </div>
-                </div>
-            )}
+const FIELD = 'h-[43px] w-full rounded-2xl bg-ink-50 px-3 text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500';
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+    <label className="flex min-w-0 flex-col gap-3">
+        <span className="text-ds-paragraph text-content-secondary">{label}</span>
+        {children}
+    </label>
+);
+
+const Select: React.FC<{ value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; placeholder?: string }> = ({ value, onChange, options, placeholder }) => (
+    <span className="relative block">
+        <select value={value} onChange={e => onChange(e.target.value)} className={`${FIELD} appearance-none pr-10`}>
+            {placeholder && <option value="" disabled>{placeholder}</option>}
+            {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <ChevronDown size={18} className="pointer-events-none absolute right-3 top-[12px] text-content-secondary" />
+    </span>
+);
+
+// Step header: three labelled tabs over an 8px track filled up to the current step (same motif as the prescription wizard).
+const BOOK_STEPS = [
+    { label: 'Appointment', Icon: CalendarCheck },
+    { label: 'Patient Details', Icon: UserSquare },
+    { label: 'Review And Confirm', Icon: FileText },
+] as const;
+const BookSteps: React.FC<{ step: 0 | 1 | 2 }> = ({ step }) => {
+    const pct = step === 0 ? 12.5 : step === 1 ? 39.5 : 79;
+    return (
+        <div className="flex flex-col gap-3" aria-label={`Step ${step + 1} of 3`}>
+            <div className="flex justify-between gap-2">
+                {BOOK_STEPS.map(({ label, Icon }, i) => (
+                    <span key={label} aria-current={i === step ? 'step' : undefined} className={`flex items-center gap-1.5 text-ds-small ${i <= step ? 'text-primary-500' : 'text-content-secondary'}`}>
+                        <Icon size={16} strokeWidth={1.5} /> <span className="max-sm:hidden">{label}</span>
+                    </span>
+                ))}
+            </div>
+            <div className="relative h-2 rounded-full bg-primary-50">
+                <div className="h-full rounded-full bg-primary-500 transition-[width] duration-ds-slow ease-ds-out" style={{ width: `${pct}%` }} />
+                <MaskIcon src="/assets/figma/patient-live-appts/progress-indicator.svg" size={7} className="absolute -top-[9px] -translate-x-1/2 text-primary-500 transition-[left] duration-ds-slow ease-ds-out" style={{ left: `${pct}%` }} />
+            </div>
         </div>
     );
 };
