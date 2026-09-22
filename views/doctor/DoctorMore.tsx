@@ -1,15 +1,9 @@
 import React from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import {
-    FileText, Clipboard, User, HelpCircle, Shield,
-    LogOut, ChevronRight, Activity, Bell, Pill, Wallet,
-    CreditCard, Settings, Gift, Heart, UserCircle2,
-    Stethoscope, BriefcaseMedical, LayoutDashboard,
-    ShieldCheck, Banknote, History, Globe, UserCheck, Calendar, Link, Unlink
-} from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { Calendar, Link, LogOut, Pencil, Unlink, Wallet, ChevronRight } from 'lucide-react';
 import { DoctorStorage } from '../../storage';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
+import { DashboardButton } from '../../components/dashboard';
+import { ProfileHeader, Panel, Row, Value, EntryCard, Avatar } from '../../components/doctor/profile/ProfilePanels';
 
 interface DoctorMoreProps {
     onNavigate: (path: string) => void;
@@ -20,170 +14,71 @@ export const DoctorMore: React.FC<DoctorMoreProps> = ({ onNavigate, onLogout }) 
     const doctor = DoctorStorage.get();
     const { isConnected, isConfigured, connect, disconnect } = useGoogleCalendar();
 
-    const sections = [
-        {
-            title: "Professional Identity",
-            items: [
-                {
-                    icon: UserCheck,
-                    label: "Profile Settings",
-                    path: "/doctor/profile-editor",
-                    color: "text-teal-600",
-                    bg: "bg-teal-50",
-                    desc: "Edit degrees, bio, experience & photo"
-                },
-                {
-                    icon: UserCircle2,
-                    label: "View Public Profile",
-                    path: "#",
-                    color: "text-indigo-600",
-                    bg: "bg-indigo-50",
-                    desc: "See how patients view your profile"
-                },
-            ]
-        },
-        {
-            title: "Practice & Finances",
-            items: [
-                { icon: Settings, label: "Chamber & Schedule", path: "/doctor/practice-settings", color: "text-medical-600", bg: "bg-medical-50", desc: "Manage visiting hours and fees" },
-                { icon: Wallet, label: "Payment & Subscription", path: "/doctor/payment", color: "text-medical-600", bg: "bg-medical-50", desc: "View your earnings summary" },
-                { icon: Banknote, label: "Payout Options", path: "#", color: "text-amber-600", bg: "bg-amber-50", desc: "Manage bKash/Bank details" },
-            ]
-        },
-        {
-            title: "Support & Security",
-            items: [
-                { icon: ShieldCheck, label: "Account Security", path: "#", color: "text-slate-600", bg: "bg-slate-50" },
-                { icon: HelpCircle, label: "Help & FAQ", path: "#", color: "text-slate-400", bg: "bg-slate-50" },
-            ]
-        }
-    ];
+    const degrees = String(doctor?.degrees || '').split(/[,;]+/).map(d => d.trim()).filter(Boolean);
+    const institutions = String(doctor?.institutions || '').split(/\n+/).map(d => d.trim()).filter(Boolean);
 
     return (
-        <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-10 px-2 lg:px-0">
-            {/* DOCTOR PROFILE CARD */}
-            <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-teal-600 to-medical-500 rounded-ds-xl blur-2xl opacity-10 group-hover:opacity-20 transition duration-500"></div>
-                <GlassCard className="p-6 bg-navy-900 border-0 shadow-2xl rounded-ds-xl">
-                    <div className="flex items-center gap-5">
-                        <div className="relative">
-                            <div className="w-20 h-20 bg-gradient-to-tr from-teal-400 to-medical-400 rounded-2xl flex items-center justify-center text-white text-3xl font-black shadow-2xl ring-4 ring-slate-800 overflow-hidden">
-                                {doctor?.image ? (
-                                    <img src={doctor.image} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                    doctor?.name?.charAt(0) || 'D'
-                                )}
-                            </div>
-                            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-teal-500 border-4 border-slate-900 rounded-2xl shadow-lg flex items-center justify-center">
-                                <ShieldCheck size={16} className="text-white" />
-                            </div>
-                        </div>
-                        <div className="flex-1">
-                            <h2 className="text-3xl font-display font-black text-white leading-tight">{doctor?.name || 'Dr. Account'}</h2>
-                            <div className="flex flex-col gap-1 mt-1">
-                                <p className="text-teal-400 font-bold text-sm flex items-center gap-2">
-                                    <Stethoscope size={14} className="text-teal-400" />
-                                    {doctor?.specialty || 'General Practitioner'}
-                                </p>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700">
-                                        BMDC: {doctor?.bmdcNumber || doctor?.bmdc_number || '123456'}
-                                    </span>
-                                    {doctor?.degrees && (
-                                        <span className="text-[10px] font-black text-medical-400 uppercase tracking-widest bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700">
-                                            {doctor.degrees}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+        // Figma "Doctor Profile" 276:12374 (read-only) + the account tools this screen always carried (payments, Google Calendar, logout).
+        <div className="flex animate-fade-in flex-col gap-6 font-display">
+            <ProfileHeader title="Doctor Profile" subtitle="How your profile appears to patients">
+                <DashboardButton variant="secondary" icon={false} onClick={() => onNavigate('/doctor/practice-settings')} className="px-4">Back</DashboardButton>
+                <DashboardButton variant="gradient" icon={<Pencil size={14} />} onClick={() => onNavigate('/doctor/profile-editor')} className="pr-3">
+                    <span className="relative z-[1] px-3">Edit Profile</span>
+                </DashboardButton>
+            </ProfileHeader>
+
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <Panel title="Personal Information">
+                    <Avatar src={doctor?.image} name={doctor?.name} />
+                    <Row label="Name"><Value>{doctor?.name}</Value></Row>
+                    <Row label="Designation"><Value>{doctor?.specialty}</Value></Row>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Row label="BMDC Number"><Value>{doctor?.bmdcNumber || doctor?.bmdc_number}</Value></Row>
+                        <Row label="Experience"><Value>{doctor?.experience_years != null ? `${doctor.experience_years} years` : undefined}</Value></Row>
                     </div>
-                </GlassCard>
+                </Panel>
+                <Panel title="Experiences">
+                    {institutions.length > 0
+                        ? institutions.map(i => <EntryCard key={i} title={i} subtitle={doctor?.specialty} />)
+                        : <p className="text-ds-body text-content-tertiary">No experience added yet.</p>}
+                </Panel>
+                <Panel title="Education">
+                    {degrees.length > 0
+                        ? degrees.map(d => <EntryCard key={d} title={d} />)
+                        : <p className="text-ds-body text-content-tertiary">No degrees added yet.</p>}
+                </Panel>
             </div>
 
-            {/* SECTIONS */}
-            <div className="space-y-6">
-                {sections.map((section, idx) => (
-                    <div key={idx} className="space-y-4">
-                        <h3 className="text-[11px] font-black text-ink-500 uppercase tracking-[0.25em] px-4">{section.title}</h3>
-                        <GlassCard className="p-0 overflow-hidden bg-white border-0 ring-1 ring-slate-100 shadow-ds-soft rounded-ds-xl">
-                            <div className="divide-y divide-slate-50">
-                                {section.items.map((item, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={() => item.path !== '#' && onNavigate(item.path)}
-                                        className={`p-4 flex items-center gap-4 hover:bg-teal-50/30 transition-all cursor-pointer group ${item.path === '#' ? 'opacity-60 grayscale-[0.5]' : ''}`}
-                                    >
-                                        <div className={`p-3 rounded-xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
-                                            <item.icon size={22} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="block font-black text-ink-800 text-base group-hover:text-teal-700 transition-colors">{item.label}</span>
-                                                {item.path === '#' && <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest bg-ink-100 px-1.5 py-0.5 rounded">Soon</span>}
-                                            </div>
-                                            {item.desc && <span className="text-xs text-ink-500 font-bold leading-tight block mt-0.5">{item.desc}</span>}
-                                        </div>
-                                        <ChevronRight size={22} className="text-slate-300 group-hover:text-teal-500 transform group-hover:translate-x-1 transition-all" />
-                                    </div>
-                                ))}
-                            </div>
-                        </GlassCard>
-                    </div>
-                ))}
-            </div>
+            {/* Account tools (kept from the old "More" screen) */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <button type="button" onClick={() => onNavigate('/doctor/payment')} className="flex items-center gap-4 rounded-ds-lg bg-white p-5 text-left transition-shadow duration-300 ease-ds-out hover:shadow-ds-rise">
+                    <span className="grid size-11 place-items-center rounded-full bg-primary-50 text-primary-500"><Wallet size={20} /></span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-ds-paragraph text-content-primary">Payment & Subscription</span>
+                        <span className="block text-ds-small text-content-tertiary">View your earnings summary</span>
+                    </span>
+                    <ChevronRight size={18} className="text-content-tertiary" />
+                </button>
 
-            {/* GOOGLE CALENDAR SYNC */}
-            <div className="space-y-4">
-                <h3 className="text-[11px] font-black text-ink-500 uppercase tracking-[0.25em] px-4">Integrations</h3>
-                <GlassCard className="p-5 bg-white border-0 ring-1 ring-slate-100 shadow-ds-soft rounded-ds-xl">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-xl ${isConnected ? 'bg-green-50' : 'bg-ink-50'}`}>
-                                <Calendar size={22} className={isConnected ? 'text-green-600' : 'text-ink-500'} />
-                            </div>
-                            <div>
-                                <p className="font-black text-ink-800">Google Calendar</p>
-                                <p className="text-xs text-ink-500 font-bold mt-0.5">
-                                    {isConnected ? 'Connected — appointments will sync automatically' : isConfigured ? 'Click Connect to sync your appointments' : 'Add VITE_GOOGLE_CLIENT_ID to .env to enable'}
-                                </p>
-                            </div>
-                        </div>
-                        {isConnected ? (
-                            <button onClick={disconnect} className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 text-xs font-black rounded-xl border border-red-100 hover:bg-red-100 transition-all">
-                                <Unlink size={14} /> Disconnect
-                            </button>
-                        ) : (
-                            <button onClick={connect} disabled={!isConfigured} className="btn-sheen flex items-center gap-1.5 px-4 py-2 bg-medical-600 hover:bg-medical-500 text-white text-xs font-black rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                                <Link size={14} /> Connect
-                            </button>
-                        )}
-                    </div>
-                    {isConnected && (
-                        <div className="mt-3 pt-3 border-t border-slate-100">
-                            <p className="text-xs text-green-600 font-bold flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-green-500 inline-block animate-pulse" />
-                                Syncing automatically — future appointments will appear in your Google Calendar
-                            </p>
-                        </div>
+                <div className="flex items-center gap-4 rounded-ds-lg bg-white p-5">
+                    <span className={`grid size-11 place-items-center rounded-full ${isConnected ? 'bg-primary-50 text-primary-500' : 'bg-ink-50 text-content-tertiary'}`}><Calendar size={20} /></span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-ds-paragraph text-content-primary">Google Calendar</span>
+                        <span className="block text-ds-small text-content-tertiary">
+                            {isConnected ? 'Connected — appointments sync automatically' : isConfigured ? 'Connect to sync your appointments' : 'Add VITE_GOOGLE_CLIENT_ID to .env to enable'}
+                        </span>
+                    </span>
+                    {isConnected ? (
+                        <button onClick={disconnect} className="inline-flex items-center gap-1.5 rounded-full bg-[#fdecec] px-3 py-2 text-ds-small text-[#ed7272]"><Unlink size={14} /> Disconnect</button>
+                    ) : (
+                        <button onClick={connect} disabled={!isConfigured} className="btn-sheen relative inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-primary-500 px-3 py-2 text-ds-small text-white disabled:cursor-not-allowed disabled:opacity-40"><Link size={14} /> Connect</button>
                     )}
-                </GlassCard>
-            </div>
-
-            {/* LOGOUT BUTTON */}
-            <div className="pt-6">
-                <Button
-                    variant="outline"
-                    onClick={onLogout}
-                    fullWidth
-                    className="h-16 rounded-3xl border-2 border-red-100 text-red-600 font-black flex items-center justify-center gap-3 hover:bg-red-50 hover:border-red-200 transition-all shadow-none text-lg"
-                >
-                    <LogOut size={24} /> Logout Account
-                </Button>
-                <div className="flex flex-col items-center gap-2 mt-8 pb-8 opacity-30">
-                    <Heart size={20} className="text-teal-500" fill="currentColor" />
-                    <p className="text-center text-[10px] font-black text-ink-500 uppercase tracking-[0.3em]">DocOclock for Doctors • v2.0.1</p>
                 </div>
+
+                <button type="button" onClick={onLogout} className="flex items-center gap-4 rounded-ds-lg bg-white p-5 text-left transition-colors duration-300 ease-ds-out hover:bg-[#fdecec]">
+                    <span className="grid size-11 place-items-center rounded-full bg-[#fdecec] text-[#ed7272]"><LogOut size={20} /></span>
+                    <span className="flex-1 text-ds-paragraph text-[#ed7272]">Logout Account</span>
+                </button>
             </div>
         </div>
     );

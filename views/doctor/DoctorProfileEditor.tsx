@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import {
-    User, Stethoscope, Award, Clock,
-    ChevronLeft, Save, Loader2, Camera, Info,
-    GraduationCap, ShieldCheck
-} from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { Check, Loader2, Camera, ShieldCheck } from 'lucide-react';
+import { DashboardButton } from '../../components/dashboard';
+import { useToast } from '../../components/ToastProvider';
+import { ProfileHeader, Panel, Row, FIELD, Avatar, EntryCard } from '../../components/doctor/profile/ProfilePanels';
 import { DoctorStorage } from '../../storage';
 import { useAuth } from '../../AuthContext';
 import { supabase } from '../../supabase';
@@ -16,6 +13,7 @@ interface ProfileEditorProps {
 
 export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) => {
     const { profile, setProfile } = useAuth();
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -67,11 +65,12 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
             DoctorStorage.set(updatedProfile);
             setProfile(updatedProfile);
             setSuccess(true);
+            showToast('Profile updated', 'success');
 
             setTimeout(() => setSuccess(false), 3000);
         } catch (err) {
             console.error('Error updating profile:', err);
-            alert('Failed to update profile. Please try again.');
+            showToast('Failed to update profile. Please try again.', 'error');
         } finally {
             setLoading(false);
         }
@@ -97,172 +96,66 @@ export const DoctorProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) =>
             setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
         } catch (error) {
             console.error('Error uploading image:', error);
-            alert('Error uploading image. Make sure the avatars bucket exists and try again.');
+            showToast('Error uploading image. Make sure the avatars bucket exists and try again.', 'error');
         } finally {
             setUploading(false);
         }
     };
 
-    return (
-        <div className="max-w-3xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between mb-8 px-2 md:px-0">
-                <button
-                    onClick={onBack}
-                    className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
-                >
-                    <ChevronLeft size={24} />
-                </button>
-                <h1 className="text-xl font-display font-black text-ink-800 tracking-tight">Edit Profile</h1>
-                <div className="w-10 h-10" /> {/* Spacer */}
-            </div>
+    const degreeList = formData.degrees.split(/[,;]+/).map(d => d.trim()).filter(Boolean);
+    const institutionList = String(formData.institutions || '').split(/\n+/).map(d => d.trim()).filter(Boolean);
 
-            <div className="space-y-8 px-2 md:px-0">
-                {/* Profile Picture Section */}
-                <div className="flex flex-col items-center">
-                    <div className="relative group">
-                        <div className="w-32 h-32 rounded-ds-xl bg-slate-100 border-4 border-white shadow-xl overflow-hidden">
-                            {uploading ? (
-                                <div className="w-full h-full flex items-center justify-center bg-slate-50 text-teal-500">
-                                    <Loader2 size={32} className="animate-spin" />
-                                </div>
-                            ) : formData.image_url ? (
-                                <img src={formData.image_url} alt="Profile" className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                    <User size={48} />
-                                </div>
-                            )}
-                        </div>
-                        <input 
-                            type="file" 
-                            id="avatar-upload" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={handleImageUpload} 
-                            disabled={uploading}
-                        />
-                        <button 
+    return (
+        // Figma "Edit Doctor Profile" 276:12338: header + Cancel / Save Changes, then Personal Information | Experiences | Education.
+        <div className="flex animate-fade-in flex-col gap-6 font-display">
+            <ProfileHeader title="Edit Doctor Profile" subtitle="Keep your details up to date for patients">
+                <DashboardButton variant="secondary" icon={false} onClick={onBack} className="px-4">Cancel</DashboardButton>
+                <DashboardButton variant="primary" icon={loading ? <Loader2 size={14} className="animate-spin" /> : <Check size={16} />} onClick={handleSave} disabled={loading} className="pr-3">
+                    <span className="px-3">{loading ? 'Saving...' : success ? 'Saved' : 'Save Changes'}</span>
+                </DashboardButton>
+            </ProfileHeader>
+
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <Panel title="Personal Information">
+                    <div className="relative w-fit">
+                        {uploading ? (
+                            <span className="grid size-[78px] place-items-center rounded-full bg-primary-50 text-primary-500"><Loader2 size={24} className="animate-spin" /></span>
+                        ) : (
+                            <Avatar src={formData.image_url} name={formData.name} />
+                        )}
+                        <input type="file" id="avatar-upload" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+                        <button
+                            type="button"
                             onClick={() => document.getElementById('avatar-upload')?.click()}
                             disabled={uploading}
-                            className="absolute -bottom-2 -right-2 bg-teal-600 text-white p-2.5 rounded-2xl shadow-lg hover:bg-teal-700 transition-colors border-4 border-white disabled:opacity-50"
+                            aria-label="Change profile photo"
+                            className="absolute -bottom-1 -right-1 grid size-8 place-items-center rounded-full border-2 border-white bg-primary-500 text-white disabled:opacity-50"
                         >
-                            <Camera size={20} />
+                            <Camera size={14} />
                         </button>
                     </div>
-                    <p className="text-[10px] font-black text-ink-500 uppercase tracking-widest mt-4">Profile Photo</p>
-                </div>
+                    <Row label="Name"><input name="name" value={formData.name} onChange={handleChange} placeholder="Dr. Full Name" className={FIELD} /></Row>
+                    <Row label="Designation"><input name="specialty" value={formData.specialty} onChange={handleChange} placeholder="e.g. Cardiologist" className={FIELD} /></Row>
+                    <Row label="Experience (years)"><input name="experience_years" type="number" value={formData.experience_years} onChange={handleChange} className={FIELD} /></Row>
+                    <Row label="Professional Biography">
+                        <textarea name="about" value={formData.about} onChange={handleChange} rows={4} placeholder="Tell patients about your medical background..." className={`${FIELD} h-auto resize-none py-3`} />
+                    </Row>
+                </Panel>
 
-                <GlassCard className="p-8 bg-white border-0 shadow-ds-soft rounded-ds-xl space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Full Name */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                <User size={12} className="text-teal-500" /> Full Name
-                            </label>
-                            <input
-                                name="name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                placeholder="Dr. Full Name"
-                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all"
-                            />
-                        </div>
+                <Panel title="Experiences">
+                    {institutionList.length > 0
+                        ? institutionList.map(i => <EntryCard key={i} title={i} subtitle={formData.specialty} />)
+                        : <p className="text-ds-body text-content-tertiary">No experience added yet.</p>}
+                    <p className="flex items-start gap-2 rounded-2xl bg-primary-50 p-4 text-ds-small text-primary-700">
+                        <ShieldCheck size={16} className="mt-px shrink-0" />
+                        Your BMDC number and primary credentials are locked for verification. Contact support to change your medical license details.
+                    </p>
+                </Panel>
 
-                        {/* Specialty */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                <Stethoscope size={12} className="text-teal-500" /> Medical Specialty
-                            </label>
-                            <input
-                                name="specialty"
-                                value={formData.specialty}
-                                onChange={handleChange}
-                                placeholder="e.g. Cardiology"
-                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all"
-                            />
-                        </div>
-
-                        {/* Degrees */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                <GraduationCap size={12} className="text-teal-500" /> Degrees & Qualifications
-                            </label>
-                            <input
-                                name="degrees"
-                                value={formData.degrees}
-                                onChange={handleChange}
-                                placeholder="MBBS, FCPS, MD"
-                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all"
-                            />
-                        </div>
-
-                        {/* Experience */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                <Clock size={12} className="text-teal-500" /> Experience (Years)
-                            </label>
-                            <input
-                                name="experience_years"
-                                type="number"
-                                value={formData.experience_years}
-                                onChange={handleChange}
-                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    {/* About / Bio */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                            <Info size={12} className="text-teal-500" /> Professional Biography
-                        </label>
-                        <textarea
-                            name="about"
-                            value={formData.about}
-                            onChange={handleChange}
-                            rows={4}
-                            placeholder="Tell patients about your medical background..."
-                            className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none font-bold text-ink-800 transition-all resize-none"
-                        />
-                    </div>
-
-                    {/* Save Button */}
-                    <div className="pt-4">
-                        <Button
-                            onClick={handleSave}
-                            disabled={loading}
-                            fullWidth
-                            className={`btn-sheen h-14 rounded-2xl font-black text-base shadow-xl transition-all duration-300 ${success ? 'bg-green-500 hover:bg-green-600 shadow-green-500/20' : 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20'}`}
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 size={20} className="animate-spin mr-2" /> Saving Changes...
-                                </>
-                            ) : success ? (
-                                <>
-                                    <Award size={20} className="mr-2" /> Profile Updated!
-                                </>
-                            ) : (
-                                <>
-                                    <Save size={20} className="mr-2" /> Save Profile Details
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                </GlassCard>
-
-                {/* Info Box */}
-                <div className="bg-medical-50/50 border border-medical-100 rounded-ds-xl p-6 flex gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-medical-100 flex items-center justify-center text-medical-600 shrink-0">
-                        <ShieldCheck size={20} />
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-black text-medical-700 mb-1">Verify Your Identity</h4>
-                        <p className="text-[12px] text-medical-600 font-medium leading-relaxed">
-                            Your BMDC number and primary credentials are locked for verification purposes. Contact support if you need to change your medical license details.
-                        </p>
-                    </div>
-                </div>
+                <Panel title="Education">
+                    <Row label="Degrees & Qualifications"><input name="degrees" value={formData.degrees} onChange={handleChange} placeholder="MBBS, FCPS, MD" className={FIELD} /></Row>
+                    {degreeList.map(d => <EntryCard key={d} title={d} />)}
+                </Panel>
             </div>
         </div>
     );
