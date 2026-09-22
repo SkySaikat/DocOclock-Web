@@ -45,8 +45,8 @@ Legend: ✅ done & committed · 🔄 in progress · ⏳ pending
 | landing (doctor-card hover morph, Button Usual/Featured Hover, tabs, all sections) | `80:1754`, After Hero `80:1794` | `views/patient/Home.tsx`, `components/landing/**`, `components/ui/{Button,DoctorCard,SectionEyebrowHeader}.tsx`, `components/Footer.tsx` | ✅ `bd9c392` |
 | `doctor-queue` ("Doctor Q") | Section `255:6533` (Queue `368:14306`, `328:14902`, Modal `368:14285`, Card 3 `368:15791`, Queue Card `255:9358`), flow frames `328:13919`, `255:8163`, phone `341:18476`, `368:17738` | `views/doctor/SerialManager.tsx`, `components/doctor/queue/**` | ✅ `8a26fd5` (lean pass 2026-09-22: tsc+build clean, desktop 1440 + phone 390 checked vs `queue-live-368_14306.png`; still unbuilt by choice: green shader blob, phone "Currently" dock card) |
 | `doctor-overview` | `368:18645` / page `339:17421`, popover `368:18696` | `views/doctor/Dashboard.tsx`, `components/ui/{ArcGauge,StatCard,DoctorDashboardProfile,ChamberCard}.tsx`, `components/doctor/overview/**` | ✅ `8df0bfc` (lean pass 2026-09-22: checked vs `queue-overview-339_17421.png`; `StatCard`/`ChamberCard` untouched, not used on this screen) |
-| `patient-live-appts` | Live Queue `339:15916`, `297:12283`, phone `357:19153`/`357:19210`, Appointments `191:5570`, Sort menu `368:16699`, Pickers `396:12025` | `views/patient/{LiveSerial,Appointments}.tsx`, `components/ui/AppointmentCard.tsx` | ⏳ |
-| `patient-rx-meds` | Prescriptions `297:12584`, Medicines `339:16108`/`191:5104`, Modal `339:15402`, Toasters `399:12826`/`399:12818` | `views/patient/{Prescriptions,MedicineTracker}.tsx` | ⏳ |
+| `patient-live-appts` | Live Queue `339:15916`, `297:12283`, phone `357:19153`/`357:19210`, Appointments `191:5570`, Sort menu `368:16699`, Pickers `396:12025` | `views/patient/{LiveSerial,Appointments}.tsx`, `components/ui/AppointmentCard.tsx` | ✅ `37323e1` Live Queue + `92f798d` Appointments (2026-09-22). Call Assistant tile not built (no assistant phone in data); list view = table on md+, cards on phone |
+| `patient-rx-meds` | Prescriptions `297:12584`, Medicines `339:16108`/`191:5104`, Modal `339:15402`, Toasters `399:12826`/`399:12818` | `views/patient/{Prescriptions,MedicineTracker}.tsx` | ✅ `018e8d0` Prescriptions + `22d5674` Medicines (2026-09-22). Not built (no feature behind them): Medicines 'Missed' button + date pill, modal 'Instruction' field; Prescriptions calendar toggle |
 | `doctor-appointments` | `255:11599` (Appointments `255:11674`, `255:12102`, modals, pickers) | `views/doctor/DoctorAppointments.tsx` | ⏳ |
 | `doctor-prescription` | `255:14768` | `views/doctor/PrescriptionEditor.tsx` | ⏳ |
 | `doctor-analytics` | `255:14766` | `views/doctor/Analytics.tsx` | ⏳ |
@@ -109,6 +109,8 @@ Session-only cache (same session can `resumeFromRunId`; otherwise just re-run th
 
 ## 8. Commit log (newest first — append as you go)
 
+- `018e8d0` + `22d5674` patient-rx-meds done; shared list pieces in components/patient/DsTable.tsx
+- `37323e1` + `92f798d` patient-live-appts done (Live Queue 339:15916, Appointments 191:5570)
 - `8a26fd5` doctor-queue done · `8df0bfc` doctor-overview done (2026-09-22, lean mode; the fix-stage edits from run `wf_50b469b9-f1a` were on disk uncommitted — verified and committed). **§3b is now historical.** Next unit: `patient-live-appts`. Mock preview is in `.claude/launch.json` as `mock` (port 3100).
 
 - `8c11f3f` v7 (user, 12:37) — snapshot commit that includes the **unreviewed** doctor-queue + doctor-overview WIP (45 files) and the PROGRESS §3b stop-state notes. `tsc` clean at this commit. If a regression is suspected in the Queue/Overview screens, the last reviewed state is `bd9c392`/`b7e4e86` for those files (`git checkout b7e4e86 -- views/doctor/SerialManager.tsx views/doctor/Dashboard.tsx components/ui/ArcGauge.tsx components/ui/DoctorDashboardProfile.tsx`).
