@@ -8,6 +8,7 @@ interface EarningCardProps {
   total: number;
   loading?: boolean;
   className?: string;
+  chipLabel?: string;
 }
 
 // Inter has no glyph for the taka sign, so the browser falls back to a system Bengali font whose taller line box stretches Figma's 15px
@@ -37,9 +38,9 @@ const Row: React.FC<{ label: string; dot: string; title?: string; loading?: bool
  * Earning card (Figma 339:17560, phone 572:26195): white r24 card, pad 16, gap 24 — title + "Today" chip, then two rows
  * (Inter 12, -4 % tracking, `#515151` -> neutral-600): Earning (primary dot) and Total (`ink-300` #d9d9d9 dot). The card hugs its content.
  */
-export const EarningCard: React.FC<EarningCardProps> = ({ earned, total, loading, className = '' }) => (
+export const EarningCard: React.FC<EarningCardProps> = ({ earned, total, loading, className = '', chipLabel }) => (
   <section aria-label="Earning" className={`flex flex-col gap-6 rounded-ds-lg bg-white p-4 ${className}`}>
-    <CardHeader title="Earning" chipTone="earning" />
+    <CardHeader title="Earning" chipTone="earning" chipLabel={chipLabel} />
     <div className="flex w-full flex-col gap-2">
       <Row label="Earning" dot="bg-primary-500" loading={loading}><Taka amount={earned} /></Row>
       <Row

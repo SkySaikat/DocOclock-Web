@@ -1,20 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import {
-   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-   AreaChart, Area, PieChart, Pie, Cell, Legend
-} from 'recharts';
-import { BarChart2, TrendingUp, Users, CreditCard, Clock, MapPin, X, UserPlus, UserCheck } from 'lucide-react';
+import { DS_ICONS } from '../../components/dashboard';
+import { FilterPill } from '../../components/patient/DsTable';
+import { QueueStatusCard } from '../../components/doctor/overview/QueueStatusCard';
+import { EarningCard } from '../../components/doctor/overview/EarningCard';
 
 import { DoctorStorage, fetchAppointments, fetchDoctorChambers } from '../../storage';
 import { Appointment, AppointmentStatus } from '../../types';
 
 import { getLocalISODate } from '../../utils/date';
 import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
-import { useTheme } from '../../contexts/ThemeContext';
 
 export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> = ({ onNavigate }) => {
-   const { colors: themeColors } = useTheme();
    const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'year'>('week');
    const session = DoctorStorage.get();
    const currentDoctorId = session?.id;
@@ -145,232 +141,230 @@ export const DoctorAnalytics: React.FC<{ onNavigate?: (path: string) => void }> 
       const newPatientPct = demographicsTotal > 0 ? Math.round((newPatientCount / demographicsTotal) * 100) : 0;
       const returningPatientPct = demographicsTotal > 0 ? 100 - newPatientPct : 0;
 
+      // Figma cards (257:10189): monthly patients (scope-filtered, current year), weekday load, hour load, statuses, earnings.
+      const active = filteredApps.filter(a => a.status !== 'cancelled');
+      const thisYear = now.getFullYear();
+      const monthly = MONTHS.map((label, m) => {
+         const inMonth = hospitalFiltered.filter(a => a.status !== 'cancelled' && new Date(a.date).getFullYear() === thisYear && new Date(a.date).getMonth() === m);
+         return { label, value: inMonth.length, done: inMonth.filter(a => a.status === 'completed').length, revenue: inMonth.filter(a => a.status === 'completed').reduce((t, a) => t + (a.fee || 0), 0) };
+      });
+      const weekday = WEEKDAYS.map((label, d) => {
+         const onDay = active.filter(a => new Date(a.date).getDay() === d);
+         return { label, value: onDay.length, done: onDay.filter(a => a.status === 'completed').length, revenue: onDay.filter(a => a.status === 'completed').reduce((t, a) => t + (a.fee || 0), 0) };
+      });
+      const hours = peakData
+         .filter(p => /^\d/.test(p.name)) // skip non-clock slots such as "Walk-in"
+         .map(p => ({ label: p.name, value: p.traffic, sortKey: hourSortKey(p.name) }))
+         .sort((a, b) => a.sortKey - b.sortKey);
+      const earned = filteredApps.filter(a => a.status === 'completed').reduce((t, a) => t + (a.fee || 0), 0);
+      const expected = active.reduce((t, a) => t + (a.fee || 0), 0);
+      const counts = {
+         completed: filteredApps.filter(a => a.status === 'completed').length,
+         consulting: filteredApps.filter(a => a.status === 'consulting').length,
+         waiting: filteredApps.filter(a => a.status === 'waiting' || a.status === 'late').length,
+         cancelled: cancelledCount,
+         active: active.length,
+      };
+
       return {
          trendData, statusData, peakData, filteredApps, cancellationRate, cancelledVsCompletedData,
          newPatientCount, returningPatientCount, newPatientPct, returningPatientPct,
+         monthly, weekday, hours, earned, expected, counts,
       };
    }, [appointments, timeFilter, selectedHospitalId, currentDoctorId]);
 
-   const {
-      trendData, statusData, peakData, cancellationRate, cancelledVsCompletedData,
-      newPatientPct, returningPatientPct,
-   } = stats;
+   const { cancellationRate, newPatientPct, returningPatientPct, monthly, weekday, hours, earned, expected, counts } = stats;
+   const periodLabel = TIME_OPTIONS.find(o => o.id === timeFilter)?.label ?? 'This Week';
+   const scopeOptions = [{ id: 'all', label: 'All Hospitals' }, ...hospitals.map(h => ({ id: String(h.id), label: h.hospitalName }))];
+   const scopeLabel = scopeOptions.find(o => o.id === String(selectedHospitalId))?.label ?? 'All Hospitals';
+   const thisMonth = new Date().getMonth();
 
    return (
-      <div className="space-y-8 pb-10">
+      // Figma "Analytics" 257:10189. Page background + gutters come from Layout.
+      <div className="flex animate-fade-in flex-col gap-6 font-display">
          {onNavigate && <DoctorTabBar currentPath="/doctor/analytics" onNavigate={onNavigate} />}
-         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-               <div className="flex items-center gap-3 mb-1">
-                  <div className="bg-medical-100 p-2 rounded-xl text-medical-600">
-                     <BarChart2 size={24} />
-                  </div>
-                  <h1 className="text-3xl font-display font-bold text-ink-800">Practice Analytics</h1>
-               </div>
-               <p className="text-ink-500 text-sm ml-12">
-                  {selectedHospitalId === 'all'
-                     ? 'Global Practice Overview'
-                     : `Analytics for ${hospitals.find(h => String(h.id) === String(selectedHospitalId))?.hospitalName || 'Selected Hospital'}`
-                  }
+
+         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2">
+               <h1 className="text-[24px] font-normal leading-[normal] text-content-primary lg:text-ds-h36">Analytics</h1>
+               <p className="text-ds-subtitle text-content-tertiary max-lg:text-ds-small">
+                  {selectedHospitalId === 'all' ? 'Your whole practice at a glance' : `Analytics for ${scopeLabel}`}
                </p>
             </div>
-
-            <div className="flex flex-wrap items-center gap-4">
-               {/* Hospital Selector exactly as requested */}
-               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-ds-card">
-                  <span className="text-[10px] font-black text-ink-500 uppercase tracking-widest">Select Scope:</span>
-                  <select
-                     value={selectedHospitalId}
-                     onChange={(e) => setSelectedHospitalId(e.target.value)}
-                     className="bg-transparent text-[10px] font-black text-medical-600 uppercase tracking-widest outline-none cursor-pointer"
-                  >
-                     <option value="all">All Hospitals</option>
-                     {hospitals.map(h => (
-                        <option key={h.id} value={h.id}>
-                           {h.hospitalName}
-                        </option>
-                     ))}
-                  </select>
-               </div>
-
-               {/* Time Filters */}
-               <div className="flex bg-white p-1 rounded-xl shadow-ds-card border border-slate-100">
-                  {['today', 'week', 'month', 'year'].map((filter) => (
-                     <button
-                        key={filter}
-                        onClick={() => setTimeFilter(filter as any)}
-                        className={`px-4 py-2 text-sm font-bold rounded-lg capitalize transition-all ${timeFilter === filter ? 'bg-medical-600 text-white shadow-md' : 'text-ink-500 hover:bg-medical-50 hover:text-ink-800'}`}
-                     >
-                        {filter === 'today' ? 'Today' : filter === 'week' ? 'This Week' : filter === 'month' ? 'This Month' : 'Year'}
-                     </button>
-                  ))}
-               </div>
+            <div className="flex flex-wrap items-stretch gap-1">
+               <FilterPill label={periodLabel} icon={DS_ICONS.calendar} chevron={DS_ICONS.dropdown} options={TIME_OPTIONS} value={timeFilter} onSelect={id => setTimeFilter(id as TimeKey)} />
+               <FilterPill label={scopeLabel} icon={DS_ICONS.searchFilter} chevron={DS_ICONS.dropdown} options={scopeOptions} value={String(selectedHospitalId)} onSelect={setSelectedHospitalId} />
             </div>
          </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+         {isLoading ? (
+            <p className="py-24 text-center text-ds-body text-content-tertiary">Loading analytics...</p>
+         ) : (
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_482px]">
+               {/* Left column */}
+               <div className="flex min-w-0 flex-col gap-3">
+                  <Card title="Patients Status" chip={String(new Date().getFullYear())}>
+                     <Legend items={[['bg-primary-500', 'Consultations'], ['bg-primary-950', 'Completed']]} />
+                     <VBars data={monthly} highlight={thisMonth} height={200} format={d => `${d.value} · ৳${d.revenue}`} />
+                  </Card>
 
-            {/* Chart 1: Revenue & Patient Trend (Takes 2/3) */}
-            <GlassCard className="lg:col-span-2 p-6 min-h-[400px]">
-               <div className="flex justify-between items-center mb-6">
-                  <div>
-                     <h3 className="font-display font-bold text-ink-800 text-lg">Patient & Revenue Trend</h3>
-                     <p className="text-xs text-ink-500">Comparison over selected period</p>
-                  </div>
-                  <div className="flex gap-4 text-xs font-bold">
-                     <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-medical-500"></span> Patients</div>
-                     <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-teal-400"></span> Revenue</div>
-                  </div>
-               </div>
-               <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <AreaChart data={trendData}>
-                        <defs>
-                           <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2} />
-                              <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
-                           </linearGradient>
-                           <linearGradient id="colorPatients" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={themeColors.primaryColor} stopOpacity={0.2} />
-                              <stop offset="95%" stopColor={themeColors.primaryColor} stopOpacity={0} />
-                           </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="left" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} hide />
-                        <Tooltip
-                           contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                           itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-                        />
-                        <Area yAxisId="right" type="monotone" dataKey="revenue" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                        <Area yAxisId="left" type="monotone" dataKey="patients" stroke={themeColors.primaryColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPatients)" />
-                     </AreaChart>
-                  </ResponsiveContainer>
-               </div>
-            </GlassCard>
-
-            {/* Chart 2: Cancelled vs Completed (Pie) */}
-            <GlassCard className="p-6">
-               <h3 className="font-display font-bold text-ink-800 text-lg mb-2">Cancellation Analysis</h3>
-               <p className="text-xs text-ink-500 mb-6">Cancelled vs Completed Ratio</p>
-               <div className="h-[250px] relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <PieChart>
-                        <Pie
-                           data={cancelledVsCompletedData}
-                           innerRadius={60}
-                           outerRadius={80}
-                           paddingAngle={5}
-                           dataKey="value"
-                        >
-                           {cancelledVsCompletedData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                           ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }} />
-                     </PieChart>
-                  </ResponsiveContainer>
-                  {/* Center Text */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                     <span className="text-2xl font-stat font-bold text-ink-800">
-                        {Math.round(cancellationRate)}%
-                     </span>
-                     <span className="text-[10px] text-ink-500 uppercase font-black">Cancel Rate</span>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-[336px_minmax(0,1fr)]">
+                     <QueueStatusCard
+                        title="Appointment Status"
+                        chipLabel={periodLabel}
+                        completed={counts.completed}
+                        consulting={counts.consulting}
+                        waiting={counts.waiting}
+                        total={counts.active}
+                        layout="column"
+                        className="!rounded-ds-lg !p-5"
+                     />
+                     <Card title="Peak Hours" chip={periodLabel}>
+                        <Legend items={[['bg-primary-500', 'Consultations']]} />
+                        <HBars data={hours} />
+                     </Card>
                   </div>
                </div>
-            </GlassCard>
 
-            {/* Chart 3: Peak Hours (Queue Analytics) */}
-            <GlassCard className="p-6">
-               <h3 className="font-display font-bold text-ink-800 text-lg mb-6">Peak Traffic Hours</h3>
-               <div className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={peakData} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                        <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" width={60} stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
-                        <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px' }} />
-                        <Bar dataKey="traffic" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={20} />
-                     </BarChart>
-                  </ResponsiveContainer>
-               </div>
-            </GlassCard>
-
-            {/* Stat Card: Cancellation Rate */}
-            <GlassCard className="p-6 flex items-center gap-5 bg-red-50 shadow-ds-card">
-               <div className="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shadow-inner">
-                  <X size={28} />
-               </div>
-               <div>
-                  <p className="text-[10px] text-ink-500 font-black uppercase tracking-widest mb-1">Cancellation Rate</p>
-                  <p className="text-3xl font-stat font-black text-ink-800 leading-none mb-1">{Math.round(cancellationRate)}%</p>
-                  <p className="text-[10px] text-red-500 font-bold">Lost Opportunities</p>
-               </div>
-            </GlassCard>
-
-            {/* Chart 4: Patient Demographics (New vs Returning) */}
-            <GlassCard className="lg:col-span-2 p-6 flex flex-col md:flex-row gap-8 items-center">
-               <div className="flex-1 space-y-4 w-full">
-                  <div>
-                     <h3 className="font-display font-bold text-ink-800 text-lg">Patient Demographics</h3>
-                     <p className="text-sm text-ink-500">New vs Returning Patients</p>
-                  </div>
-
-                  <div className="flex gap-4">
-                     <div className="flex-1 bg-medical-50 p-4 rounded-xl border border-medical-100">
-                        <div className="flex items-center gap-2 mb-1">
-                           <UserPlus size={16} className="text-medical-600" />
-                           <span className="text-xs font-bold text-medical-700 uppercase">New Patients</span>
+               {/* Right column (482) */}
+               <div className="flex min-w-0 flex-col gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_195px]">
+                     <Card title="Patient" chip={periodLabel}>
+                        <div className="grid grid-cols-2 gap-4">
+                           <PatientSplit label="New Patient" count={stats.newPatientCount} pct={newPatientPct} dark />
+                           <PatientSplit label="Old Patient" count={stats.returningPatientCount} pct={returningPatientPct} />
                         </div>
-                        <p className="text-2xl font-stat font-bold text-ink-800">{newPatientPct}%</p>
-                     </div>
-                     <div className="flex-1 bg-purple-50 p-4 rounded-xl border border-purple-100">
-                        <div className="flex items-center gap-2 mb-1">
-                           <UserCheck size={16} className="text-purple-600" />
-                           <span className="text-xs font-bold text-purple-800 uppercase">Returning</span>
-                        </div>
-                        <p className="text-2xl font-stat font-bold text-ink-800">{returningPatientPct}%</p>
-                     </div>
+                     </Card>
+                     <EarningCard earned={earned} total={expected} chipLabel={periodLabel} className="!rounded-ds-lg" />
                   </div>
 
-                  <div className="bg-ink-50 p-4 rounded-xl text-sm text-ink-500 border border-slate-100">
-                     Based on {stats.newPatientCount + stats.returningPatientCount} unique patient(s) seen in the selected period.
-                  </div>
+                  <Card title="Busiest Day" chip={periodLabel}>
+                     <Legend items={[['bg-primary-500', 'Consultations'], ['bg-primary-950', 'Completed']]} />
+                     <VBars data={weekday} highlight={argMax(weekday.map(d => d.value))} height={180} format={d => `${d.value} · ৳${d.revenue}`} />
+                  </Card>
+
+                  <Card title="Overall Status" chip={periodLabel}>
+                     <VBars
+                        data={[
+                           { label: 'Completed', value: counts.completed },
+                           { label: 'Waiting', value: counts.waiting + counts.consulting },
+                           { label: 'Cancelled', value: counts.cancelled },
+                        ]}
+                        tones={['bg-primary-500', 'bg-primary-950', 'bg-ink-100']}
+                        height={170}
+                        format={d => String(d.value)}
+                     />
+                     <p className="text-ds-small text-content-tertiary">Cancellation rate {Math.round(cancellationRate)}% of {stats.filteredApps.length} appointment(s).</p>
+                  </Card>
                </div>
-
-               <div className="flex-1 w-full h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={[{ name: 'Ratio', New: newPatientPct, Returning: returningPatientPct }]}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis hide />
-                        <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip />
-                        <Bar dataKey="New" fill={themeColors.primaryColor} radius={[4, 4, 0, 0]} name="New Patients" />
-                        <Bar dataKey="Returning" fill="#a855f7" radius={[4, 4, 0, 0]} name="Returning Patients" />
-                        <Legend iconType="circle" />
-                     </BarChart>
-                  </ResponsiveContainer>
-               </div>
-            </GlassCard>
-
-         </div>
-
-         {/* Insight Cards (Derived Data) */}
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            {[
-               { label: "Busiest Day", value: "Monday", sub: "Avg 45 patients", color: "border-l-medical-500" },
-               { label: "Revenue Growth", value: "+18%", sub: "Compared to last month", color: "border-l-teal-500" },
-               { label: "Avg Wait Time", value: "14 mins", sub: "Below industry avg (20m)", color: "border-l-purple-500" }
-            ].map((insight, i) => (
-               <GlassCard key={i} className={`p-4 border-l-4 ${insight.color} bg-white shadow-ds-card`}>
-                  <p className="text-xs font-bold text-ink-500 uppercase tracking-wider mb-1">{insight.label}</p>
-                  <p className="text-xl font-display font-bold text-ink-800">{insight.value}</p>
-                  <p className="text-xs text-ink-500 mt-1">{insight.sub}</p>
-               </GlassCard>
-            ))}
-         </div>
+            </div>
+         )}
       </div>
    );
 };
+
+type TimeKey = 'today' | 'week' | 'month' | 'year';
+const TIME_OPTIONS: { id: TimeKey; label: string }[] = [
+   { id: 'today', label: 'Today' },
+   { id: 'week', label: 'This Week' },
+   { id: 'month', label: 'This Month' },
+   { id: 'year', label: 'Year' },
+];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// "10 AM" / "2 PM" keys from the peak-hours map -> 0..23 for ordering.
+const hourSortKey = (label: string) => {
+   const h = parseInt(label, 10) || 0;
+   const pm = /PM/i.test(label);
+   return (h % 12) + (pm ? 12 : 0);
+};
+const argMax = (xs: number[]) => xs.reduce((best, x, i) => (x > xs[best] ? i : best), 0);
+
+// White r24 card, p20, title (24) + period chip — the Figma analytics card shell.
+const Card: React.FC<{ title: string; chip: string; children: React.ReactNode }> = ({ title, chip, children }) => (
+   <section aria-label={title} className="flex min-w-0 flex-col gap-4 rounded-ds-lg bg-white p-5">
+      <div className="flex items-center justify-between gap-3">
+         <h3 className="text-ds-title-24 text-content-primary">{title}</h3>
+         <span className="inline-flex shrink-0 items-center rounded-full border border-content-disabled/25 px-[11px] py-[3px] text-ds-small text-ink-800">{chip}</span>
+      </div>
+      {children}
+   </section>
+);
+
+const Legend: React.FC<{ items: [string, string][] }> = ({ items }) => (
+   <div className="flex flex-wrap gap-4 text-ds-small text-content-secondary">
+      {items.map(([dot, label]) => (
+         <span key={label} className="flex items-center gap-1.5"><span className={`size-2.5 rounded-full ${dot}`} />{label}</span>
+      ))}
+   </div>
+);
+
+interface BarDatum { label: string; value: number; done?: number; revenue?: number }
+
+// Vertical bars (Figma Patients Status / Busiest Day / Overall Status): #f6f6f6 bars, the highlighted one stacked
+// Completed (primary-950) under Consultations (primary-500) with a dark value tag above it.
+const VBars: React.FC<{ data: BarDatum[]; highlight?: number; height: number; tones?: string[]; format: (d: BarDatum) => string }> = ({ data, highlight, height, tones, format }) => {
+   const max = Math.max(1, ...data.map(d => d.value));
+   return (
+      <div className="flex items-end gap-2 sm:gap-3" style={{ height: height + 28 }} role="img" aria-label={data.map(d => `${d.label} ${d.value}`).join(', ')}>
+         {data.map((d, i) => {
+            const h = Math.max(6, (d.value / max) * height);
+            const hot = i === highlight;
+            const doneShare = d.value > 0 && d.done != null ? d.done / d.value : 0;
+            return (
+               <div key={d.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                  <div className="relative flex w-full max-w-[36px] flex-col justify-end" style={{ height }}>
+                     {(hot || tones) && d.value > 0 && (
+                        <span className="absolute left-1/2 z-[1] -translate-x-1/2 whitespace-nowrap rounded-full bg-primary-950 px-1.5 py-0.5 text-[8px] text-white" style={{ bottom: h + 6 }}>{format(d)}</span>
+                     )}
+                     {tones ? (
+                        <div className={`w-full rounded-t-md ${tones[i]}`} style={{ height: h }} />
+                     ) : hot ? (
+                        <div className="flex w-full flex-col overflow-hidden rounded-t-md" style={{ height: h }}>
+                           <div className="w-full bg-primary-500" style={{ height: `${(1 - doneShare) * 100}%`, minHeight: 6 }} />
+                           <div className="w-full flex-1 bg-primary-950" />
+                        </div>
+                     ) : (
+                        <div className="w-full rounded-t-md bg-ink-100" style={{ height: h }} title={format(d)} />
+                     )}
+                  </div>
+                  <span className={`truncate text-ds-small ${hot ? 'text-content-primary' : 'text-content-tertiary'}`}>{d.label}</span>
+               </div>
+            );
+         })}
+      </div>
+   );
+};
+
+// Horizontal bars (Figma Peak Hours): hour labels left, #f6f6f6 bars, the busiest hour in primary.
+const HBars: React.FC<{ data: BarDatum[] }> = ({ data }) => {
+   if (data.length === 0) return <p className="py-10 text-center text-ds-body text-content-tertiary">No visits in this period.</p>;
+   const max = Math.max(1, ...data.map(d => d.value));
+   const hot = argMax(data.map(d => d.value));
+   return (
+      <div className="flex flex-col gap-2" role="img" aria-label={data.map(d => `${d.label}: ${d.value}`).join(', ')}>
+         {data.map((d, i) => (
+            <div key={d.label} className="flex items-center gap-3">
+               <span className={`w-14 shrink-0 text-ds-small ${i === hot ? 'text-content-primary' : 'text-content-tertiary'}`}>{d.label}</span>
+               <div className="h-9 min-w-0 flex-1">
+                  <div className={`flex h-full items-center justify-end rounded-md pr-2 text-[10px] ${i === hot ? 'bg-primary-500 text-white' : 'bg-ink-100 text-content-tertiary'}`} style={{ width: `${Math.max(8, (d.value / max) * 100)}%` }}>
+                     {d.value}
+                  </div>
+               </div>
+            </div>
+         ))}
+      </div>
+   );
+};
+
+// Figma Patient card: count + percentage pill (dark for new, primary-50 for old).
+const PatientSplit: React.FC<{ label: string; count: number; pct: number; dark?: boolean }> = ({ label, count, pct, dark }) => (
+   <div className="flex flex-col gap-3">
+      <div className="flex flex-col items-end">
+         <span className="text-ds-small text-content-secondary">{label}</span>
+         <span className="text-ds-title-20 text-content-primary">{count}</span>
+      </div>
+      <span className={`flex h-[23px] items-center rounded-full px-2 text-ds-small ${dark ? 'bg-primary-950 text-white' : 'bg-primary-50 text-primary-600'}`} style={{ width: `${Math.max(34, pct)}%` }}>{pct}%</span>
+   </div>
+);
