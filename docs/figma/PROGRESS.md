@@ -49,7 +49,7 @@ Legend: ✅ done & committed · 🔄 in progress · ⏳ pending
 | `patient-rx-meds` | Prescriptions `297:12584`, Medicines `339:16108`/`191:5104`, Modal `339:15402`, Toasters `399:12826`/`399:12818` | `views/patient/{Prescriptions,MedicineTracker}.tsx` | ✅ `018e8d0` Prescriptions + `22d5674` Medicines (2026-09-22). Not built (no feature behind them): Medicines 'Missed' button + date pill, modal 'Instruction' field; Prescriptions calendar toggle |
 | `doctor-appointments` | `255:11599` (Appointments `255:11674`, `255:12102`, modals, pickers) | `views/doctor/DoctorAppointments.tsx` | ✅ `6d84d3d` (2026-09-22). Old left column (status bar chart + history) removed — not in Figma; Analytics covers it |
 | `doctor-prescription` | `255:14768` | `views/doctor/PrescriptionEditor.tsx` | ✅ `a9c6e39` (2026-09-22). New list page (gap G3 closed, read-only). Removed: fake 'Save Draft' (it only showed an alert). Blood Group field not built (no data). Rx preview header now follows brand colour |
-| `doctor-analytics` | `255:14766` | `views/doctor/Analytics.tsx` | ⏳ |
+| `doctor-analytics` | `255:14766` | `views/doctor/Analytics.tsx` | ✅ `0f5aa73` (2026-09-22). Hard-coded insight cards ('Monday', '+18%', '14 mins') replaced by real Busiest Day data; recharts no longer used here (CSS bars on theme tokens) |
 | `doctor-manage` | `255:14767` | `views/doctor/{DoctorMore,DoctorPracticeSettings,PatientManualRegistry}.tsx`, `components/doctor/AssistantManager.tsx` | ⏳ |
 | `doctor-account` | Account `276:13531`, Activity Log `276:13827`, Doctor Profile `254:8267`, Payment `341:18165` (empty) | `views/doctor/{DoctorProfileEditor,PaymentSubscription}.tsx` | ⏳ |
 | `patient-doctors` | List Page `396:12430`, doctor detail `601:13524`, Main `601:12927`/`601:13040`/`601:13140`, public lists `80:1482`/`326:13058` | `views/patient/{DoctorSearchView,DoctorSearch,DoctorProfile}.tsx` | ⏳ |
@@ -109,6 +109,7 @@ Session-only cache (same session can `resumeFromRunId`; otherwise just re-run th
 
 ## 8. Commit log (newest first — append as you go)
 
+- `0f5aa73` doctor-analytics done
 - `a9c6e39` doctor-prescription done
 - `6d84d3d` doctor-appointments done
 - `018e8d0` + `22d5674` patient-rx-meds done; shared list pieces in components/patient/DsTable.tsx
