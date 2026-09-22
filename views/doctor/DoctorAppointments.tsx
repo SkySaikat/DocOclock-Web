@@ -1,12 +1,48 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Filter, Grid3x3, List, Mail, ArrowUpRight } from 'lucide-react';
 import { DoctorStorage, fetchAppointments } from '../../storage';
 import { Appointment } from '../../types';
 import { getLocalISODate } from '../../utils/date';
 import { DoctorTabBar } from '../../components/doctor/DoctorTabBar';
+import { DashboardButton, DS_ICONS, SearchField, SortMenu, ViewToggleButton } from '../../components/dashboard';
+import { QueuePatientCard } from '../../components/doctor/queue/QueuePatientCard';
+import { toneOf } from '../../components/doctor/queue/queueUtils';
+import { StatusChip } from '../../components/ui/AppointmentCard';
+import { useMenu, RowMenu, TableHead, TableCell, TableEnd, PersonCell, PaginationBar, FilterPill, formatLongDate } from '../../components/patient/DsTable';
 
-const PAGE_SIZE = 9;
+type TimeKey = 'today' | 'week' | 'month' | 'year' | 'all';
+type StatusKey = 'all' | Appointment['status'];
 
+const TIME_OPTIONS: { id: TimeKey; label: string }[] = [
+   { id: 'today', label: 'Today' },
+   { id: 'week', label: 'This Week' },
+   { id: 'month', label: 'This Month' },
+   { id: 'year', label: 'This Year' },
+   { id: 'all', label: 'All Time' },
+];
+const STATUS_OPTIONS: { id: StatusKey; label: string }[] = [
+   { id: 'all', label: 'All' },
+   { id: 'waiting', label: 'Upcoming' },
+   { id: 'consulting', label: 'Ongoing' },
+   { id: 'completed', label: 'Completed' },
+   { id: 'cancelled', label: 'Cancelled' },
+   { id: 'late', label: 'Late' },
+];
+const STATUS_LABEL: Record<Appointment['status'], string> = {
+   waiting: 'Upcoming', consulting: 'Ongoing', completed: 'Completed', cancelled: 'Cancelled', late: 'Late',
+};
+
+const inTimeWindow = (date: string, key: TimeKey) => {
+   if (key === 'all') return true;
+   const d = new Date(date);
+   if (isNaN(d.getTime())) return true;
+   const now = new Date();
+   if (key === 'today') return date === getLocalISODate();
+   if (key === 'week') { const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7); return d >= weekAgo; }
+   if (key === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+   return d.getFullYear() === now.getFullYear();
+};
+
+// Figma "Appointments" 255:11674 (grid of User Cards) / 255:12102 (list). Page background + gutters come from Layout.
 export const DoctorAppointments: React.FC<{ onNavigate?: (path: string) => void }> = ({ onNavigate }) => {
    const doctor = DoctorStorage.get();
    const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -14,6 +50,10 @@ export const DoctorAppointments: React.FC<{ onNavigate?: (path: string) => void 
    const [search, setSearch] = useState('');
    const [view, setView] = useState<'grid' | 'list'>('grid');
    const [page, setPage] = useState(1);
+   const [perPage, setPerPage] = useState(12);
+   const [timeFilter, setTimeFilter] = useState<TimeKey>('all');
+   const [statusFilter, setStatusFilter] = useState<StatusKey>('all');
+   const statusMenu = useMenu();
 
    useEffect(() => {
       if (!doctor?.id) return;
@@ -26,135 +66,127 @@ export const DoctorAppointments: React.FC<{ onNavigate?: (path: string) => void 
       const term = search.toLowerCase();
       return appointments
          .filter((a) => !term || a.patientName.toLowerCase().includes(term))
+         .filter((a) => statusFilter === 'all' || a.status === statusFilter)
+         .filter((a) => inTimeWindow(a.date, timeFilter))
          .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-   }, [appointments, search]);
+   }, [appointments, search, statusFilter, timeFilter]);
 
-   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
+   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+   const safePage = Math.min(page, totalPages);
+   const pageItems = filtered.slice((safePage - 1) * perPage, safePage * perPage);
    const today = getLocalISODate();
-   const todayCount = appointments.filter((a) => a.date === today).length;
-   const completedCount = appointments.filter((a) => a.status === 'completed').length;
-   const cancelledCount = appointments.filter((a) => a.status === 'cancelled').length;
-   const maxCount = Math.max(todayCount, completedCount, cancelledCount, 1);
-
-   const history = useMemo(() => {
-      return [...appointments]
-         .filter((a) => a.status === 'completed')
-         .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0))
-         .slice(0, 4);
-   }, [appointments]);
+   // Today's rows open the live queue (where they can be managed); other days have no detail screen yet.
+   const openAppt = (a: Appointment) => (a.date === today && onNavigate ? () => onNavigate('/doctor/serial-manager') : undefined);
 
    return (
-      <div className="max-w-6xl mx-auto px-2 md:px-0 pb-20 animate-fade-in">
+      <div className="flex animate-fade-in flex-col gap-6 font-display">
          {onNavigate && <DoctorTabBar currentPath="/doctor/appointments" onNavigate={onNavigate} />}
 
-         <div className="mb-2">
-            <h1 className="font-display text-2xl font-bold text-ink-800">Appointments</h1>
-            <p className="text-ink-500 text-sm mt-1">Manage all your queues and get ready for the next ones.</p>
+         {/* Dashboard Header (303:13256) */}
+         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2">
+               <h1 className="text-[24px] font-normal leading-[normal] text-content-primary lg:text-ds-h36">Appointments</h1>
+               <p className="text-ds-subtitle text-content-tertiary max-lg:text-ds-small">Manage all your queues and get ready for the next ones</p>
+            </div>
+            <div className="flex items-stretch gap-1">
+               <FilterPill
+                  label={TIME_OPTIONS.find(o => o.id === timeFilter)?.label ?? 'All Time'}
+                  icon={DS_ICONS.calendar}
+                  chevron={DS_ICONS.dropdown}
+                  options={TIME_OPTIONS}
+                  value={timeFilter}
+                  onSelect={id => { setTimeFilter(id as TimeKey); setPage(1); }}
+               />
+               {onNavigate && (
+                  <DashboardButton variant="gradient" onClick={() => onNavigate('/doctor/manual-booking')} className="pr-3">
+                     <span className="relative z-[1] px-3">Add Appointment</span>
+                  </DashboardButton>
+               )}
+            </div>
          </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mt-8">
-            {/* LEFT COLUMN — status chart + history, matches Figma structure */}
-            <div className="flex flex-col gap-6">
-               <div className="bg-white rounded-[24px] shadow-ds-card p-6">
-                  <div className="flex items-center justify-between mb-6">
-                     <h3 className="font-display font-bold text-ink-800">Appointment Status</h3>
-                     <span className="text-[11px] font-bold text-ink-400 bg-ink-50 px-2.5 py-1 rounded-full">Today</span>
-                  </div>
-                  <div className="flex items-end gap-4 h-32 mb-4">
-                     {[{ label: 'Today', value: todayCount, color: 'bg-medical-500' }, { label: 'Completed', value: completedCount, color: 'bg-ink-800' }, { label: 'Cancelled', value: cancelledCount, color: 'bg-ink-200' }].map((bar) => (
-                        <div key={bar.label} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                           <div className={`w-full rounded-lg ${bar.color} transition-all duration-700`} style={{ height: `${Math.max(8, (bar.value / maxCount) * 100)}%` }} />
-                        </div>
-                     ))}
-                  </div>
-                  <div className="flex items-center justify-around text-[11px] text-ink-500 font-medium">
-                     <span>Today</span><span>Completed</span><span>Cancelled</span>
-                  </div>
-               </div>
-
-               <div className="bg-white rounded-[24px] shadow-ds-card p-6">
-                  <div className="flex items-center justify-between mb-5">
-                     <h3 className="font-display font-bold text-ink-800">History</h3>
-                     <span className="text-[11px] font-bold text-ink-400 bg-ink-50 px-2.5 py-1 rounded-full">Monthly</span>
-                  </div>
-                  <div className="flex flex-col gap-4">
-                     {history.length > 0 ? history.map((h) => (
-                        <div key={h.id} className="flex items-center gap-3">
-                           <span className="w-1.5 h-1.5 rounded-full bg-medical-500 shrink-0" />
-                           <span className="text-[13px] text-ink-700 flex-1 truncate">Consulted {h.patientName}</span>
-                           <span className="text-[11px] text-ink-400 shrink-0">{h.date}</span>
-                        </div>
-                     )) : (
-                        <p className="text-[13px] text-ink-400">No completed visits yet.</p>
-                     )}
-                  </div>
-               </div>
-            </div>
-
-            {/* RIGHT COLUMN — search/filter + card grid */}
-            <div>
-               <div className="bg-white rounded-full shadow-ds-card flex items-center gap-3 px-5 py-3 mb-6">
-                  <Search size={18} className="text-ink-400 shrink-0" />
-                  <input
-                     value={search}
-                     onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                     placeholder="Search Anything"
-                     className="flex-1 min-w-0 outline-none text-[14px] text-ink-800 placeholder:text-ink-400"
-                  />
-                  <button className="w-9 h-9 rounded-full bg-ink-50 flex items-center justify-center text-ink-500 shrink-0 hover:bg-ink-100 transition-colors" aria-label="Filter">
-                     <Filter size={15} />
-                  </button>
-                  <div className="flex items-center bg-ink-50 rounded-full p-1 shrink-0">
-                     <button onClick={() => setView('grid')} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${view === 'grid' ? 'bg-medical-500 text-white' : 'text-ink-400'}`}>
-                        <Grid3x3 size={14} />
-                     </button>
-                     <button onClick={() => setView('list')} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${view === 'list' ? 'bg-medical-500 text-white' : 'text-ink-400'}`}>
-                        <List size={14} />
-                     </button>
-                  </div>
-               </div>
-
-               {isLoading ? (
-                  <p className="text-ink-400 text-sm py-10 text-center">Loading appointments...</p>
-               ) : pageItems.length === 0 ? (
-                  <p className="text-ink-400 text-sm py-10 text-center">No appointments found.</p>
-               ) : (
-                  <div className={view === 'grid' ? 'grid grid-cols-1 sm:grid-cols-3 gap-4' : 'flex flex-col gap-3'}>
-                     {pageItems.map((appt) => (
-                        <div key={appt.id} className="bg-white rounded-2xl shadow-ds-card p-4 flex flex-col gap-3 hover:shadow-ds-soft transition-shadow">
-                           <div className="flex items-start justify-between">
-                              <div className="w-12 h-12 rounded-full bg-medical-100 flex items-center justify-center text-medical-500 font-display font-bold">
-                                 {appt.patientName.charAt(0)}
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                 <button className="w-7 h-7 rounded-full bg-ink-50 flex items-center justify-center text-ink-400 hover:bg-ink-100 hover:text-ink-600 transition-colors" aria-label="Message"><Mail size={13} /></button>
-                                 <button className="w-7 h-7 rounded-full bg-ink-50 flex items-center justify-center text-ink-400 hover:bg-ink-100 hover:text-ink-600 transition-colors" aria-label="Open"><ArrowUpRight size={13} /></button>
-                              </div>
-                           </div>
-                           <div>
-                              <p className="font-display font-bold text-ink-800 text-[15px]">{appt.patientName}</p>
-                              <p className="text-[12px] text-ink-500">{appt.time} &middot; {appt.date}</p>
-                           </div>
-                           <span className={`text-[10px] font-bold uppercase tracking-wide w-fit px-2 py-1 rounded-full ${appt.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : appt.status === 'cancelled' ? 'bg-red-50 text-red-500' : 'bg-medical-50 text-medical-600'}`}>
-                              {appt.status}
-                           </span>
-                        </div>
-                     ))}
-                  </div>
-               )}
-
-               {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 text-[13px] text-ink-500">
-                     <span>Page {page} of {totalPages}</span>
-                     <div className="flex gap-2">
-                        <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-4 py-2 rounded-full bg-ink-50 hover:bg-ink-100 transition-colors disabled:opacity-40 disabled:hover:bg-ink-50">Prev</button>
-                        <button disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className="px-4 py-2 rounded-full bg-ink-50 hover:bg-ink-100 transition-colors disabled:opacity-40 disabled:hover:bg-ink-50">Next</button>
+         {/* Row 1: white r16 panel */}
+         <div className="flex flex-col gap-4 rounded-2xl bg-white p-2">
+            <div className="flex items-center justify-between gap-3">
+               <SearchField
+                  value={search}
+                  onChange={v => { setSearch(v); setPage(1); }}
+                  onFilterClick={() => statusMenu.setOpen(o => !o)}
+                  filterLabel="Filter by status"
+                  filterExpanded={statusMenu.open}
+                  filterSlot={statusMenu.open && (
+                     <div ref={statusMenu.ref}>
+                        <SortMenu options={STATUS_OPTIONS} value={statusFilter} onSelect={id => { setStatusFilter(id as StatusKey); setPage(1); }} onClose={statusMenu.close} />
                      </div>
-                  </div>
-               )}
+                  )}
+               />
+               <div className="flex shrink-0 items-center gap-1 rounded-[64px] bg-ink-50 max-md:hidden" role="group" aria-label="View">
+                  <ViewToggleButton icon="grid" label="Grid view" active={view === 'grid'} onClick={() => setView('grid')} />
+                  <ViewToggleButton icon="list" label="List view" active={view === 'list'} onClick={() => setView('list')} />
+               </div>
             </div>
+
+            {isLoading ? (
+               <p className="py-16 text-center text-ds-body text-content-tertiary">Loading appointments...</p>
+            ) : pageItems.length === 0 ? (
+               <p className="py-16 text-center text-ds-body text-content-tertiary">No appointments found.</p>
+            ) : (
+               <>
+                  {/* Grid (255:11765): User Cards, min 280, wrap, gap 12. Phones always get this view. */}
+                  <div className={`grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 ${view === 'list' ? 'md:hidden' : ''}`}>
+                     {pageItems.map((appt) => (
+                        <QueuePatientCard
+                           key={appt.id}
+                           className="!w-full"
+                           name={appt.patientName}
+                           subtitle={appt.patientPhone || `${appt.time} · ${appt.date}`}
+                           serialNo={appt.serialNumber}
+                           tone={toneOf(appt.status)}
+                           statusLabel={STATUS_LABEL[appt.status] ?? appt.status}
+                           phone={appt.status === 'cancelled' ? appt.patientPhone || undefined : undefined}
+                           onOpen={openAppt(appt)}
+                        />
+                     ))}
+                  </div>
+                  {view === 'list' && (
+                     <div className="hidden md:block">
+                        <table className="w-full border-separate border-spacing-0 text-left">
+                           <TableHead columns={['Patient Name', 'Date', 'Serial', 'Status', 'Action']} />
+                           <tbody className="text-[14px] text-[#505050]">
+                              {pageItems.map((appt, i) => {
+                                 const open = openAppt(appt);
+                                 const items = [
+                                    ...(open ? [{ label: 'Open in Queue', onClick: open }] : []),
+                                    ...(appt.patientPhone ? [{ label: 'Call Patient', onClick: () => { window.location.href = `tel:${appt.patientPhone}`; } }] : []),
+                                 ];
+                                 return (
+                                    <tr key={appt.id}>
+                                       <TableCell first={i === 0}><PersonCell name={appt.patientName} /></TableCell>
+                                       <TableCell first={i === 0}>{formatLongDate(appt.date)}</TableCell>
+                                       <TableCell first={i === 0}>{appt.serialNumber}</TableCell>
+                                       <TableCell first={i === 0}><StatusChip status={appt.status} /></TableCell>
+                                       <TableCell first={i === 0}><RowMenu label={`Actions for ${appt.patientName}`} items={items} /></TableCell>
+                                    </tr>
+                                 );
+                              })}
+                              <TableEnd span={5} />
+                           </tbody>
+                        </table>
+                     </div>
+                  )}
+               </>
+            )}
+
+            {!isLoading && filtered.length > 0 && (
+               <PaginationBar
+                  page={safePage}
+                  pageCount={totalPages}
+                  perPage={perPage}
+                  perPageOptions={[9, 12, 24]}
+                  onPage={p => setPage(Math.min(totalPages, Math.max(1, p)))}
+                  onPerPage={n => { setPerPage(n); setPage(1); }}
+               />
+            )}
          </div>
       </div>
    );
