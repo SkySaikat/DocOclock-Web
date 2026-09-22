@@ -1,7 +1,7 @@
 # Figma sync — PROGRESS & RESUME GUIDE
 
 > Single source of truth for "where did we stop". Update the status board (§3) and the commit log (§8) after every unit.
-> Last updated: 2026-09-22 — doctor-queue + doctor-overview DONE; next = `patient-live-appts`. (Previous: 2026-09-21 ~13:05 (+06) — resumed after the user's stop; doctor-queue + doctor-overview builders are FINISHING the unfinished build (then review → fix → commit); see §3b for the state they started from. Baseline commit before any Figma work: `2dd66ce v4 main`.
+> Last updated: 2026-09-22 — **ALL UNITS DONE** (see §3). Remaining items are listed per row as 'Not built' (no data/backend behind them) and in §5/§6. (Previous: 2026-09-21 ~13:05 (+06) — resumed after the user's stop; doctor-queue + doctor-overview builders are FINISHING the unfinished build (then review → fix → commit); see §3b for the state they started from. Baseline commit before any Figma work: `2dd66ce v4 main`.
 
 ## 0. Resume in 60 seconds
 
@@ -53,9 +53,9 @@ Legend: ✅ done & committed · 🔄 in progress · ⏳ pending
 | `doctor-manage` | `255:14767` | `views/doctor/{DoctorMore,DoctorPracticeSettings,PatientManualRegistry}.tsx`, `components/doctor/AssistantManager.tsx` | ✅ `65f1149` Manage + `f6862b6` manual booking (2026-09-22). DoctorMore handled in doctor-account. Not built (no data): Blood Group, Description, Assistant 'Finance' role, hospital image upload |
 | `doctor-account` | Account `276:13531`, Activity Log `276:13827`, Doctor Profile `254:8267`, Payment `341:18165` (empty) | `views/doctor/{DoctorProfileEditor,PaymentSubscription}.tsx` | ✅ `151e00e` (2026-09-22). Removed dead 'Soon' links (Public Profile, Payout, Security, Help). Not built: Account Management 276:13531 + Activity Log (no route / no password-change or activity backend), Add Experience modal (profile has no structured experience data), Payment frame empty in Figma so PaymentSubscription unchanged |
 | `patient-doctors` | List Page `396:12430`, doctor detail `601:13524`, Main `601:12927`/`601:13040`/`601:13140`, public lists `80:1482`/`326:13058` | `views/patient/{DoctorSearchView,DoctorSearch,DoctorProfile}.tsx` | ✅ `a537dc7` list + `9adf4e6` detail (2026-09-22). JSX-only in DoctorProfile.tsx so the other worktree's fetch-mapping fix still merges. DoctorSearch.tsx is dead code (route uses DoctorSearchView) — left untouched. Removed no-op Heart/Share buttons |
-| `marketing-pages` (lowest priority) | frames in `docs/figma/specs/landing-pages.md` §0 | `views/marketing/*`, `views/doctor/DoctorLanding.tsx` | ⏳ |
+| `marketing-pages` (lowest priority) | frames in `docs/figma/specs/landing-pages.md` §0 | `views/marketing/*`, `views/doctor/DoctorLanding.tsx` | ✅ n/a (2026-09-22) — spec §0: views/marketing/* and DoctorLanding have no Figma frames; the unit's only real frames (public list 80:1482 / detail 80:2652) are the pages rebuilt in patient-doctors |
 | route DISSOLVE transition (screen change = DISSOLVE 0.3s) | tokens.md §7 | `components/Layout.tsx` main wrapper | ✅ `7e16170` (2026-09-22) — Layout restarts .ds-route-dissolve on path change |
-| final regression QA (all roles, mock harness, build, theme change, reduced motion) | — | whole app | ⏳ |
+| final regression QA (all roles, mock harness, build, theme change, reduced motion) | — | whole app | ✅ (2026-09-22) — tsc clean, npm run build OK, mock smoke: 10 doctor + 6 patient routes + admin/hospital/assistant/guest render with no console errors; runtime brand-colour swap recolours the new screens |
 
 Extraction artefacts already on disk (do not redo): `docs/figma/specs/{landing-home (§1-5 only), landing-components, landing-pages, dashboard-components}.md`, `docs/figma/tokens.md`, `docs/figma/flows.md`, `docs/figma/reference/**` (2x PNGs), `docs/figma/interactions/*.json`, `public/assets/figma/**` (≈128 unit assets + 36 originals).
 
@@ -109,6 +109,8 @@ Session-only cache (same session can `resumeFromRunId`; otherwise just re-run th
 
 ## 8. Commit log (newest first — append as you go)
 
+- final QA pass
+- marketing-pages closed: no Figma target
 - `7e16170` route dissolve done
 - `a537dc7` + `9adf4e6` patient-doctors done
 - `151e00e` doctor-account done
