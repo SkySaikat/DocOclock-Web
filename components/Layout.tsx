@@ -102,6 +102,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
   // nav/footer for any of them so there's exactly one source of chrome.
   const isAdminTier = isSuperAdmin || isHospitalAdmin || userRole === UserRole.BRANCH_MANAGER || userRole === UserRole.ASSISTANT;
 
+  // Route change (hook stays above the admin-tier early return) = DISSOLVE 0.3s: restart the fade on the content wrapper without remounting the page.
+  const routeRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = routeRef.current;
+    if (!el) return;
+    el.classList.remove('ds-route-dissolve');
+    void el.offsetWidth;
+    el.classList.add('ds-route-dissolve');
+  }, [currentPath]);
+
   if (isAdminTier && !browseMode) {
     return <div className="min-h-screen relative font-sans text-slate-800 bg-surface">{children}</div>;
   }
@@ -337,7 +347,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
 
       {/* MAIN CONTENT AREA */}
       <main className={mainClass}>
-        <div className={innerClass}>
+        <div ref={routeRef} className={innerClass}>
           {/* While the doctor navbar shows the tabs, per-page <DoctorTabBar/> copies render nothing (see DoctorTabBar.tsx). */}
           <DoctorNavbarContext.Provider value={isDoctorConsole}>
             {children}

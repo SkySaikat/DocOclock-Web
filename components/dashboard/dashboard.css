@@ -43,7 +43,14 @@
   animation: ds-move-in-right var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1)) both;
 }
 
+/* Screen change = Figma DISSOLVE 0.3s EASE_OUT (tokens.md §7). No fill-mode on purpose: once finished the element keeps no
+   opacity/stacking context, so page art using mix-blend (Live Queue building) still blends with the page background. */
+.ds-route-dissolve {
+  animation: ds-fade-in var(--ds-duration-fast, 300ms) var(--ds-ease-out, cubic-bezier(0, 0, 0.58, 1));
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ds-route-dissolve,
   .ds-fade-in,
   .ds-toast-in,
   .ds-toast-out,
