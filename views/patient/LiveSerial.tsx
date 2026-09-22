@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Clock, Activity, AlertCircle, RefreshCw, CheckCircle, ArrowRight, User, MapPin, Calendar, Smartphone } from 'lucide-react';
+import { Activity, AlertCircle, ArrowRight, Clock, RefreshCw } from 'lucide-react';
+import { MaskIcon } from '../../components/dashboard';
 import { PatientStorage, fetchAppointments, fetchQueueSession, DoctorSessionMeta, DEFAULT_SESSION_META, QueueSessionStatus } from '../../storage';
 import { Appointment } from '../../types';
 import { calculateEstimatedTime } from '../../utils/timeUtils';
@@ -154,102 +154,32 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
    // Guard: return a placeholder if critical session data is not yet available
    if (isLoading) {
       return (
-         <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
-               Syncing with DocOclock Cloud...
-            </div>
+         <div className="flex min-h-[400px] items-center justify-center font-display">
+            <p className="animate-pulse text-ds-body text-content-tertiary">Syncing with DocOclock Cloud...</p>
          </div>
       );
    }
 
    if (!myApp) {
       return (
-         <div className="max-w-md mx-auto py-20 text-center space-y-6">
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-               <Activity size={40} />
+         <div className="flex flex-col gap-6 font-display">
+            <LiveHeader />
+            <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-ds-xl bg-white/70 px-8 py-12 text-center shadow-ds-rise">
+               <div className="grid size-16 place-items-center rounded-full bg-primary-50 text-primary-500"><Activity size={28} /></div>
+               <h2 className="text-ds-title-24 text-content-primary">No Active Queue</h2>
+               <p className="text-ds-body text-content-secondary">You don't have any appointments scheduled for today.</p>
+               <button
+                  onClick={() => window.location.href = '/patient/home'}
+                  className="inline-flex items-center gap-2 text-ds-subtitle text-primary-500 hover:underline"
+               >
+                  Book a Doctor <ArrowRight size={18} />
+               </button>
             </div>
-            <h2 className="font-display text-2xl font-black text-ink-800">No Active Queue</h2>
-            <p className="text-slate-500">You don't have any appointments scheduled for today.</p>
-            <button
-               onClick={() => window.location.href = '/patient/home'}
-               className="text-medical-600 font-black flex items-center gap-2 mx-auto"
-            >
-               Book a Doctor <ArrowRight size={18} />
-            </button>
          </div>
       );
    }
 
-   if (queueSessionStatus === 'NOT_STARTED') {
-      return (
-         <div className="max-w-md mx-auto py-16 text-center space-y-8 px-4 animate-fade-in">
-            <div className={`w-24 h-24 rounded-ds-xl flex items-center justify-center mx-auto shadow-ds-soft border transition-all duration-700 ${isDoctorArrived ? 'bg-green-50 text-green-600 border-green-100 scale-110 shadow-green-100' : 'bg-medical-50 text-medical-600 border-medical-100'}`}>
-               {isDoctorArrived ? <User size={40} className="animate-bounce-soft" /> : <Clock size={40} className="animate-pulse" />}
-            </div>
-            <div className="space-y-2">
-               <h2 className={`font-display text-3xl font-black tracking-tight leading-tight ${isDoctorArrived ? 'text-green-600' : 'text-ink-800'}`}>
-                  {isDoctorArrived ? "Doctor Arrived" : "Session starting soon"}
-               </h2>
-               <p className="text-slate-500 font-bold max-w-[280px] mx-auto leading-relaxed">
-                  {isDoctorArrived
-                     ? "The doctor is in the chamber. Please wait for your serial call."
-                     : `Doctor ${myApp.doctorName} has not started the live queue yet.`}
-               </p>
-            </div>
-
-            <div className="bg-white p-8 rounded-ds-xl shadow-ds-soft border border-slate-50 space-y-6">
-               <div className="flex flex-col items-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Your Position</p>
-                  <div className="w-20 h-20 bg-medical-600 text-white rounded-2xl flex items-center justify-center font-stat text-3xl font-black shadow-xl shadow-medical-100">
-                     #{myApp.serialNumber}
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
-                  <div className="text-left">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Reach By</p>
-                     <p className="text-sm font-black text-ink-800">15m Early</p>
-                  </div>
-                  <div className="text-right">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Est. Consult</p>
-                     <p className="text-sm font-black text-medical-600">
-                        {calculateEstimatedTime(myApp.time, myApp.serialNumber, sessionMeta.delayMinutes)}
-                     </p>
-                  </div>
-               </div>
-
-               {myApp.chamberName && (
-                  <div className="bg-slate-50 p-4 rounded-2xl text-[10px] font-bold text-slate-600 text-left space-y-2">
-                     <div className="flex items-center gap-2">
-                        <MapPin size={12} className="text-medical-500" />
-                        <span className="truncate">{myApp.chamberName}</span>
-                     </div>
-                  </div>
-               )}
-            </div>
-
-            {sessionMeta.status === 'BREAK' ? (
-               <div className="p-5 bg-medical-50 border border-medical-100 rounded-ds-lg text-medical-700 text-sm font-black flex items-center justify-center gap-3 shadow-xl shadow-medical-50">
-                  <Clock size={20} className="animate-pulse" />
-                  Doctor is on a short break (~{Number(sessionMeta.delayMinutes) || 0} minutes)
-               </div>
-            ) : sessionMeta.status === 'DELAYED' && (
-               <div className="p-5 bg-orange-600 text-white rounded-ds-lg text-sm font-black flex items-center justify-center gap-3 shadow-xl shadow-orange-200 animate-pulse">
-                  <AlertCircle size={20} />
-                  Doctor may be delayed by {Number(sessionMeta.delayMinutes) || 0} minutes
-               </div>
-            )}
-
-            <button
-               onClick={() => window.location.reload()}
-               className="text-medical-600 font-black flex items-center gap-2 mx-auto hover:underline"
-            >
-               <RefreshCw size={18} /> Refresh Status
-            </button>
-         </div>
-      );
-   }
-
+   const notStarted = queueSessionStatus === 'NOT_STARTED';
    const stats = liveStats!;
    const currentServing = allAppointments.find(a =>
       a.doctorId === myApp.doctorId &&
@@ -259,153 +189,155 @@ export const LiveSerial: React.FC<LiveSerialProps> = ({ appointmentId }) => {
    );
 
    const isMyTurn = currentServing?.id === myApp.id;
+   const delayMins = Number(sessionMeta.delayMinutes) || 0;
+   const fmtTime = (d: Date) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+
+   // "Start" = when this patient's consultation is expected to start; before the doctor opens the queue it is the schedule-based estimate.
+   const startLabel = notStarted
+      ? calculateEstimatedTime(myApp.time, myApp.serialNumber, sessionMeta.delayMinutes).toLowerCase()
+      : fmtTime(stats.estimatedTime);
+   const ongoingSerial = currentServing?.serialNumber ?? stats.servingToken;
+   const waitingQueue = stats.queue.filter(a => a.status === 'waiting');
+   const nextSerial = waitingQueue.find(a => a.serialNumber > ongoingSerial)?.serialNumber ?? waitingQueue[0]?.serialNumber;
+   const ongoingLabel = notStarted
+      ? (isDoctorArrived ? 'Doctor Arrived' : 'Not Started')
+      : sessionMeta.status === 'BREAK' ? 'On Break'
+      : currentServing ? 'Ongoing' : 'Up Now';
+   // Consulting → Prescribing → Wrapping Up: elapsed time of the running consultation against the 10-minute average used above.
+   const consultFraction = currentServing?.consultationStartTime
+      ? Math.min(1, Math.max(0.04, (currentTime.getTime() - currentServing.consultationStartTime) / (10 * 60000)))
+      : currentServing ? 0.04 : 0;
+
+   // Session notice: the old tracker's break / delay / "doctor has not started" banners, kept as one soft pill under the title.
+   const notice = sessionMeta.status === 'BREAK'
+      ? { tone: 'accent', icon: <Clock size={16} />, text: `Doctor is on a short break (~${delayMins} minutes)` }
+      : sessionMeta.status === 'DELAYED'
+         ? { tone: 'warn', icon: <AlertCircle size={16} />, text: `Doctor may be delayed by ${delayMins} minutes` }
+         : isMyTurn
+            ? { tone: 'accent', icon: <Activity size={16} />, text: "It's your turn — consulting now" }
+            : notStarted
+               ? { tone: 'muted', icon: <Clock size={16} />, text: isDoctorArrived ? 'The doctor is in the chamber. Please wait for your serial call.' : `Doctor ${myApp.doctorName} has not started the live queue yet.` }
+               : null;
 
    return (
-      <div className="max-w-4xl mx-auto space-y-0 pb-10 px-4 md:px-0 animate-fade-in">
-         {/* Blue banner header — same visual language as the booking wizard */}
-         <div className="bg-medical-500 relative overflow-hidden rounded-t-[20px] pt-8 pb-14 px-7 -mx-4 md:mx-0">
-            <img src="/assets/figma/booking-vector25.svg" alt="" className="absolute -top-2 right-6 w-20 opacity-90 pointer-events-none" />
-            <img src="/assets/figma/booking-vector26.svg" alt="" className="absolute top-7 right-20 w-14 opacity-70 pointer-events-none" />
-            <div className="relative text-center space-y-1">
-               <h1 className="font-sans font-medium text-white text-[28px] sm:text-[32px] tracking-[0.64px]">Live Tracker</h1>
-               <p className="text-white/80 font-bold text-[10px] uppercase tracking-[0.2em]">{myApp.doctorName} • Real-time status</p>
-            </div>
-         </div>
+      // Figma "Queue" 339:15916 (phone 357:19153). Page background + gutters come from Layout; body font Instrument Sans, card copy Inter.
+      // No animate-fade-in here: its `forwards` fill keeps a stacking context that stops the building image from blending with the page.
+      <div className="relative flex flex-col gap-6 font-display">
+         {/* image 1235: decorative hospital building, mix-blend-darken over the page gradient (937x591, 36px below the header top). */}
+         <img
+            src="/assets/figma/patient-live-appts/hospital-building.png"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none order-last -mb-6 w-full select-none mix-blend-darken lg:absolute lg:right-0 lg:top-9 lg:order-none lg:mb-0 lg:h-[591px] lg:w-[937px] lg:max-w-[72%] lg:object-cover"
+         />
 
-         <div className="relative -mt-8">
-            <div className="absolute -top-10 -left-10 w-40 h-40 bg-medical-400/20 blur-[80px] rounded-full pointer-events-none"></div>
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-teal-400/20 blur-[80px] rounded-full pointer-events-none"></div>
+         <LiveHeader />
 
-            <div className="bg-white rounded-[20px] overflow-hidden shadow-ds-soft border-4 border-white outline outline-1 outline-slate-50 relative z-10 transition-all duration-500 mx-1">
-               <div className="bg-slate-50/50 border-b border-slate-100 p-4 px-8 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                     <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-medical-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-medical-500 shadow-[0_0_10px_rgb(var(--color-primary-500)_/_50%)]"></span>
-                     </span>
-                     <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">
-                        {isMyTurn ? 'Your Consultation' : 'Live Chamber Status'}
-                     </span>
-                  </div>
-                  <button onClick={() => window.location.reload()} className="text-[10px] font-black text-medical-600 flex items-center gap-2 hover:bg-medical-50 active:scale-95 px-3 py-1.5 rounded-full transition-all uppercase tracking-widest">
-                     <RefreshCw size={12} /> Sync
-                  </button>
-               </div>
+         {notice && (
+            <p className={`relative inline-flex w-fit items-center gap-2 rounded-full px-4 py-2 text-ds-body ${notice.tone === 'warn' ? 'bg-orange-50 text-orange-700' : notice.tone === 'accent' ? 'bg-primary-50 text-primary-600' : 'bg-white/70 text-content-secondary'}`}>
+               {notice.icon}{notice.text}
+            </p>
+         )}
 
-               <div className="p-6 md:p-8 text-center bg-white">
-                  {isMyTurn ? (
-                     <div className="py-8 space-y-10 animate-bounce-soft">
-                        <div className="w-28 h-28 bg-medical-600 text-white rounded-ds-xl flex items-center justify-center mx-auto shadow-premium ring-8 ring-medical-50">
-                           <Activity size={56} />
-                        </div>
-                        <div className="space-y-2">
-                           <h2 className="font-display text-4xl font-black text-ink-800 tracking-tight">Consulting Now</h2>
-                           <p className="text-medical-600 font-black text-sm uppercase tracking-[0.2em] animate-pulse">It's your turn</p>
-                        </div>
+         {/* Queue Manage Row */}
+         <div className="relative flex flex-col gap-7 font-inter">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+               <div className="flex flex-col gap-4 sm:flex-row">
+                  {/* "My Serial" card (328x202). The green left bar is Figma's 297:12283 variant, used here while it is the patient's turn. */}
+                  <section aria-label="My serial" className="relative flex min-h-[202px] w-full flex-col justify-between gap-4 overflow-clip rounded-ds-xl bg-white/50 p-6 shadow-ds-rise sm:w-[328px]">
+                     {isMyTurn && <span aria-hidden="true" className="absolute bottom-6 left-6 top-6 w-1 rounded-full bg-primary-500" />}
+                     <div className={`flex items-center justify-between ${isMyTurn ? 'pl-6' : ''}`}>
+                        <p className="text-ds-title-24 text-content-primary">My Serial</p>
+                        <a href="/patient/appointments" aria-label="View my appointments" className={ARROW_BTN}>
+                           <MaskIcon src={ARROW_ICON} size={16} />
+                        </a>
                      </div>
-                  ) : sessionMeta.status === 'BREAK' ? (
-                     <div className="py-6 space-y-10 animate-fade-in">
-                        <div className="p-10 bg-slate-50/50 rounded-ds-xl border border-slate-100 flex flex-col items-center gap-8 relative overflow-hidden group">
-                           <div className="w-24 h-24 bg-white text-medical-600 rounded-3xl flex items-center justify-center shadow-premium border border-slate-50 group-hover:scale-110 transition-transform duration-700">
-                              <Clock size={48} className="animate-pulse" />
-                           </div>
-                           <div className="text-center relative z-10 space-y-2">
-                              <h2 className="font-display text-3xl font-black text-ink-800 tracking-tight">Doctor on Break</h2>
-                              <p className="text-medical-500 font-black text-xs uppercase tracking-widest">Will resume shortly</p>
-                           </div>
-                           {Number(sessionMeta.delayMinutes) > 0 && (
-                              <div className="bg-medical-600 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-medical-100">
-                                 Approx. {sessionMeta.delayMinutes} min wait
-                              </div>
-                           )}
-                        </div>
-
-                        <div className="flex justify-center">
-                           <div className="flex flex-col items-center gap-4 relative">
-                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Your Serial No.</p>
-                              <div className="w-24 h-24 bg-white rounded-ds-lg flex items-center justify-center shadow-premium font-stat text-5xl font-black text-ink-800 ring-1 ring-slate-100">
-                                 {myApp.serialNumber}
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                  ) : (
-                     <div className="py-2 space-y-8">
-                        {/* High-end Timeline Visualizer */}
-                        <div className="relative px-4 pb-12">
-                           <div className="absolute top-1/2 left-0 right-0 h-2 bg-slate-50 rounded-full overflow-hidden">
-                              <div
-                                 className="h-full bg-gradient-to-r from-medical-400 to-medical-600 shadow-[0_0_15px_rgb(var(--color-primary-500)_/_30%)] transition-all duration-1000 ease-out"
-                                 style={{ width: `${Math.min(100, ((currentServing?.serialNumber || stats.servingToken) / myApp.serialNumber) * 100)}%` }}
-                              ></div>
-                           </div>
-
-                           <div className="relative flex justify-between items-center">
-                              <div className="flex flex-col items-center gap-3">
-                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Serving</p>
-                                 <div className="w-16 h-16 bg-white border-2 border-slate-50 rounded-2xl flex items-center justify-center shadow-premium font-stat text-2xl font-black text-slate-700">
-                                    {currentServing?.serialNumber || stats.servingToken}
-                                 </div>
-                              </div>
-
-                              <div className="flex flex-col items-center gap-3">
-                                 <p className="text-[9px] font-black text-medical-600 uppercase tracking-widest">You</p>
-                                 <div className="w-24 h-24 bg-medical-600 rounded-ds-xl flex items-center justify-center shadow-premium font-stat text-4xl font-black text-white ring-8 ring-medical-50">
-                                    {myApp.serialNumber}
-                                 </div>
-                                 <div className="absolute -bottom-8 w-max text-center">
-                                    <p className="text-[10px] font-black text-medical-600 bg-medical-50 px-3 py-1 rounded-full border border-medical-100">
-                                       {stats.estimatedTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                                    </p>
-                                 </div>
-                              </div>
-                           </div>
-                        </div>
-
-                        <div className="space-y-1 pt-4">
-                           <h2 className="font-stat text-4xl font-black text-ink-800 tracking-tight">{stats.patientsAhead} <span className="font-sans text-slate-400 text-2xl">Ahead</span></h2>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                           <div className="bg-slate-50 px-6 py-5 rounded-ds-lg border border-slate-100 flex flex-col items-center text-center hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300">
-                              <Clock size={16} className="text-slate-400 mb-2" />
-                              <p className="font-stat text-xl font-black text-ink-800 leading-none">{stats.waitTimeMinutes}<span className="font-sans text-xs ml-0.5 text-slate-400">m</span></p>
-                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Wait Time</p>
-                           </div>
-                           <div className="bg-medical-50 px-6 py-5 rounded-ds-lg border border-medical-100 flex flex-col items-center text-center hover:border-medical-200 hover:-translate-y-0.5 transition-all duration-300">
-                              <Smartphone size={16} className="text-medical-500 mb-2" />
-                              <p className="font-stat text-xl font-black text-medical-600 leading-none">{stats.arrivalTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
-                              <p className="text-[8px] font-black text-medical-400 uppercase tracking-widest mt-1">Reach Clinic</p>
-                           </div>
-                        </div>
-                     </div>
-                  )}
-               </div>
-
-               {!currentServing && (
-                  <div className={`${sessionMeta.status === 'DELAYED' ? 'bg-orange-600 p-5 text-white' : sessionMeta.status === 'BREAK' ? 'bg-medical-600 p-5 text-white' : 'bg-slate-50 p-4 text-slate-500'} text-center border-t border-slate-100 transition-colors`}>
-                     <p className="text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3">
-                        {sessionMeta.status === 'DELAYED' ? (
-                           <>
-                              <AlertCircle size={16} className="animate-pulse" />
-                              Doctor delay: {Number(sessionMeta.delayMinutes) || 0}m added to estimation
-                           </>
-                        ) : sessionMeta.status === 'BREAK' ? (
-                           <>
-                              <Clock size={16} className="animate-pulse" />
-                              Short break in progress (~{Number(sessionMeta.delayMinutes) || 0}m)
-                           </>
-                        ) : (
-                           <>
-                              <AlertCircle size={14} className="text-medical-500" /> Arrive 15 mins before your estimated time
-                           </>
-                        )}
+                     <p className={`tracking-[-0.96px] text-content-primary ${isMyTurn ? 'pl-6' : ''}`}>
+                        <span className="text-[24px]">#</span><span className="text-[48px] leading-none">{myApp.serialNumber}</span>
                      </p>
+                     <div className={`flex gap-1 ${isMyTurn ? 'pl-6' : ''}`}>
+                        <Stat label="Start" value={startLabel} />
+                        <Stat label="People Ahead" value={isMyTurn ? 'Your turn' : String(stats.patientsAhead)} />
+                     </div>
+                  </section>
+
+                  {/* Info column (218): Reporting Time / Session / Address. */}
+                  <dl className="flex w-full flex-col gap-4 rounded-ds-xl bg-white/50 px-4 py-5 shadow-ds-rise sm:w-[218px] sm:bg-transparent sm:shadow-none lg:py-5">
+                     <Stat as="dd" label="Reporting Time" value={notStarted ? '15 mins  Early' : `${fmtTime(stats.arrivalTime)} · 15 mins early`} />
+                     <Stat as="dd" label="Session" value={myApp.chamberName || myApp.hospitalName || myApp.doctorName} />
+                     {myApp.chamberLocation && <Stat as="dd" label="Address" value={myApp.chamberLocation} />}
+                  </dl>
+               </div>
+            </div>
+
+            <div className="flex items-baseline justify-between gap-4">
+               <h2 className="text-content-primary">
+                  <span className="text-[24px]">In Progress </span>
+                  <span className="text-[16px]">({notStarted ? 0 : Math.min(ongoingSerial, stats.totalToday)}/{stats.totalToday})</span>
+               </h2>
+               <button onClick={() => window.location.reload()} className="inline-flex items-center gap-2 text-ds-body text-content-secondary transition-colors duration-300 ease-ds-out hover:text-primary-500">
+                  <RefreshCw size={14} /> Refresh
+               </button>
+            </div>
+
+            {/* Bottom: Ongoing (349) + Next Serial (247); a swipe row on phone like 357:19153. */}
+            <div className="-mx-6 flex snap-x gap-2 overflow-x-auto px-6 pb-2 sm:mx-0 sm:px-0 sm:pb-0">
+               <section aria-label="Ongoing consultation" className="flex min-h-[194px] w-[85%] shrink-0 snap-start flex-col justify-between gap-6 rounded-ds-xl bg-white/70 p-6 shadow-ds-rise sm:w-[349px]">
+                  <div className="flex items-start gap-1">
+                     <div className="flex w-[71px] flex-col items-center text-center">
+                        <span className="text-[55px] leading-none tracking-[-0.55px] text-content-primary">{notStarted ? '—' : ongoingSerial}</span>
+                        <span className="text-ds-body tracking-[-0.14px] text-content-secondary">Serial No</span>
+                     </div>
+                     <p className="text-ds-title-24 text-content-primary">{ongoingLabel}</p>
                   </div>
-               )}
+                  <div className="flex flex-col gap-1">
+                     <div className="flex justify-between text-ds-small tracking-[-0.72px] text-content-secondary">
+                        <span>Consulting</span><span>Prescribing</span><span>Wrapping Up</span>
+                     </div>
+                     <div className="relative h-2 rounded-full bg-ink-50" role="progressbar" aria-label="Consultation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(consultFraction * 100)}>
+                        <div className="h-full rounded-full bg-primary-500 transition-[width] duration-1000 ease-ds-out" style={{ width: `${consultFraction * 100}%` }} />
+                        {consultFraction > 0 && (
+                           <MaskIcon src="/assets/figma/patient-live-appts/progress-indicator.svg" size={7} className="absolute -top-[7px] -translate-x-1/2 text-primary-500" style={{ left: `${consultFraction * 100}%` }} />
+                        )}
+                     </div>
+                  </div>
+               </section>
+
+               <section aria-label="Next serial" className="flex min-h-[194px] w-[60%] shrink-0 snap-start flex-col gap-6 rounded-ds-xl bg-primary-500 p-6 text-white drop-shadow-[0px_-1px_6px_rgba(0,0,0,0.04)] sm:w-[247px]">
+                  <div className="flex flex-col gap-2">
+                     <span className="text-ds-small tracking-[-0.72px]">Next Serial</span>
+                     <span className="text-[48px] leading-none tracking-[-0.96px]">{nextSerial != null ? `#${nextSerial}` : '—'}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                     <span className="text-ds-small tracking-[-0.72px]">In Waiting room</span>
+                     <span className="text-[16px] tracking-[-0.32px]">{waitingQueue.length}</span>
+                  </div>
+               </section>
             </div>
          </div>
+      </div>
+   );
+};
 
+const ARROW_ICON = '/assets/figma/dashboard-components/user-card-icon-arrow-up-right.svg';
+const ARROW_BTN = 'grid size-[42px] shrink-0 place-items-center rounded-full border border-primary-100 text-content-secondary transition-colors duration-300 ease-ds-out hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500';
+
+// Dashboard Header (339:15920): 36px title + 16px steel subtitle (24px title on phone, like the other dashboards).
+const LiveHeader: React.FC = () => (
+   <div className="relative flex flex-col gap-2">
+      <h1 className="text-[24px] font-normal leading-[normal] text-ink-800 lg:text-ds-h36">Live Queue</h1>
+      <p className="max-w-[380px] text-ds-paragraph text-steel max-lg:text-ds-small">Track Your Queue and arrive on time</p>
+   </div>
+);
+
+// Label (12px secondary) over value (16px primary), Inter — the stat pattern used across the Figma queue cards.
+const Stat: React.FC<{ label: string; value: string; as?: 'div' | 'dd' }> = ({ label, value, as = 'div' }) => {
+   const Label = as === 'dd' ? 'dt' : 'span';
+   const Value = as === 'dd' ? 'dd' : 'span';
+   return (
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+         <Label className="text-ds-small tracking-[-0.72px] text-content-secondary">{label}</Label>
+         <Value className="whitespace-pre-wrap text-[16px] tracking-[-0.32px] text-content-primary">{value}</Value>
       </div>
    );
 };
