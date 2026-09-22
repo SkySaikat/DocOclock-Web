@@ -54,7 +54,7 @@ Legend: ✅ done & committed · 🔄 in progress · ⏳ pending
 | `doctor-account` | Account `276:13531`, Activity Log `276:13827`, Doctor Profile `254:8267`, Payment `341:18165` (empty) | `views/doctor/{DoctorProfileEditor,PaymentSubscription}.tsx` | ✅ `151e00e` (2026-09-22). Removed dead 'Soon' links (Public Profile, Payout, Security, Help). Not built: Account Management 276:13531 + Activity Log (no route / no password-change or activity backend), Add Experience modal (profile has no structured experience data), Payment frame empty in Figma so PaymentSubscription unchanged |
 | `patient-doctors` | List Page `396:12430`, doctor detail `601:13524`, Main `601:12927`/`601:13040`/`601:13140`, public lists `80:1482`/`326:13058` | `views/patient/{DoctorSearchView,DoctorSearch,DoctorProfile}.tsx` | ✅ `a537dc7` list + `9adf4e6` detail (2026-09-22). JSX-only in DoctorProfile.tsx so the other worktree's fetch-mapping fix still merges. DoctorSearch.tsx is dead code (route uses DoctorSearchView) — left untouched. Removed no-op Heart/Share buttons |
 | `marketing-pages` (lowest priority) | frames in `docs/figma/specs/landing-pages.md` §0 | `views/marketing/*`, `views/doctor/DoctorLanding.tsx` | ⏳ |
-| route DISSOLVE transition (screen change = DISSOLVE 0.3s) | tokens.md §7 | `components/Layout.tsx` main wrapper | ⏳ small polish |
+| route DISSOLVE transition (screen change = DISSOLVE 0.3s) | tokens.md §7 | `components/Layout.tsx` main wrapper | ✅ `7e16170` (2026-09-22) — Layout restarts .ds-route-dissolve on path change |
 | final regression QA (all roles, mock harness, build, theme change, reduced motion) | — | whole app | ⏳ |
 
 Extraction artefacts already on disk (do not redo): `docs/figma/specs/{landing-home (§1-5 only), landing-components, landing-pages, dashboard-components}.md`, `docs/figma/tokens.md`, `docs/figma/flows.md`, `docs/figma/reference/**` (2x PNGs), `docs/figma/interactions/*.json`, `public/assets/figma/**` (≈128 unit assets + 36 originals).
@@ -109,6 +109,7 @@ Session-only cache (same session can `resumeFromRunId`; otherwise just re-run th
 
 ## 8. Commit log (newest first — append as you go)
 
+- `7e16170` route dissolve done
 - `a537dc7` + `9adf4e6` patient-doctors done
 - `151e00e` doctor-account done
 - `65f1149` + `f6862b6` doctor-manage done
