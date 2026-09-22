@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Doctor, Chamber, UserRole, Relationship, Appointment } from '../../types';
 import { Button } from '../../components/ui/Button';
-import { MapPin, Clock, Calendar, ArrowLeft, Star, GraduationCap, AlertCircle, CheckCircle, X, ChevronRight, Briefcase, Award, Users, Heart, Share2, Send, Loader2 } from 'lucide-react';
+import { MapPin, Clock, Calendar, ArrowLeft, Star, GraduationCap, AlertCircle, CheckCircle, X, ChevronRight, Briefcase, Award, Users, Send, Loader2 } from 'lucide-react';
 import { getCurrentSession, bookAppointment, fetchDoctorReviews, submitDoctorReview, createNotification } from '../../storage';
 import { ChamberCard } from '../../components/ui/ChamberCard';
 import { validateBooking } from '../../utils/bookingUtils';
@@ -277,302 +277,234 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
     );
   }
 
+  const consultFee = chambers[0]?.feeNormal;
+  const followUpFee = Math.floor((chambers[0]?.feeNormal || 840) * 0.6);
+  const infoRows: [string, React.ReactNode][] = [
+    ['BMDC Number', doctor.bmdcNumber || (doctor as any).bmdc_number || '—'],
+    ['Specialty', doctor.specialty || '—'],
+    ['Consultation Fee', consultFee != null ? <>৳{consultFee} <span className="ml-2 text-content-tertiary">(inc. VAT)</span></> : '—'],
+    ['Follow-Up Fee', <>৳{followUpFee} <span className="ml-2 text-content-tertiary">(within 30 days)</span></>],
+    ['Experience', `${doctor.experienceYears || (doctor as any).experience_years || 0}+ years`],
+    ['Patients Treated', `${doctor.totalPatients || (doctor as any).total_patients || 0}+`],
+  ];
+
   return (
-    <div className="min-h-screen bg-white pb-32 font-sans overflow-x-hidden">
-      {/* HEADER NAVIGATION */}
-      <div className="max-w-4xl mx-auto px-6 pt-6 flex justify-between items-center">
-        <button onClick={onBack} className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-900 bg-white shadow-sm hover:bg-slate-50 transition-all">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex gap-3">
-          <button className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-900 bg-white shadow-sm hover:bg-slate-50 transition-all">
-            <Heart size={20} />
-          </button>
-          <button className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-900 bg-white shadow-sm hover:bg-slate-50 transition-all">
-            <Share2 size={20} />
-          </button>
-        </div>
-      </div>
+    // Figma doctor detail (601:13524): back title, hero (cover + round portrait + name/verified/rating + stats), tabs, info box | "Get an Appointment" card.
+    <div className="mx-auto w-full max-w-[1312px] px-4 pb-32 pt-6 font-display md:px-6 md:pb-12">
+      <button onClick={onBack} className="mb-6 flex items-center gap-3 text-[28px] leading-[normal] text-content-primary md:text-ds-h36">
+        <ArrowLeft size={30} strokeWidth={1.5} /> Doctor Profile
+      </button>
 
-      <div className="max-w-4xl mx-auto px-6 mt-10">
-        <div className="flex flex-col md:flex-row gap-10 items-center md:items-start text-center md:text-left">
-          {/* Doctor Info Column */}
-          <div className="flex-1 space-y-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-1 w-8 bg-medical-600 rounded-full"></div>
-                <span className="text-[10px] font-black text-medical-600 uppercase tracking-widest">{doctor.specialty}</span>
-              </div>
-              <h1 className="font-display text-2xl md:text-4xl font-black text-ink-800 tracking-tight leading-tight">
-                {doctor.name}
-              </h1>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider max-w-md mx-auto md:mx-0 leading-relaxed">
-                {doctor.degrees || "MBBS, MD, FCPS (Cardiology), FACC (USA)"}
-              </p>
-            </div>
-
-            {/* Micro Stats Row - High Spacing Removed */}
-
-            {/* Micro Stats Row */}
-            <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
-              {[
-                { icon: Briefcase, color: "text-medical-500", bg: "bg-medical-50", label: "Experience", val: `${doctor.experienceYears || 12} Years` },
-                { icon: Star, color: "text-amber-500", bg: "bg-amber-50", label: "Rating", val: doctor.rating || 4.8 },
-                { icon: Users, color: "text-indigo-500", bg: "bg-indigo-50", label: "Patients", val: `${doctor.totalPatients || "2500"}+` }
-              ].map((stat, i) => (
-                <div key={i} className="bg-white border border-slate-100 p-2.5 px-4 rounded-2xl flex items-center gap-3 min-w-[110px] shadow-ds-card hover:border-slate-200 transition-all">
-                  <div className={`${stat.bg} ${stat.color} p-1.5 rounded-lg`}>
-                    <stat.icon size={14} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[12px] font-black text-ink-800 leading-none mb-0.5">{stat.val}</span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{stat.label}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Doctor Image Column - More compact */}
-          <div className="md:w-[280px] shrink-0 relative mt-4 md:mt-0">
-            <div className="w-56 h-72 md:w-full md:h-[320px] bg-slate-100 rounded-ds-xl overflow-hidden shadow-xl transition-all duration-700">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex min-w-0 flex-1 flex-col gap-4 lg:max-w-[811px]">
+          {/* Hero */}
+          <section className="overflow-hidden rounded-ds-lg bg-white">
+            <div className="relative h-[220px] md:h-[353px]">
+              <img src="/assets/figma/patient-doctors/profile-cover.png" alt="" aria-hidden="true" className="h-[180px] w-full rounded-t-ds-lg object-cover md:h-[297px]" />
               <img
                 src={doctor.imageUrl || `https://picsum.photos/400/600?random=${doctor.id}`}
-                className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000"
                 alt={doctor.name}
+                className="absolute bottom-0 left-1/2 size-[140px] -translate-x-1/2 rounded-full border-4 border-white object-cover shadow-ds-pill md:size-[256px]"
               />
             </div>
-            {/* Experience Floating Badge */}
-            <div className="absolute -bottom-6 -left-6 bg-white p-4 px-6 rounded-ds-lg shadow-premium border border-slate-100 hidden md:flex items-center gap-3">
-              <div className="bg-medical-600 p-2 rounded-xl text-white">
-                <Award size={20} />
-              </div>
-              <div>
-                <p className="text-xs font-black text-ink-800">Elite Specialist</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Top Tier Verified</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* TAB NAVIGATION - Compact margins */}
-        <div className="mt-12 flex gap-1 border-b border-slate-50 overflow-x-auto no-scrollbar py-2">
-          {['About', 'Availability', 'Experience', 'Education', 'Reviews'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`px-6 py-3 text-sm font-black transition-all relative whitespace-nowrap ${activeTab === tab ? 'text-medical-600' : 'text-slate-400 hover:text-slate-600'
-                }`}
-            >
-              {tab}
-              {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-medical-600 rounded-full animate-fade-in"></div>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* TAB CONTENT Area - Compact margins */}
-        <div className="mt-6 min-h-[300px]">
-          {activeTab === 'About' && (
-            <div className="space-y-12 animate-fade-in-up">
-              <div className="space-y-4">
-                <p className="text-slate-500 font-medium leading-[1.8] text-lg max-w-2xl">
-                  {doctor.about || `${doctor.name} is a board-certified specialist with over ${doctor.experienceYears || 12} years of experience in the field of cardiovascular medicine. He specializes in advanced cardiac imaging and preventive cardiology.`}
-                  <button className="text-medical-600 font-black ml-2">...More</button>
-                </p>
-              </div>
-
-              {/* Key Metrics Grid - Removed Session Fee */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { icon: Award, label: "Follow-Up Charge", val: `৳ ${Math.floor((chambers[0]?.feeNormal || 840) * 0.6)}`, sub: "Within 30 days" },
-                  { icon: Clock, label: "Avg. Duration", val: "12-15 Minutes" },
-                  { icon: Users, label: "Total Cases", val: `${doctor.totalPatients || "2.5k"}+ Treated` }
-                ].map((stat, i) => (
-                  <div key={i} className="bg-slate-50/40 border border-slate-100/50 p-4 px-6 rounded-3xl flex items-center gap-4 group hover:bg-white hover:border-medical-100 transition-all">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-700 shadow-ds-card group-hover:text-medical-600 transition-all">
-                      <stat.icon size={18} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-ink-800">{stat.val}</span>
-                        {stat.sub && <span className="text-[9px] font-bold text-slate-400">({stat.sub})</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'Availability' && (
-            <div className="space-y-4 animate-fade-in-up">
-              {chambers.length === 0 ? (
-                <div className="py-20 text-center border-2 border-dashed border-slate-100 rounded-ds-xl">
-                  <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No Chamber Schedule Set</p>
+            <div className="flex flex-col gap-4 p-6 pt-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h1 className="flex items-center gap-2 text-ds-title-24 text-content-primary">
+                    <span className="truncate">{doctor.name}</span>
+                    <img src="/assets/figma/icon-verified.svg" alt="Verified" className="size-7 shrink-0" />
+                  </h1>
+                  <p className="text-ds-paragraph text-content-secondary">{doctor.degrees || doctor.specialty}</p>
                 </div>
+                <span className="flex shrink-0 items-center gap-1 text-ds-paragraph text-content-secondary"><Star size={16} className="fill-ink-400 text-ink-400" /> {doctor.rating || 4.8}</span>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex flex-col gap-2">
+                  <span className="text-ds-paragraph text-content-secondary">Experience</span>
+                  <span className="text-ds-paragraph text-content-primary">{doctor.experienceYears || (doctor as any).experience_years || 0}+</span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-ds-paragraph text-content-secondary">Patients</span>
+                  <span className="text-ds-paragraph text-content-primary">{doctor.totalPatients || (doctor as any).total_patients || 0}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Tabs */}
+          <div role="tablist" className="no-scrollbar flex gap-2 overflow-x-auto px-2">
+            {(['About', 'Availability', 'Experience', 'Education', 'Reviews'] as const).map((tab) => (
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => setActiveTab(tab)}
+                className={`relative whitespace-nowrap px-4 py-2 text-[14px] transition-colors duration-ds-fast ease-ds-out ${activeTab === tab ? 'text-primary-500' : 'text-content-secondary hover:text-content-primary'}`}
+              >
+                {tab}
+                {activeTab === tab && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary-500" />}
+              </button>
+            ))}
+          </div>
+
+          {/* Info Box */}
+          <section className="flex min-h-[240px] flex-col gap-6 rounded-ds-lg bg-white p-6">
+            {activeTab === 'About' && (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-ds-title-24 text-content-primary">Personal Information</h2>
+                  <Users size={22} strokeWidth={1.5} className="text-content-secondary" />
+                </div>
+                {doctor.about && <p className="text-ds-paragraph leading-relaxed text-content-secondary">{doctor.about}</p>}
+                <dl className="flex flex-col gap-4">
+                  {infoRows.map(([k, v]) => (
+                    <div key={k} className="flex items-center justify-between gap-4 text-ds-paragraph">
+                      <dt className="text-content-secondary">{k}</dt>
+                      <dd className="text-right text-content-secondary">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
+            )}
+
+            {activeTab === 'Availability' && (
+              chambers.length === 0 ? (
+                <p className="py-16 text-center text-ds-body text-content-tertiary">No chamber schedule set</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {chambers.map(c => (
                     <ChamberCard
                       key={c.id}
-                      chamber={{
-                        hospitalName: c.hospitalName,
-                        location: c.address,
-                        schedule: c.schedule,
-                        fee: c.feeNormal,
-                        availableToday: true
-                      }}
+                      chamber={{ hospitalName: c.hospitalName, location: c.address, schedule: c.schedule, fee: c.feeNormal, availableToday: true }}
                       onSelect={handleBookClick}
                     />
                   ))}
                 </div>
-              )}
-            </div>
-          )}
+              )
+            )}
 
-          {activeTab === 'Experience' && (
-            <div className="space-y-6 animate-fade-in-up">
-              <div className="flex gap-6 items-start">
-                <div className="w-12 h-12 bg-medical-50 text-medical-600 rounded-2xl flex items-center justify-center shrink-0">
-                  <Briefcase size={24} />
-                </div>
-                <div>
-                  <h4 className="font-display text-lg font-black text-ink-800">Senior Specialist</h4>
-                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Over {doctor.experienceYears || 10} Years of Practice</p>
-                  <p className="text-slate-500 font-medium leading-relaxed">
-                    Extensive experience in clinical practice, specifically focusing on {doctor.specialty}.
-                    Managed over {doctor.totalPatients || '2,500'} successful cases with a consistent track record of patient satisfaction.
+            {activeTab === 'Experience' && (
+              <div className="flex items-start gap-4">
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-50 text-primary-500"><Briefcase size={22} /></span>
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-ds-title-20 text-content-primary">{doctor.specialty}</h3>
+                  <p className="text-ds-small text-content-tertiary">Over {doctor.experienceYears || (doctor as any).experience_years || 0} years of practice</p>
+                  <p className="text-ds-paragraph leading-relaxed text-content-secondary">
+                    Clinical practice focused on {doctor.specialty}, with {doctor.totalPatients || (doctor as any).total_patients || 0}+ patients treated.
                   </p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'Education' && (
-            <div className="space-y-6 animate-fade-in-up">
-              <div className="flex gap-6 items-start">
-                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
-                  <GraduationCap size={24} />
-                </div>
-                <div>
-                  <h4 className="font-display text-lg font-black text-ink-800">Academic Background</h4>
-                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Verified Degrees & Certifications</p>
-                  <div className="space-y-3">
-                    {doctor.degrees?.split(',').map((degree, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <div className="w-2 h-2 bg-medical-500 rounded-full" />
-                        <span className="text-slate-700 font-bold">{degree.trim()}</span>
-                      </div>
-                    ))}
+            {activeTab === 'Education' && (
+              <div className="flex flex-col gap-3">
+                {(doctor.degrees || '').split(',').map(d => d.trim()).filter(Boolean).map((degree, idx) => (
+                  <div key={idx} className="flex items-center gap-3 rounded-[20px] bg-page p-4">
+                    <GraduationCap size={18} className="text-primary-500" />
+                    <span className="text-ds-paragraph text-content-primary">{degree}</span>
                   </div>
-                </div>
+                ))}
+                {!doctor.degrees && <p className="text-ds-body text-content-tertiary">No degrees listed.</p>}
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'Reviews' && (
-            <div className="space-y-6 animate-fade-in-up">
-              {/* Leave a Review */}
-              {userRole === UserRole.PATIENT && !reviewSubmitted && (
-                <div className="bg-medical-50/50 border border-medical-100 rounded-ds-lg p-6">
-                  <h4 className="font-black text-ink-800 mb-4">Leave a Review</h4>
-                  {/* Star rating */}
-                  <div className="flex gap-2 mb-4">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <button
-                        key={star}
-                        onClick={() => setReviewRating(star)}
-                        className="transition-transform hover:scale-125"
-                      >
-                        <Star
-                          size={28}
-                          className={star <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}
-                        />
-                      </button>
-                    ))}
-                    <span className="ml-2 text-sm font-black text-slate-600 self-center">{reviewRating}/5</span>
-                  </div>
-                  <textarea
-                    rows={3}
-                    placeholder="Share your experience with this doctor..."
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-700 outline-none resize-none focus:border-medical-400 transition-all"
-                    value={reviewComment}
-                    onChange={e => setReviewComment(e.target.value)}
-                  />
-                  <button
-                    disabled={submittingReview || !reviewComment.trim()}
-                    onClick={async () => {
-                      if (!session || !doctor?.id) return;
-                      setSubmittingReview(true);
-                      try {
-                        await submitDoctorReview(doctor.id, session.id, session.name, reviewRating, reviewComment);
-                        setReviewSubmitted(true);
-                        fetchDoctorReviews(doctor.id).then(setReviews);
-                      } catch { }
-                      setSubmittingReview(false);
-                    }}
-                    className="mt-3 flex items-center gap-2 px-6 py-2.5 bg-medical-600 text-white text-sm font-black rounded-xl hover:bg-medical-700 transition-all disabled:opacity-50"
-                  >
-                    {submittingReview ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                    Submit Review
-                  </button>
-                </div>
-              )}
-              {reviewSubmitted && (
-                <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3">
-                  <CheckCircle size={18} className="text-green-600" />
-                  <span className="text-sm font-bold text-green-700">Review submitted! Thank you.</span>
-                </div>
-              )}
-
-              {/* Reviews list */}
-              {reviews.length === 0 ? (
-                <div className="py-16 text-center">
-                  <Star size={32} className="text-slate-200 mx-auto mb-3" />
-                  <p className="font-bold text-slate-400">No reviews yet. Be the first!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {reviews.map((r, i) => (
-                    <div key={i} className="bg-white border border-slate-100 rounded-ds-lg p-5">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-medical-100 rounded-xl flex items-center justify-center text-medical-700 font-black text-sm">
-                            {r.patient_name?.charAt(0) || 'P'}
-                          </div>
-                          <span className="font-black text-slate-800 text-sm">{r.patient_name || 'Patient'}</span>
-                        </div>
-                        <div className="flex">
-                          {[1,2,3,4,5].map(s => (
-                            <Star key={s} size={14} className={s <= r.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'} />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-slate-600 font-medium leading-relaxed">{r.comment}</p>
-                      <p className="text-[10px] text-slate-300 font-bold mt-2">{new Date(r.created_at).toLocaleDateString()}</p>
+            {activeTab === 'Reviews' && (
+              <div className="flex flex-col gap-6">
+                {userRole === UserRole.PATIENT && !reviewSubmitted && (
+                  <div className="flex flex-col gap-4 rounded-2xl bg-primary-50 p-5">
+                    <h4 className="text-ds-title-20 text-content-primary">Leave a Review</h4>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button key={star} onClick={() => setReviewRating(star)} aria-label={`${star} star${star > 1 ? 's' : ''}`} className="transition-transform duration-ds-fast ease-ds-out hover:scale-110">
+                          <Star size={26} className={star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-ink-300'} />
+                        </button>
+                      ))}
+                      <span className="ml-2 text-ds-body text-content-secondary">{reviewRating}/5</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                    <textarea
+                      rows={3}
+                      placeholder="Share your experience with this doctor..."
+                      className="w-full resize-none rounded-2xl bg-white px-4 py-3 text-ds-body text-content-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+                      value={reviewComment}
+                      onChange={e => setReviewComment(e.target.value)}
+                    />
+                    <button
+                      disabled={submittingReview || !reviewComment.trim()}
+                      onClick={async () => {
+                        if (!session || !doctor?.id) return;
+                        setSubmittingReview(true);
+                        try {
+                          await submitDoctorReview(doctor.id, session.id, session.name, reviewRating, reviewComment);
+                          setReviewSubmitted(true);
+                          fetchDoctorReviews(doctor.id).then(setReviews);
+                        } catch { }
+                        setSubmittingReview(false);
+                      }}
+                      className="btn-sheen relative flex w-fit items-center gap-2 overflow-hidden rounded-full bg-primary-500 px-5 py-2.5 text-ds-body text-white disabled:opacity-50"
+                    >
+                      {submittingReview ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                      Submit Review
+                    </button>
+                  </div>
+                )}
+                {reviewSubmitted && (
+                  <p className="flex items-center gap-3 rounded-2xl bg-primary-50 p-4 text-ds-body text-primary-700"><CheckCircle size={18} /> Review submitted! Thank you.</p>
+                )}
+                {reviews.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 py-12">
+                    <Star size={30} className="text-ink-300" />
+                    <p className="text-ds-body text-content-tertiary">No reviews yet. Be the first!</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {reviews.map((r, i) => (
+                      <div key={i} className="flex flex-col gap-2 rounded-[20px] bg-page p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            <span className="grid size-8 place-items-center rounded-full bg-primary-100 text-ds-small text-primary-700">{r.patient_name?.charAt(0) || 'P'}</span>
+                            <span className="text-ds-body text-content-primary">{r.patient_name || 'Patient'}</span>
+                          </span>
+                          <span className="flex">
+                            {[1, 2, 3, 4, 5].map(st => <Star key={st} size={14} className={st <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-ink-300'} />)}
+                          </span>
+                        </div>
+                        <p className="text-ds-body leading-relaxed text-content-secondary">{r.comment}</p>
+                        <p className="text-ds-small text-content-tertiary">{new Date(r.created_at).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         </div>
+
+        {/* "Get an Appointment" card (349) */}
+        <aside className="hidden w-[349px] shrink-0 flex-col gap-6 rounded-ds-lg bg-white p-6 lg:mt-7 lg:flex">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-ds-title-24 text-content-primary">Get an Appointment</h2>
+            <button onClick={handleBookClick} aria-label="Book an appointment" className="btn-sheen relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-primary-500 text-white">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          <div className="mt-20 flex flex-col gap-6">
+            <div className="flex flex-col gap-1">
+              <span className="flex items-center gap-1 text-ds-body text-content-secondary"><Calendar size={14} /> Consultation Fee</span>
+              <span className="text-ds-title-24 text-content-primary">{consultFee != null ? `BDT ${consultFee}` : '—'}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="flex items-center gap-1 text-ds-body text-content-secondary"><Clock size={14} /> Average Duration</span>
+              <span className="text-ds-title-24 text-content-primary">12-15 minutes</span>
+            </div>
+          </div>
+        </aside>
       </div>
 
-      {/* STICKY BOOKING CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-6 pt-12 pointer-events-none md:bg-none bg-gradient-to-t from-white via-white/90 to-transparent">
-        <div className="max-w-4xl mx-auto flex justify-center md:justify-end">
-          <Button
-            onClick={handleBookClick}
-            className="h-16 px-16 font-black text-lg shadow-2xl shadow-medical-500/50 hover:scale-105 active:scale-95 transition-all pointer-events-auto flex items-center gap-3 group w-full md:w-auto"
-          >
-            <span>Book Appointment</span>
-            <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
-          </Button>
-        </div>
+      {/* Phone: sticky booking CTA (the side card is desktop-only) */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(90px+env(safe-area-inset-bottom))] z-50 px-4 lg:hidden">
+        <button onClick={handleBookClick} className="btn-sheen pointer-events-auto relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-primary-500 text-ds-paragraph text-white shadow-ds-rise-lg">
+          Get an Appointment <ChevronRight size={20} />
+        </button>
       </div>
 
       {/* BOOKING MODAL — 4-step wizard matching Figma "Get an Appointment" stepper */}
