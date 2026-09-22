@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Button } from '../../components/ui/Button';
-import { MOCK_DOCTORS, COMMON_DOSAGES, COMMON_INSTRUCTIONS } from '../../constants';
-import { Trash2, Printer, Save, Share2, Search, Building2, Phone, Mail, X, Star, CalendarDays, Calendar, Eye, Edit3, Check, ChevronDown, ClipboardCheck, User, Send, FileText, Pill, Plus, Loader2, Tag } from 'lucide-react';
+import { Trash2, Printer, Search, X, Star, Calendar, Eye, Edit3, Check, ChevronDown, Plus, Loader2, Tag } from 'lucide-react';
+import { useToast } from '../../components/ToastProvider';
+import { DashboardButton, MaskIcon } from '../../components/dashboard';
+import { DoctorPrescriptionList } from '../../components/doctor/prescriptions/DoctorPrescriptionList';
 import { DoctorStorage, savePrescriptionToSupabase, createPharmacyOrder, PracticeChamber, fetchMedicineCatalog, addMedicineToCatalog } from '../../storage';
 import { Medicine, PrescriptionMedicine, Prescription } from '../../types';
 import { getActiveChamber } from '../../utils/chamber';
@@ -27,8 +27,14 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
   const doctor = DoctorStorage.get();
   const doctorId = doctor?.id;
 
+  const { showToast } = useToast();
+
   // UI State for Mobile
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
+  // Figma 307:13617 list first; the 3-step wizard (257:13749 → 257:13781 → 317:15542) opens from "Add Prescription" or the queue.
+  const [composing, setComposing] = useState<boolean>(!!initialPatient);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  useEffect(() => { if (initialPatient) { setComposing(true); setStep(0); } }, [initialPatient]);
 
   // Data State
   const [patientName, setPatientName] = useState(initialPatient?.name || '');
@@ -151,7 +157,7 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
       // Auto-select the new medicine for dosage entry
       initiateAddMedicine(added);
     } catch (err: any) {
-      alert('Could not add medicine: ' + (err.message || 'Unknown error'));
+      showToast('Could not add medicine: ' + (err.message || 'Unknown error'), 'error');
     } finally {
       setSavingNewMed(false);
     }
@@ -223,8 +229,8 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
 
   // FINISH & SEND Logic (Refactored for Structured System)
   const handleFinishPrescription = async () => {
-    if (!patientName) { alert('Patient name is required'); return; }
-    if (!initialPatient?.appointmentId) { alert('No active appointment found. Please start from the queue.'); return; }
+    if (!patientName) { showToast('Patient name is required', 'warning'); setStep(0); return; }
+    if (!initialPatient?.appointmentId) { showToast('No active appointment found. Please start from the queue.', 'warning'); return; }
 
     const prescriptionId = `rx-${crypto.randomUUID().slice(0, 8)}`;
 
@@ -288,11 +294,11 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
         const pharmMsg = pharmacyOrderNumber
           ? `\n\nPharmacy Order ID: ${pharmacyOrderNumber}\nPatient can collect medicines at the store using this ID.`
           : '';
-        alert(`Prescription saved for ${patientName}.${pharmMsg}`);
+        showToast(`Prescription saved for ${patientName}.${pharmMsg.replace(/\n+/g, ' ')}`, 'success', 6000);
       }
     } catch (error) {
       console.error('Error saving prescription to Supabase:', error);
-      alert('Failed to save prescription to cloud. Please try again.');
+      showToast('Failed to save prescription to cloud. Please try again.', 'error');
     }
   };
 
@@ -328,484 +334,449 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({ initialP
     });
   }, [medSearch, showMedResults, favorites, recentMedIds, catalog, categoryFilter]);
 
-  return (
-    <div className="flex flex-col h-full md:h-[calc(100vh-140px)] relative">
+  const printPdf = () => {
+    const rxData = {
+      id: `rx-${crypto.randomUUID().slice(0, 8)}`,
+      date: new Date().toLocaleDateString('en-GB'),
+      patientName,
+      patientAge: age,
+      patientGender: gender,
+      doctorName: doctor?.name || '',
+      doctorDegrees: doctor?.degrees || '',
+      specialty: doctor?.specialty || '',
+      hospitalName: currentTemplate.hospitalName,
+      hospitalAddress: currentTemplate.address,
+      hospitalPhone: currentTemplate.phone,
+      diagnosis,
+      complaints,
+      tests,
+      advice,
+      medicines: selectedMeds.map(m => ({
+        name: m.medicine.brandName,
+        dosage: `${m.morningDose}+${m.noonDose}+${m.nightDose}`,
+        duration: `${m.duration} Days`,
+        instruction: m.instruction
+      })),
+      followUpDate: followUpDate || undefined
+    };
+    downloadPrescriptionPDF(rxData as any, selectedTemplate);
+  };
 
-      {/* MOBILE TAB TOGGLE */}
-      <div className="xl:hidden flex bg-white border-b border-ink-100 sticky top-0 z-40 shadow-ds-card -mx-4 px-4 pt-2 mb-4">
-        <button
-          onClick={() => setMobileView('editor')}
-          className={`flex-1 py-3 text-sm font-black border-b-2 transition-colors flex items-center justify-center gap-2 ${mobileView === 'editor' ? 'border-medical-600 text-medical-600' : 'border-transparent text-ink-500'}`}
-        >
-          <Edit3 size={16} /> Editor
-        </button>
-        <button
-          onClick={() => setMobileView('preview')}
-          className={`flex-1 py-3 text-sm font-black border-b-2 transition-colors flex items-center justify-center gap-2 ${mobileView === 'preview' ? 'border-medical-600 text-medical-600' : 'border-transparent text-ink-500'}`}
-        >
-          <Eye size={16} /> Preview Rx
-          <span className="bg-medical-100 text-medical-700 px-1.5 py-0.5 rounded-full text-[10px]">{selectedMeds.length}</span>
-        </button>
+  const toggleTest = (t: string) => {
+    const clean = tests.filter(x => x.trim());
+    setTests(clean.includes(t) ? clean.filter(x => x !== t) : [...clean, t]);
+  };
+
+  if (!composing) return <DoctorPrescriptionList doctorId={doctorId} onAdd={() => { setComposing(true); setStep(0); }} />;
+
+  return (
+    // Figma Prescription wizard (257:13749 / 257:13781 / 317:15542): header + 3-step progress, preview (left) + step card (436, right).
+    <div className="flex animate-fade-in flex-col gap-6 font-display">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-[24px] font-normal leading-[normal] text-content-primary lg:text-ds-h36">Prescriptions</h1>
+          <p className="text-ds-subtitle text-content-tertiary max-lg:text-ds-small">Create and share prescription with your patients</p>
+        </div>
+        <StepProgress step={step} onStep={setStep} />
       </div>
 
-      <div className="flex flex-col xl:flex-row gap-6 h-full overflow-hidden">
+      {/* Phone: Editor / Preview switch */}
+      <div className="flex rounded-full bg-white p-1 xl:hidden" role="tablist">
+        {(['editor', 'preview'] as const).map(v => (
+          <button key={v} role="tab" aria-selected={mobileView === v} onClick={() => setMobileView(v)}
+            className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-full text-ds-body transition-colors duration-ds-fast ease-ds-out ${mobileView === v ? 'bg-primary-500 text-white' : 'text-content-tertiary'}`}>
+            {v === 'editor' ? <><Edit3 size={14} /> Editor</> : <><Eye size={14} /> Preview Rx <span className={`rounded-full px-1.5 text-[10px] ${mobileView === v ? 'bg-white/20' : 'bg-primary-50 text-primary-600'}`}>{selectedMeds.length}</span></>}
+          </button>
+        ))}
+      </div>
 
-        {/* LEFT PANEL: EDITOR */}
-        <div className={`flex-1 space-y-4 overflow-y-auto pr-1 md:pr-2 custom-scrollbar pb-40 md:pb-10 ${mobileView === 'preview' ? 'hidden xl:block' : 'block'}`}>
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-stretch">
+        {/* LEFT: live Rx preview (Figma placeholder area) */}
+        <section aria-label="Prescription preview" className={`min-w-0 flex-1 flex-col gap-4 rounded-ds-lg bg-white p-5 ${mobileView === 'editor' ? 'hidden xl:flex' : 'flex'}`}>
+          <div className="flex items-center justify-end gap-2">
+            <label className="flex h-10 items-center gap-2 rounded-full bg-ink-50 px-3 text-ds-small text-content-secondary">
+              Template
+              <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value as any)} className="bg-transparent text-content-primary outline-none">
+                <option value="modern">Modern</option>
+                <option value="classic">Classic</option>
+                <option value="minimal">Minimal</option>
+              </select>
+            </label>
+            <button type="button" onClick={printPdf} aria-label="Download prescription PDF" className="grid size-10 place-items-center rounded-full bg-ink-50 text-content-secondary transition-colors duration-ds-fast ease-ds-out hover:bg-primary-50 hover:text-primary-600">
+              <Printer size={18} />
+            </button>
+          </div>
 
-          <GlassCard className="p-4">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-bold text-ink-500 uppercase">Patient Details</h3>
-              {initialPatient && (
-                <button onClick={onClearInitial} className="text-[10px] font-black text-red-500 uppercase flex items-center gap-1">
-                  <X size={10} /> Clear Data
-                </button>
-              )}
+          <div className="relative flex min-h-[520px] flex-1 flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center" style={{ opacity: currentTemplate.watermarkOpacity }}>
+              <img src={currentTemplate.logoUrl} className="w-1/2 grayscale" alt="" />
             </div>
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <input
-                  className="flex-1 bg-white border border-ink-200 rounded-ds-sm px-4 py-3 outline-none focus:ring-2 focus:ring-medical-500 h-12 font-bold"
-                  placeholder="Patient Name"
-                  value={patientName}
-                  onChange={e => setPatientName(e.target.value)}
-                />
-                <input
-                  className="w-24 bg-white border border-ink-200 rounded-ds-sm px-4 py-3 outline-none focus:ring-2 focus:ring-medical-500 h-12 text-center font-bold"
-                  placeholder="Age"
-                  value={age}
-                  onChange={e => setAge(e.target.value)}
-                />
+            {/* Rx header band follows the brand (was a fixed blue): primary-50 fill + primary-500 rule. */}
+            <div className="flex flex-col items-start justify-between gap-4 border-b-2 border-primary-500 bg-primary-50 p-6 md:flex-row">
+              <div className="flex items-start gap-4">
+                <img src={currentTemplate.logoUrl} className="size-12 shrink-0 object-contain md:size-16" alt="" />
+                <div>
+                  <h2 className="font-serif text-base font-bold leading-tight text-primary-600 md:text-2xl">{currentTemplate.hospitalName}</h2>
+                  <p className="mt-1 max-w-[240px] text-[10px] leading-relaxed text-content-tertiary">{currentTemplate.address}</p>
+                </div>
               </div>
-              <div className="flex gap-2">
-                {['Male', 'Female', 'Other'].map(g => (
-                  <button key={g} onClick={() => setGender(g)} className={`flex-1 py-2 text-xs font-black uppercase rounded-ds-sm transition-all border ${gender === g ? 'bg-medical-500 border-medical-500 text-white shadow-md shadow-medical-200' : 'bg-white border-ink-200 text-ink-400'}`}>
-                    {g}
-                  </button>
-                ))}
+              <div className="md:text-right">
+                <p className="text-sm font-bold leading-tight text-content-primary md:text-xl">{doctor?.name}</p>
+                <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-primary-600 md:text-sm">{doctor?.specialty}</p>
+                <p className="mt-1 text-[9px] uppercase text-content-tertiary">{doctor?.degrees}</p>
               </div>
             </div>
-          </GlassCard>
-
-          <GlassCard className="p-4">
-            <h3 className="text-sm font-bold text-ink-500 uppercase mb-3">Clinical Notes</h3>
-            <div className="space-y-4">
-              <textarea
-                className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-2 h-16 text-sm outline-none focus:ring-2 focus:ring-medical-500"
-                placeholder="Chief Complaints (one per line)..."
-                value={complaints.join('\n')}
-                onChange={e => setComplaints(e.target.value.split('\n'))}
-              />
-              <textarea
-                className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-2 h-16 text-sm outline-none focus:ring-2 focus:ring-medical-500"
-                placeholder="Diagnosis..."
-                value={diagnosis}
-                onChange={e => setDiagnosis(e.target.value)}
-              />
+            <div className="flex flex-col gap-x-8 gap-y-2 border-b border-ink-100 bg-ink-50/50 px-6 py-3 text-[11px] uppercase tracking-widest sm:flex-row sm:items-center">
+              <span className="flex min-w-0 items-center gap-1"><span className="shrink-0 text-primary-600">Name:</span> <span className="truncate text-content-secondary">{patientName || '__________'}</span></span>
+              <span className="flex items-center gap-1"><span className="text-primary-600">Age/Sex:</span> <span className="text-content-secondary">{age || '____'} / {gender.charAt(0)}</span></span>
+              <span className="flex items-center gap-1 text-primary-600 sm:ml-auto">ID: <span className="text-content-secondary">#PRES-LIVE</span></span>
             </div>
-          </GlassCard>
-
-          <GlassCard className="p-4">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-bold text-ink-500 uppercase flex items-center gap-2">
-                <ClipboardCheck size={16} className="text-medical-500" /> Tests Recommended
-              </h3>
-            </div>
-            <textarea
-              className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-3 h-20 text-sm outline-none focus:ring-2 focus:ring-medical-500"
-              placeholder="Required diagnostic tests..."
-              value={tests.join('\n')}
-              onChange={e => setTests(e.target.value.split('\n'))}
-            />
-          </GlassCard>
-
-          <GlassCard className="p-4 relative z-20 overflow-visible">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-ink-500 uppercase flex items-center gap-2">
-                <Pill size={15} className="text-medical-500" /> Add Medicine
-              </h3>
-              {!tempMed && !addingToCatalog && (
-                <span className="text-[10px] font-bold text-ink-400">
-                  {catalogLoading ? <Loader2 size={10} className="animate-spin inline" /> : `${catalog.length} in catalog`}
-                </span>
-              )}
-            </div>
-
-            {tempMed ? (
-              /* ── DOSAGE CONFIGURATION PANEL ─────────────────────── */
-              <div className="bg-medical-50/50 rounded-ds-md p-4 border border-medical-100 space-y-4">
-                {/* Header */}
-                <div className="flex justify-between items-start pb-3 border-b border-medical-100">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[9px] font-black px-2 py-0.5 rounded-ds-sm bg-medical-100 text-medical-700">{tempMed.medicine?.type}</span>
-                      <span className="text-[9px] font-black px-2 py-0.5 rounded-ds-sm bg-ink-100 text-ink-600">{tempMed.medicine?.route}</span>
+            <div className="custom-scrollbar flex flex-1 flex-col overflow-y-auto p-6 md:flex-row">
+              <div className="w-full space-y-8 border-ink-100 md:w-1/3 md:border-r md:pr-6">
+                <PreviewSection title="Clinical Findings">
+                  <ul className="list-disc space-y-1.5 pl-4 text-xs text-content-secondary marker:text-ink-300">
+                    {complaints.filter(c => c.trim()).length > 0 ? complaints.map((c, i) => <li key={i}>{c}</li>) : <li className="italic text-ink-300">None entered</li>}
+                  </ul>
+                </PreviewSection>
+                <PreviewSection title="Diagnosis">
+                  <p className="text-xs text-content-secondary">{diagnosis || <span className="italic text-ink-300">—</span>}</p>
+                </PreviewSection>
+                <PreviewSection title="Tests Recommended">
+                  <ol className="list-decimal space-y-1.5 pl-4 text-xs text-content-secondary marker:text-ink-300">
+                    {tests.filter(t => t.trim()).length > 0 ? tests.map((t, i) => <li key={i}>{t}</li>) : <li className="italic text-ink-300">No tests requested</li>}
+                  </ol>
+                </PreviewSection>
+                {followUpDate && (
+                  <PreviewSection title="Follow Up">
+                    <p className="flex items-center gap-2 text-xs text-content-secondary">
+                      <Calendar size={14} className="text-primary-500" /> {new Date(followUpDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </PreviewSection>
+                )}
+              </div>
+              <div className="relative flex flex-1 flex-col pt-8 md:pl-8 md:pt-0">
+                <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 select-none text-8xl font-black italic opacity-[0.05]">Rx</span>
+                <div className="min-h-[240px] flex-1 space-y-6">
+                  {selectedMeds.length === 0 && <p className="mt-12 text-sm italic text-ink-300">No medicines added to Rx yet...</p>}
+                  {selectedMeds.map((item, idx) => (
+                    <div key={idx} className="group relative">
+                      <p className="text-base text-content-primary">{idx + 1}. {item.medicine.brandName} <span className="text-xs text-content-tertiary">{item.medicine.strength}</span></p>
+                      <div className="mt-2 flex items-center gap-4">
+                        <span className="rounded-ds-sm border border-ink-200 bg-ink-100 px-3 py-1 text-xs tracking-widest text-content-primary">{item.morningDose} + {item.noonDose} + {item.nightDose}</span>
+                        <span className="text-xs text-content-tertiary">{item.instruction} | {item.duration} Days</span>
+                      </div>
+                      <button onClick={() => removeMedicine(idx)} aria-label={`Remove ${item.medicine.brandName}`} className="absolute -right-2 top-0 p-1 text-ink-300 transition hover:text-[#ed7272]"><Trash2 size={16} /></button>
                     </div>
-                    <h4 className="font-display font-black text-medical-700 text-lg leading-tight">{tempMed.medicine?.brandName}</h4>
-                    <p className="text-xs text-ink-500 mt-0.5">{tempMed.medicine?.genericName}{tempMed.medicine?.strength ? ` · ${tempMed.medicine.strength}` : ''}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={(e) => toggleFavorite(e, tempMed.medicine?.id || '')} className="p-1.5 rounded-ds-sm hover:bg-medical-100 transition-all">
-                      <Star size={16} className={favorites.includes(tempMed.medicine?.id || '') ? 'text-amber-400 fill-amber-400' : 'text-ink-300'} />
-                    </button>
-                    <button onClick={cancelAddMedicine} className="bg-white p-1.5 rounded-ds-sm text-ink-400 hover:text-red-500 shadow-sm border border-ink-100"><X size={16} /></button>
-                  </div>
-                </div>
-
-                {/* Morning / Noon / Night */}
-                <div>
-                  <label className="text-[9px] font-black text-ink-400 uppercase tracking-widest block mb-2">Dosage</label>
-                  <div className="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-ds-sm border border-ink-200">
-                    {['Morning', 'Noon', 'Night'].map((period, i) => {
-                      const key = i === 0 ? 'morningDose' : i === 1 ? 'noonDose' : 'nightDose';
-                      return (
-                        <div key={period} className="text-center">
-                          <label className="text-[9px] text-ink-400 block mb-1.5 font-black uppercase">{period}</label>
-                          <select className="w-full bg-ink-50 rounded-ds-sm py-2 text-center text-sm font-bold outline-none border border-ink-100"
-                            value={tempMed[key as keyof typeof tempMed] as string}
-                            onChange={(e) => setTempMed({ ...tempMed, [key]: e.target.value })}>
-                            {DOSAGE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                          </select>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {/* Quick dosage presets */}
-                  <div className="flex gap-1.5 mt-2 flex-wrap">
-                    {[['0+0+1','Bedtime'],['1+0+1','BD'],['1+1+1','TDS'],['1+0+0','Morning only'],['0+1+0','Noon only']].map(([p, label]) => (
-                      <button key={p} onClick={() => applyDosagePreset(p)}
-                        className="px-2.5 py-1 bg-ink-100 hover:bg-medical-100 hover:text-medical-700 text-ink-600 rounded-ds-sm text-[9px] font-black transition-all">
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Duration */}
-                <div>
-                  <label className="text-[9px] font-black text-ink-400 uppercase tracking-widest block mb-2">Duration</label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <input type="number" min="1" max="365"
-                      className="w-16 bg-white border border-ink-200 rounded-ds-sm px-2 py-2 text-center font-black text-ink-800 outline-none text-sm"
-                      value={tempMed.duration || '7'}
-                      onChange={e => setTempMed({ ...tempMed, duration: e.target.value })} />
-                    <span className="text-xs font-bold text-ink-400">days</span>
-                    <div className="flex gap-1 flex-wrap">
-                      {[3, 5, 7, 10, 14, 30].map(d => (
-                        <button key={d} onClick={() => setTempMed({ ...tempMed, duration: String(d) })}
-                          className={`px-2 py-1 rounded-ds-sm text-[9px] font-black transition-all ${
-                            String(tempMed.duration) === String(d) ? 'bg-medical-600 text-white' : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
-                          }`}>{d}d</button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Instruction */}
-                <div>
-                  <label className="text-[9px] font-black text-ink-400 uppercase tracking-widest block mb-2">Instruction</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['After meal', 'Before meal', 'Empty stomach', 'With water'].map(instr => (
-                      <button key={instr} onClick={() => setTempMed({ ...tempMed, instruction: instr })}
-                        className={`py-2 rounded-ds-sm text-xs font-black border-2 transition-all ${
-                          tempMed.instruction === instr ? 'border-medical-500 bg-medical-50 text-medical-700' : 'border-ink-100 bg-white text-ink-500 hover:border-ink-200'
-                        }`}>{instr}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <Button fullWidth onClick={confirmAddMedicine} className="h-12 font-black shadow-lg bg-medical-600 text-white">✓ Add to Prescription</Button>
-              </div>
-
-            ) : addingToCatalog ? (
-              /* ── ADD NEW MEDICINE TO CATALOG ─────────────────────── */
-              <div className="bg-emerald-50/60 border border-emerald-100 rounded-ds-md p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-black text-emerald-800">Add to Medicine Catalog</h4>
-                    <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Available to all doctors once added</p>
-                  </div>
-                  <button onClick={() => setAddingToCatalog(false)} className="text-ink-400 hover:text-ink-600"><X size={16} /></button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input placeholder="Brand Name *" value={newMedForm.name}
-                    onChange={e => setNewMedForm({ ...newMedForm, name: e.target.value })}
-                    className="col-span-2 p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400" />
-                  <input placeholder="Generic Name" value={newMedForm.generic_name}
-                    onChange={e => setNewMedForm({ ...newMedForm, generic_name: e.target.value })}
-                    className="p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400" />
-                  <input placeholder="Strength (e.g. 500mg)" value={newMedForm.strength}
-                    onChange={e => setNewMedForm({ ...newMedForm, strength: e.target.value })}
-                    className="p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400" />
-                  <select value={newMedForm.category} onChange={e => setNewMedForm({ ...newMedForm, category: e.target.value })}
-                    className="p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400">
-                    {MEDICINE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <select value={newMedForm.form} onChange={e => setNewMedForm({ ...newMedForm, form: e.target.value })}
-                    className="p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400">
-                    {MEDICINE_FORMS.map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
-                  <input placeholder="Manufacturer (optional)" value={newMedForm.manufacturer}
-                    onChange={e => setNewMedForm({ ...newMedForm, manufacturer: e.target.value })}
-                    className="col-span-2 p-3 bg-white border border-ink-200 rounded-ds-sm text-sm font-bold outline-none focus:border-emerald-400" />
-                </div>
-                <button disabled={!newMedForm.name.trim() || savingNewMed} onClick={handleAddToCatalog}
-                  className="w-full py-3 bg-emerald-600 text-white rounded-ds-sm text-xs font-black hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
-                  {savingNewMed ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  {savingNewMed ? 'Adding to catalog...' : 'Add & Use in Prescription'}
-                </button>
-              </div>
-
-            ) : (
-              /* ── SEARCH + RESULTS ─────────────────────────────────── */
-              <div className="space-y-3">
-                {/* Category filter pills */}
-                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                  {catalogCategories.map(cat => (
-                    <button key={cat} onClick={() => setCategoryFilter(cat)}
-                      className={`shrink-0 px-3 py-1 rounded-ds-sm text-[9px] font-black transition-all ${
-                        categoryFilter === cat ? 'bg-medical-600 text-white shadow-md shadow-medical-500/20' : 'bg-ink-100 text-ink-500 hover:bg-ink-200'
-                      }`}>{cat}</button>
                   ))}
                 </div>
+                <div className="mt-8 border-t border-ink-100 pt-6">
+                  <h4 className="mb-2 text-[9px] uppercase tracking-[0.2em] text-primary-500">Advice:</h4>
+                  <p className="text-xs italic leading-relaxed text-content-secondary">{advice}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-                {/* Search input */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-3.5 text-ink-400" size={16} />
-                  <input
-                    className="w-full pl-9 pr-9 bg-white border border-ink-200 rounded-ds-sm py-3 outline-none focus:ring-2 focus:ring-medical-500 text-sm font-medium"
-                    placeholder="Search by brand, generic, or manufacturer..."
-                    value={medSearch}
-                    onChange={e => { setMedSearch(e.target.value); setShowMedResults(true); }}
-                    onFocus={() => setShowMedResults(true)}
-                  />
-                  {medSearch && (
-                    <button onClick={() => { setMedSearch(''); setShowMedResults(false); }}
-                      className="absolute right-3 top-3.5 text-ink-400 hover:text-ink-600">
-                      <X size={16} />
-                    </button>
+        {/* RIGHT: step card (436) */}
+        <section aria-label="Prescription details" className={`w-full flex-col justify-between gap-6 rounded-ds-lg bg-white p-5 xl:w-[436px] xl:shrink-0 ${mobileView === 'preview' ? 'hidden xl:flex' : 'flex'}`}>
+          <div className="flex flex-col gap-4">
+            {step === 0 && (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-ds-title-24 text-content-primary">Patient Overview</h2>
+                  {initialPatient && (
+                    <button onClick={onClearInitial} className="flex items-center gap-1 text-ds-small text-[#ed7272]"><X size={12} /> Clear Data</button>
                   )}
                 </div>
-
-                {/* Results dropdown */}
-                {showMedResults && medSearch && (
-                  <div className="bg-white border border-ink-100 rounded-ds-md overflow-hidden shadow-xl max-h-72 overflow-y-auto">
-                    {catalogLoading ? (
-                      <div className="p-6 text-center"><Loader2 size={20} className="animate-spin text-medical-500 mx-auto" /></div>
-                    ) : filteredMedicines.length > 0 ? (
-                      filteredMedicines.map(med => (
-                        <div key={med.id} onClick={() => initiateAddMedicine(med)}
-                          className="flex items-center gap-3 px-4 py-3 hover:bg-medical-50 cursor-pointer border-b border-ink-50 last:border-0 group">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-black text-ink-800 text-sm">{med.brandName}</p>
-                              {favorites.includes(med.id) && <Star size={10} className="text-amber-400 fill-amber-400 shrink-0" />}
-                            </div>
-                            <p className="text-[10px] text-ink-400 font-medium truncate">{med.genericName}</p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            {med.strength && <span className="bg-ink-100 text-ink-600 text-[9px] font-black px-2 py-0.5 rounded-md">{med.strength}</span>}
-                            <span className="bg-medical-50 text-medical-600 text-[9px] font-black px-2 py-0.5 rounded-md">{med.route}</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 space-y-3">
-                        <p className="text-sm text-ink-500 font-medium">No results for <span className="font-black">"{medSearch}"</span></p>
-                        <button onClick={() => { setNewMedForm(prev => ({ ...prev, name: medSearch })); setAddingToCatalog(true); setShowMedResults(false); setMedSearch(''); }}
-                          className="w-full py-3 bg-emerald-50 text-emerald-700 rounded-ds-sm text-xs font-black border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center justify-center gap-2">
-                          <Plus size={14} /> Add "{medSearch}" to medicine catalog
-                        </button>
-                        <button onClick={() => { setAddingToCatalog(true); setShowMedResults(false); setMedSearch(''); }}
-                          className="w-full py-2 text-ink-400 rounded-ds-sm text-xs font-bold hover:text-ink-600 transition-all flex items-center justify-center gap-1">
-                          <Tag size={12} /> Add custom medicine with full details
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Recents / Favorites when search empty */}
-                {showMedResults && !medSearch && filteredMedicines.length > 0 && (
-                  <div className="bg-white border border-ink-100 rounded-ds-md overflow-hidden shadow-sm">
-                    <p className="px-4 pt-3 pb-1 text-[9px] font-black text-ink-400 uppercase tracking-widest">Recent & Favourites</p>
-                    {filteredMedicines.slice(0, 8).map(med => (
-                      <div key={med.id} onClick={() => initiateAddMedicine(med)}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-medical-50 cursor-pointer border-t border-ink-50">
-                        <Star size={12} className={favorites.includes(med.id) ? 'text-amber-400 fill-amber-400' : 'text-ink-200'} />
-                        <span className="flex-1 font-bold text-ink-800 text-sm">{med.brandName}</span>
-                        <span className="text-[10px] text-ink-400">{med.strength}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Manual add button when not searching */}
-                {!medSearch && (
-                  <button onClick={() => { setAddingToCatalog(true); setShowMedResults(false); }}
-                    className="w-full py-2.5 border-2 border-dashed border-ink-200 hover:border-emerald-300 hover:bg-emerald-50/50 rounded-ds-sm text-xs font-black text-ink-400 hover:text-emerald-700 transition-all flex items-center justify-center gap-2 mt-1">
-                    <Plus size={14} /> Add custom / new medicine to catalog
-                  </button>
-                )}
-              </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Name">
+                    <input className={INPUT} placeholder="Enter patient name" value={patientName} onChange={e => setPatientName(e.target.value)} />
+                  </Field>
+                  <Field label="Age">
+                    <input className={INPUT} placeholder="Enter Age" inputMode="numeric" value={age} onChange={e => setAge(e.target.value)} />
+                  </Field>
+                  <Field label="Gender">
+                    <SelectBox value={gender} onChange={setGender} options={['Male', 'Female', 'Other']} />
+                  </Field>
+                </div>
+              </>
             )}
 
-            <h3 className="text-sm font-bold text-ink-500 uppercase mb-3 flex items-center gap-2"><CalendarDays size={16} className="text-medical-500" /> Next Follow Up</h3>
-            <div className="space-y-3">
-              <input type="date" className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-3 h-12 outline-none focus:ring-2 focus:ring-medical-500" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
-              <div className="flex gap-2">
-                {[7, 14, 30].map(days => (
-                  <button type="button" key={days} onClick={() => handleQuickDate(days)} className={`flex-1 py-2 px-3 rounded-ds-sm text-xs font-bold border transition-all ${followUpDate ? 'bg-medical-50 border-medical-100 text-medical-600' : 'bg-ink-50 border-ink-100 text-ink-400'}`}>
-                    +{days === 30 ? '1 Month' : `${days} Days`}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-4">
-            <h3 className="text-sm font-bold text-ink-500 uppercase mb-3">Advice</h3>
-            <textarea className="w-full bg-white border border-ink-200 rounded-ds-sm px-4 py-3 h-20 text-sm outline-none" value={advice} onChange={e => setAdvice(e.target.value)} />
-          </GlassCard>
-        </div>
-
-        {/* RIGHT PANEL: PREVIEW */}
-        <GlassCard className={`flex-[1.5] flex flex-col h-full bg-white shadow-2xl relative overflow-hidden p-0 rounded-none md:rounded-ds-lg border-0 md:border md:border-white/60 ${mobileView === 'editor' ? 'hidden xl:flex' : 'flex'} pb-40 xl:pb-0`}>
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center" style={{ opacity: currentTemplate.watermarkOpacity }}>
-            <img src={currentTemplate.logoUrl} className="w-1/2 grayscale" alt="Watermark" />
-          </div>
-          <div className="p-6 md:p-8 border-b-2 flex flex-col md:flex-row justify-between items-start md:items-start gap-4 md:gap-0" style={{ backgroundColor: `${currentTemplate.themeColor}10`, borderColor: currentTemplate.themeColor }}>
-            <div className="flex items-start gap-4">
-              <img src={currentTemplate.logoUrl} className="w-12 h-12 md:w-16 md:h-16 object-contain shrink-0" alt="Logo" />
-              <div>
-                <h1 className="text-base md:text-2xl font-serif font-bold leading-tight" style={{ color: currentTemplate.themeColor }}>{currentTemplate.hospitalName}</h1>
-                <p className="text-[9px] md:text-[10px] text-ink-500 mt-1 max-w-[240px] leading-relaxed">{currentTemplate.address}</p>
-              </div>
-            </div>
-            <div className="text-left md:text-right border-l-2 md:border-l-0 md:border-r-0 border-ink-200/50 pl-4 md:pl-0">
-              <h2 className="text-sm md:text-xl font-bold text-ink-800 leading-tight">{doctor?.name}</h2>
-              <p className="text-[10px] md:text-sm text-medical-600 font-bold uppercase tracking-widest mt-0.5">{doctor?.specialty}</p>
-              <p className="text-[9px] text-ink-400 font-medium mt-1 uppercase tracking-tighter">{doctor?.degrees}</p>
-            </div>
-          </div>
-          <div className="px-6 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center gap-x-8 gap-y-2 text-[10px] md:text-xs font-black uppercase tracking-widest border-b border-ink-100 bg-ink-50/50">
-            <div className="flex items-center gap-1 min-w-0"><span className="text-medical-600 shrink-0">Name:</span> <span className="text-ink-600 truncate">{patientName || '__________'}</span></div>
-            <div className="flex items-center gap-1"><span className="text-medical-600 shrink-0">Age/Sex:</span> <span className="text-ink-600">{age || '____'} / {gender.charAt(0)}</span></div>
-            <div className="sm:ml-auto text-medical-600 flex items-center gap-1">ID: <span className="text-ink-600">#PRES-LIVE</span></div>
-          </div>
-          <div className="flex-1 flex flex-col md:flex-row p-6 md:p-8 overflow-y-auto custom-scrollbar">
-            <div className="w-full md:w-1/3 md:border-r border-ink-100 md:pr-6 space-y-10">
-              <section>
-                <h4 className="text-[9px] font-black text-medical-500 uppercase tracking-[0.2em] mb-3">Clinical Findings</h4>
-                <ul className="space-y-1.5 pl-4 list-disc text-xs font-bold text-ink-700 marker:text-ink-300">
-                  {complaints.filter(c => c.trim()).length > 0 ? complaints.map((c, i) => <li key={i}>{c}</li>) : <li className="text-ink-300 italic">None entered</li>}
-                </ul>
-              </section>
-              <section>
-                <h4 className="text-[9px] font-black text-medical-500 uppercase tracking-[0.2em] mb-3">Tests Recommended</h4>
-                <ol className="space-y-1.5 pl-4 list-decimal text-xs font-bold text-ink-700 marker:text-ink-300">
-                  {tests.filter(t => t.trim()).length > 0 ? tests.map((t, i) => <li key={i}>{t}</li>) : <li className="text-ink-300 italic">No tests requested</li>}
-                </ol>
-              </section>
-              {followUpDate && (
-                <section className="bg-medical-50/50 p-4 rounded-ds-md border border-medical-100">
-                  <h4 className="text-[9px] font-black text-medical-500 uppercase tracking-[0.2em] mb-2">Follow Up</h4>
-                  <p className="text-xs font-bold text-ink-700 flex items-center gap-2">
-                    <Calendar size={14} className="text-medical-500" /> {new Date(followUpDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </p>
-                </section>
-              )}
-            </div>
-            <div className="flex-1 md:pl-8 flex flex-col relative pt-8 md:pt-0">
-              <div className="absolute top-0 right-0 opacity-[0.05] pointer-events-none select-none"><span className="text-8xl font-black italic">Rx</span></div>
-              <div className="flex-1 space-y-8 min-h-[300px]">
-                {selectedMeds.length === 0 && <p className="text-ink-300 italic text-sm mt-12">No medicines added to Rx yet...</p>}
-                {selectedMeds.map((item, idx) => (
-                  <div key={idx} className="relative group">
-                    <h4 className="font-black text-ink-800 text-base md:text-lg">{idx + 1}. {item.medicine.brandName} <span className="text-xs font-bold text-ink-400">{item.medicine.strength}</span></h4>
-                    <div className="flex items-center gap-6 mt-3">
-                      <div className="bg-ink-100 px-3 py-1 rounded-ds-sm font-black tracking-widest text-ink-800 text-xs border border-ink-200">{item.morningDose} + {item.noonDose} + {item.nightDose}</div>
-                      <div className="text-xs text-ink-500 font-bold">{item.instruction} | {item.duration} Days</div>
-                    </div>
-                    <button onClick={() => removeMedicine(idx)} className="absolute top-0 -right-2 p-1 text-ink-300 hover:text-red-500 transition"><Trash2 size={16} /></button>
+            {step === 1 && (
+              <>
+                <h2 className="text-ds-title-24 text-content-primary">Diagnosis</h2>
+                <Field label="Clinical Notes">
+                  <textarea className={`${INPUT} h-[138px] resize-none py-3`} placeholder="Chief complaints (one per line)..." value={complaints.join('\n')} onChange={e => setComplaints(e.target.value.split('\n'))} />
+                </Field>
+                <Field label="Diagnosis">
+                  <textarea className={`${INPUT} h-[138px] resize-none py-3`} placeholder="Type" value={diagnosis} onChange={e => setDiagnosis(e.target.value)} />
+                </Field>
+                <Field label="Next Follow Up">
+                  <input type="date" className={INPUT} value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
+                  <div className="flex gap-2">
+                    {[7, 14, 30].map(days => (
+                      <button type="button" key={days} onClick={() => handleQuickDate(days)} className={CHIP(false)}>+{days === 30 ? '1 Month' : `${days} Days`}</button>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="mt-8 pt-6 border-t border-ink-100">
-                <h4 className="text-[9px] font-black text-medical-500 uppercase tracking-[0.2em] mb-2">Advice:</h4>
-                <p className="text-xs font-bold text-ink-600 italic leading-relaxed">{advice}</p>
-              </div>
-            </div>
+                </Field>
+                <Field label="Advice">
+                  <textarea className={`${INPUT} h-20 resize-none py-3`} value={advice} onChange={e => setAdvice(e.target.value)} />
+                </Field>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <Field label="Recommended Tests">
+                  <div className="flex flex-wrap gap-2">
+                    {COMMON_TESTS.map(t => (
+                      <button key={t} type="button" aria-pressed={tests.includes(t)} onClick={() => toggleTest(t)} className={CHIP(tests.includes(t))}>{t}</button>
+                    ))}
+                  </div>
+                  <textarea className={`${INPUT} h-[46px] min-h-[46px] resize-y py-3`} placeholder="Required diagnostic tests (one per line)..." value={tests.join('\n')} onChange={e => setTests(e.target.value.split('\n'))} />
+                </Field>
+
+                <div className="relative z-20 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-ds-body text-content-primary">Add Medicines</span>
+                    {!tempMed && !addingToCatalog && (
+                      <span className="text-ds-small text-content-tertiary">{catalogLoading ? <Loader2 size={10} className="inline animate-spin" /> : `${catalog.length} in catalog`}</span>
+                    )}
+                  </div>
+
+                  {tempMed ? (
+                    /* Expanded medicine row (Figma accordion): Morning / Noon / Night, Duration, Instruction */
+                    <div className="flex flex-col gap-3 rounded-2xl border border-ink-100 p-3">
+                      <div className="flex items-start justify-between gap-2 px-1">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <MaskIcon src={PILL_ICON} size={16} className="mt-1 text-primary-500" />
+                          <div className="min-w-0">
+                            <p className="truncate text-ds-body text-content-primary">{tempMed.medicine?.brandName}</p>
+                            <p className="truncate text-ds-small text-content-secondary">{tempMed.medicine?.route}{tempMed.medicine?.strength ? ` · ${tempMed.medicine.strength}` : ''}{tempMed.medicine?.genericName ? ` · ${tempMed.medicine.genericName}` : ''}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={(e) => toggleFavorite(e, tempMed.medicine?.id || '')} aria-label="Favourite" className="rounded-full p-1.5 hover:bg-primary-50">
+                            <Star size={16} className={favorites.includes(tempMed.medicine?.id || '') ? 'fill-amber-400 text-amber-400' : 'text-ink-300'} />
+                          </button>
+                          <button onClick={cancelAddMedicine} aria-label="Cancel" className="rounded-full p-1.5 text-content-tertiary hover:text-[#ed7272]"><X size={16} /></button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['Morning', 'Noon', 'Night'] as const).map((period, i) => {
+                          const key = i === 0 ? 'morningDose' : i === 1 ? 'noonDose' : 'nightDose';
+                          return (
+                            <label key={period} className={`${OUTLINE} flex-col !items-start gap-0.5 py-1.5`}>
+                              <span className="text-[10px] text-content-tertiary">{period}</span>
+                              <select className="w-full bg-transparent text-ds-body text-content-primary outline-none" value={tempMed[key as keyof typeof tempMed] as string} onChange={(e) => setTempMed({ ...tempMed, [key]: e.target.value })}>
+                                {DOSAGE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[['0+0+1', 'Bedtime'], ['1+0+1', 'BD'], ['1+1+1', 'TDS'], ['1+0+0', 'Morning only'], ['0+1+0', 'Noon only']].map(([pr, label]) => (
+                          <button key={pr} onClick={() => applyDosagePreset(pr)} className={CHIP(false)}>{label}</button>
+                        ))}
+                      </div>
+                      <label className={`${OUTLINE} justify-between`}>
+                        <span className="text-ds-body text-content-tertiary">Duration Period</span>
+                        <span className="flex items-center gap-1">
+                          <input type="number" min="1" max="365" className="w-14 bg-transparent text-right text-ds-body text-content-primary outline-none" value={tempMed.duration || '7'} onChange={e => setTempMed({ ...tempMed, duration: e.target.value })} />
+                          <span className="text-ds-small text-content-tertiary">days</span>
+                        </span>
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[3, 5, 7, 10, 14, 30].map(d => (
+                          <button key={d} onClick={() => setTempMed({ ...tempMed, duration: String(d) })} className={CHIP(String(tempMed.duration) === String(d))}>{d}d</button>
+                        ))}
+                      </div>
+                      <label className={`${OUTLINE} justify-between`}>
+                        <span className="sr-only">Instruction</span>
+                        <select className="w-full bg-transparent text-ds-body text-content-primary outline-none" value={tempMed.instruction} onChange={e => setTempMed({ ...tempMed, instruction: e.target.value })}>
+                          {['After meal', 'Before meal', 'Empty stomach', 'With water'].map(instr => <option key={instr} value={instr}>{instr}</option>)}
+                        </select>
+                      </label>
+                      <DashboardButton variant="primary" icon={<Check size={16} />} onClick={confirmAddMedicine} className="w-full pr-4">
+                        <span className="px-3">Add to Prescription</span>
+                      </DashboardButton>
+                    </div>
+                  ) : addingToCatalog ? (
+                    <div className="flex flex-col gap-3 rounded-2xl border border-ink-100 p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-ds-body text-content-primary">Add to Medicine Catalog</p>
+                          <p className="text-ds-small text-content-tertiary">Available to all doctors once added</p>
+                        </div>
+                        <button onClick={() => setAddingToCatalog(false)} aria-label="Close" className="text-content-tertiary"><X size={16} /></button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input placeholder="Brand Name *" value={newMedForm.name} onChange={e => setNewMedForm({ ...newMedForm, name: e.target.value })} className={`${INPUT} col-span-2`} />
+                        <input placeholder="Generic Name" value={newMedForm.generic_name} onChange={e => setNewMedForm({ ...newMedForm, generic_name: e.target.value })} className={INPUT} />
+                        <input placeholder="Strength (e.g. 500mg)" value={newMedForm.strength} onChange={e => setNewMedForm({ ...newMedForm, strength: e.target.value })} className={INPUT} />
+                        <SelectBox value={newMedForm.category} onChange={v => setNewMedForm({ ...newMedForm, category: v })} options={MEDICINE_CATEGORIES} />
+                        <SelectBox value={newMedForm.form} onChange={v => setNewMedForm({ ...newMedForm, form: v })} options={MEDICINE_FORMS} />
+                        <input placeholder="Manufacturer (optional)" value={newMedForm.manufacturer} onChange={e => setNewMedForm({ ...newMedForm, manufacturer: e.target.value })} className={`${INPUT} col-span-2`} />
+                      </div>
+                      <DashboardButton variant="primary" icon={savingNewMed ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} disabled={!newMedForm.name.trim() || savingNewMed} onClick={handleAddToCatalog} className="w-full pr-4">
+                        <span className="px-3">{savingNewMed ? 'Adding to catalog...' : 'Add & Use in Prescription'}</span>
+                      </DashboardButton>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+                        {catalogCategories.map(cat => (
+                          <button key={cat} onClick={() => setCategoryFilter(cat)} aria-pressed={categoryFilter === cat} className={`shrink-0 ${CHIP(categoryFilter === cat)}`}>{cat}</button>
+                        ))}
+                      </div>
+                      <div className="relative">
+                        <input
+                          className={`${INPUT} h-[43px] pr-10`}
+                          placeholder="Search a medicine to add ..."
+                          value={medSearch}
+                          onChange={e => { setMedSearch(e.target.value); setShowMedResults(true); }}
+                          onFocus={() => setShowMedResults(true)}
+                        />
+                        {medSearch ? (
+                          <button onClick={() => { setMedSearch(''); setShowMedResults(false); }} aria-label="Clear search" className="absolute right-3 top-3 text-content-tertiary"><X size={18} /></button>
+                        ) : (
+                          <Search size={18} className="pointer-events-none absolute right-3 top-3 text-content-secondary" />
+                        )}
+                      </div>
+
+                      {showMedResults && medSearch && (
+                        <div className="max-h-72 overflow-y-auto rounded-2xl bg-white shadow-ds-rise-lg outline outline-1 -outline-offset-1 outline-surface">
+                          {catalogLoading ? (
+                            <div className="p-6 text-center"><Loader2 size={20} className="mx-auto animate-spin text-primary-500" /></div>
+                          ) : filteredMedicines.length > 0 ? (
+                            filteredMedicines.map(med => (
+                              <button type="button" key={med.id} onClick={() => initiateAddMedicine(med)} className="flex w-full items-center gap-3 border-b border-ink-50 px-4 py-3 text-left last:border-0 hover:bg-primary-50">
+                                <MaskIcon src={PILL_ICON} size={16} className="text-primary-500" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="flex items-center gap-2 text-ds-body text-content-primary">{med.brandName}{favorites.includes(med.id) && <Star size={10} className="shrink-0 fill-amber-400 text-amber-400" />}</span>
+                                  <span className="block truncate text-ds-small text-content-tertiary">{med.genericName}</span>
+                                </span>
+                                <span className="flex shrink-0 flex-col items-end gap-1 text-[10px]">
+                                  {med.strength && <span className="rounded-md bg-ink-100 px-2 py-0.5 text-content-secondary">{med.strength}</span>}
+                                  <span className="rounded-md bg-primary-50 px-2 py-0.5 text-primary-600">{med.route}</span>
+                                </span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="flex flex-col gap-2 p-4">
+                              <p className="text-ds-body text-content-secondary">No results for <span className="text-content-primary">"{medSearch}"</span></p>
+                              <button onClick={() => { setNewMedForm(prev => ({ ...prev, name: medSearch })); setAddingToCatalog(true); setShowMedResults(false); setMedSearch(''); }} className={`${CHIP(false)} justify-center gap-2`}>
+                                <Plus size={14} /> Add "{medSearch}" to medicine catalog
+                              </button>
+                              <button onClick={() => { setAddingToCatalog(true); setShowMedResults(false); setMedSearch(''); }} className="flex items-center justify-center gap-1 py-1 text-ds-small text-content-tertiary">
+                                <Tag size={12} /> Add custom medicine with full details
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {showMedResults && !medSearch && filteredMedicines.length > 0 && (
+                        <div className="overflow-hidden rounded-2xl bg-white outline outline-1 -outline-offset-1 outline-surface">
+                          <p className="px-4 pb-1 pt-3 text-[10px] uppercase tracking-widest text-content-tertiary">Recent & Favourites</p>
+                          {filteredMedicines.slice(0, 8).map(med => (
+                            <button type="button" key={med.id} onClick={() => initiateAddMedicine(med)} className="flex w-full items-center gap-3 border-t border-ink-50 px-4 py-2.5 text-left hover:bg-primary-50">
+                              <Star size={12} className={favorites.includes(med.id) ? 'fill-amber-400 text-amber-400' : 'text-ink-200'} />
+                              <span className="flex-1 text-ds-body text-content-primary">{med.brandName}</span>
+                              <span className="text-[10px] text-content-tertiary">{med.strength}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {!medSearch && (
+                        <button onClick={() => { setAddingToCatalog(true); setShowMedResults(false); }} className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-200 py-2.5 text-ds-small text-content-tertiary transition-colors duration-ds-fast ease-ds-out hover:border-primary-300 hover:text-primary-600">
+                          <Plus size={14} /> Add custom / new medicine to catalog
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {/* Added medicines (collapsed Figma rows) */}
+                  {selectedMeds.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 rounded-2xl border border-ink-100 px-4 py-3">
+                      <MaskIcon src={PILL_ICON} size={16} className="text-primary-500" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-ds-body text-content-primary">{item.medicine.brandName}</span>
+                        <span className="block truncate text-ds-small text-content-secondary">{item.medicine.route} | {item.morningDose}+{item.noonDose}+{item.nightDose} · {item.duration} days</span>
+                      </span>
+                      <button onClick={() => removeMedicine(idx)} aria-label={`Remove ${item.medicine.brandName}`} className="p-1 text-ink-300 transition hover:text-[#ed7272]"><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        </GlassCard>
+
+          {/* Step actions: Next | Back + Next | Cancel + Confirm */}
+          <div className="flex items-center gap-2">
+            {step > 0 && (
+              <DashboardButton variant="secondary" icon={false} onClick={() => setStep((step - 1) as 0 | 1)} className="flex-1 px-4">{step === 2 ? 'Cancel' : 'Back'}</DashboardButton>
+            )}
+            {step < 2 ? (
+              <DashboardButton variant="primary" icon={false} onClick={() => setStep((step + 1) as 1 | 2)} className={`${step > 0 ? 'flex-[1.1]' : 'w-full'} px-4`}>Next</DashboardButton>
+            ) : (
+              <DashboardButton variant="primary" icon={false} onClick={handleFinishPrescription} className="flex-[1.1] px-4">Confirm</DashboardButton>
+            )}
+          </div>
+        </section>
       </div>
+    </div>
+  );
+};
 
-      {/* MOBILE & DESKTOP FLOATING ACTION DOCK - sit above nav */}
-      <div className="fixed bottom-[calc(90px+env(safe-area-inset-bottom))] md:bottom-8 left-0 right-0 md:left-auto md:right-8 z-[70] px-4 md:px-0 flex flex-col items-end gap-3">
-        
-        {/* Template Selector Bubble */}
-        <div className="bg-white/90 backdrop-blur-xl p-2 rounded-ds-md shadow-xl border border-white/60 flex items-center gap-2 pr-4 transition-all hover:shadow-2xl">
-          <div className="bg-ink-100 p-2 rounded-ds-sm text-ink-500">
-            <FileText size={16} />
-          </div>
-          <select 
-            value={selectedTemplate}
-            onChange={(e) => setSelectedTemplate(e.target.value as any)}
-            className="bg-transparent border-0 font-black text-[10px] uppercase tracking-widest text-ink-700 outline-none cursor-pointer"
-          >
-            <option value="modern">Modern Style</option>
-            <option value="classic">Classic Style</option>
-            <option value="minimal">Minimal Style</option>
-          </select>
-        </div>
+const PILL_ICON = '/assets/figma/patient-live-appts/pill-badge.svg';
+const COMMON_TESTS = ['X-Ray', 'ECG', 'EEG', 'CBC', 'Blood Sugar'];
+const INPUT = 'w-full rounded-2xl bg-ink-50 px-3 h-[38px] text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500';
+const OUTLINE = 'flex h-[44px] items-center rounded-2xl border border-ink-100 px-3';
+const CHIP = (active: boolean) => `inline-flex h-[29px] items-center rounded-full px-3 text-ds-body transition-colors duration-ds-fast ease-ds-out ${active ? 'bg-primary-500 text-white' : 'bg-primary-50 text-content-secondary hover:bg-primary-100'}`;
 
-        <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-xl p-3 md:p-0 rounded-[2.5rem] md:rounded-ds-lg shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:shadow-2xl border border-white/60 flex flex-row gap-3">
-          <Button
-            variant="outline"
-            className="flex-1 md:w-40 h-14 md:h-16 rounded-ds-md md:rounded-ds-lg bg-white shadow-lg gap-2 font-display font-black border-2 border-ink-100 text-ink-600"
-            onClick={() => alert('Draft saved successfully!')}
-          >
-            <Save size={20} /> <span className="hidden sm:inline">Save Draft</span><span className="sm:hidden">Draft</span>
-          </Button>
-          <Button
-            className="flex-[2] md:w-64 h-14 md:h-16 rounded-ds-md md:rounded-ds-lg shadow-2xl gap-3 font-display font-black text-lg bg-medical-500 hover:bg-medical-600 text-white border-0"
-            onClick={handleFinishPrescription}
-          >
-            <Send size={20} /> <span className="inline">Send Rx</span>
-          </Button>
-          <Button
-            className="flex-1 md:w-20 h-14 md:h-16 rounded-ds-md md:rounded-ds-lg shadow-2xl gap-3 font-display font-black text-lg bg-medical-600 text-white border-0"
-            onClick={() => {
-              const rxData = {
-                id: `rx-${crypto.randomUUID().slice(0, 8)}`,
-                date: new Date().toLocaleDateString('en-GB'),
-                patientName,
-                patientAge: age,
-                patientGender: gender,
-                doctorName: doctor?.name || '',
-                doctorDegrees: doctor?.degrees || '',
-                specialty: doctor?.specialty || '',
-                hospitalName: currentTemplate.hospitalName,
-                hospitalAddress: currentTemplate.address,
-                hospitalPhone: currentTemplate.phone,
-                diagnosis,
-                complaints,
-                tests,
-                advice,
-                medicines: selectedMeds.map(m => ({
-                  name: m.medicine.brandName,
-                  dosage: `${m.morningDose}+${m.noonDose}+${m.nightDose}`,
-                  duration: `${m.duration} Days`,
-                  instruction: m.instruction
-                })),
-                followUpDate: followUpDate || undefined
-              };
-              downloadPrescriptionPDF(rxData as any, selectedTemplate);
-            }}
-          >
-            <Printer size={20} />
-          </Button>
-        </div>
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="flex min-w-0 flex-col gap-3">
+    <span className="text-ds-paragraph text-content-secondary">{label}</span>
+    {children}
+  </div>
+);
+
+const SelectBox: React.FC<{ value: string; onChange: (v: string) => void; options: string[] }> = ({ value, onChange, options }) => (
+  <span className="relative block">
+    <select value={value} onChange={e => onChange(e.target.value)} className={`${INPUT} h-[44px] appearance-none pr-9`}>
+      {options.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+    <ChevronDown size={18} className="pointer-events-none absolute right-3 top-[13px] text-content-secondary" />
+  </span>
+);
+
+const PreviewSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <section>
+    <h4 className="mb-3 text-[9px] uppercase tracking-[0.2em] text-primary-500">{title}</h4>
+    {children}
+  </section>
+);
+
+// Three-step progress (Figma "Paitient Overview / Diagnosis / Test & Medicines"): 8px track, filled up to the current step,
+// the small triangle marks the step being edited. Each label jumps back to its step.
+const STEPS = ['Patient Overview', 'Diagnosis', 'Test & Medicines'] as const;
+const StepProgress: React.FC<{ step: 0 | 1 | 2; onStep: (s: 0 | 1 | 2) => void }> = ({ step, onStep }) => {
+  // Figma fills 41% on step 1 and 92% on step 3; its step-2 frame draws 30% (less than step 1), so step 2 uses 66% to keep progress monotonic.
+  const pct = step === 0 ? 41.5 : step === 1 ? 66 : 92;
+  return (
+    <div className="flex w-full flex-col gap-2 lg:w-[651px]" aria-label={`Step ${step + 1} of 3`}>
+      <div className="flex justify-between text-ds-small text-content-secondary">
+        {STEPS.map((label, i) => (
+          <button key={label} type="button" onClick={() => onStep(i as 0 | 1 | 2)} aria-current={step === i ? 'step' : undefined} className={step === i ? 'text-content-primary' : ''}>{label}</button>
+        ))}
+      </div>
+      <div className="relative h-2 rounded-full bg-primary-50">
+        <div className="h-full rounded-full bg-primary-500 transition-[width] duration-ds-slow ease-ds-out" style={{ width: `${pct}%` }} />
+        <MaskIcon src="/assets/figma/patient-live-appts/progress-indicator.svg" size={7} className="absolute -top-[9px] -translate-x-1/2 text-primary-500 transition-[left] duration-ds-slow ease-ds-out" style={{ left: `${pct}%` }} />
       </div>
     </div>
   );
