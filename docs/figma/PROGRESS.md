@@ -51,7 +51,7 @@ Legend: ✅ done & committed · 🔄 in progress · ⏳ pending
 | `doctor-prescription` | `255:14768` | `views/doctor/PrescriptionEditor.tsx` | ✅ `a9c6e39` (2026-09-22). New list page (gap G3 closed, read-only). Removed: fake 'Save Draft' (it only showed an alert). Blood Group field not built (no data). Rx preview header now follows brand colour |
 | `doctor-analytics` | `255:14766` | `views/doctor/Analytics.tsx` | ✅ `0f5aa73` (2026-09-22). Hard-coded insight cards ('Monday', '+18%', '14 mins') replaced by real Busiest Day data; recharts no longer used here (CSS bars on theme tokens) |
 | `doctor-manage` | `255:14767` | `views/doctor/{DoctorMore,DoctorPracticeSettings,PatientManualRegistry}.tsx`, `components/doctor/AssistantManager.tsx` | ✅ `65f1149` Manage + `f6862b6` manual booking (2026-09-22). DoctorMore handled in doctor-account. Not built (no data): Blood Group, Description, Assistant 'Finance' role, hospital image upload |
-| `doctor-account` | Account `276:13531`, Activity Log `276:13827`, Doctor Profile `254:8267`, Payment `341:18165` (empty) | `views/doctor/{DoctorProfileEditor,PaymentSubscription}.tsx` | ⏳ |
+| `doctor-account` | Account `276:13531`, Activity Log `276:13827`, Doctor Profile `254:8267`, Payment `341:18165` (empty) | `views/doctor/{DoctorProfileEditor,PaymentSubscription}.tsx` | ✅ `151e00e` (2026-09-22). Removed dead 'Soon' links (Public Profile, Payout, Security, Help). Not built: Account Management 276:13531 + Activity Log (no route / no password-change or activity backend), Add Experience modal (profile has no structured experience data), Payment frame empty in Figma so PaymentSubscription unchanged |
 | `patient-doctors` | List Page `396:12430`, doctor detail `601:13524`, Main `601:12927`/`601:13040`/`601:13140`, public lists `80:1482`/`326:13058` | `views/patient/{DoctorSearchView,DoctorSearch,DoctorProfile}.tsx` | ⏳ |
 | `marketing-pages` (lowest priority) | frames in `docs/figma/specs/landing-pages.md` §0 | `views/marketing/*`, `views/doctor/DoctorLanding.tsx` | ⏳ |
 | route DISSOLVE transition (screen change = DISSOLVE 0.3s) | tokens.md §7 | `components/Layout.tsx` main wrapper | ⏳ small polish |
@@ -109,6 +109,7 @@ Session-only cache (same session can `resumeFromRunId`; otherwise just re-run th
 
 ## 8. Commit log (newest first — append as you go)
 
+- `151e00e` doctor-account done
 - `65f1149` + `f6862b6` doctor-manage done
 - `0f5aa73` doctor-analytics done
 - `a9c6e39` doctor-prescription done
