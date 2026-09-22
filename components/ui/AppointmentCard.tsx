@@ -1,8 +1,8 @@
 import React from 'react';
-import { Calendar, Clock, MapPin, Stethoscope, ChevronRight, Activity } from 'lucide-react';
-import { Button } from './Button';
 import { AppointmentStatus, Appointment } from '../../types';
 import { generateGoogleCalendarLink, downloadICS } from '../../utils/calendar';
+import { MaskIcon } from '../dashboard/MaskIcon';
+import { DS_ICONS } from '../dashboard/assets';
 
 interface AppointmentCardProps {
     appointment: {
@@ -24,112 +24,103 @@ interface AppointmentCardProps {
     onReview?: () => void;
 }
 
+const ICON = '/assets/figma/patient-live-appts/';
+
+// Figma status chips (Appointments 191:5570, 339:17082 family): 12px Instrument Sans + 12px glyph.
+// Fixed semantic colours on purpose (status colours are allowed literals, docs/figma/tokens.md).
+const STATUS_CHIP: Record<AppointmentStatus, { label: string; icon: string; className: string }> = {
+    waiting: { label: 'Upcoming', icon: 'status-time.svg', className: 'text-[#4c8cdb]' },
+    consulting: { label: 'Ongoing', icon: 'status-time.svg', className: 'text-[#4c8cdb]' },
+    completed: { label: 'Completed', icon: 'status-check.svg', className: 'text-[#24b565]' },
+    cancelled: { label: 'Cancelled', icon: 'status-close.svg', className: 'text-[#ed7272]' },
+    late: { label: 'Late', icon: 'status-no-show.svg', className: 'text-[#7e7e7e]' },
+};
+
+export const StatusChip: React.FC<{ status: AppointmentStatus; className?: string }> = ({ status, className = '' }) => {
+    const chip = STATUS_CHIP[status] ?? STATUS_CHIP.waiting;
+    return (
+        <span className={`inline-flex items-center gap-1 rounded-3xl px-2 py-1 font-display text-ds-small ${chip.className} ${className}`}>
+            <MaskIcon src={ICON + chip.icon} size={12} />
+            {chip.label}
+        </span>
+    );
+};
+
+const PILL = 'inline-flex h-10 items-center whitespace-nowrap justify-center rounded-full px-4 font-display text-[14px] transition-colors duration-ds-fast ease-ds-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500';
+
+// Grid-view card of the patient Appointments page, in the dashboard card language (white r24, shadow-ds-rise, label/value pairs).
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     appointment,
     onAction,
     onTrack,
     onReview
-}) => {
-    const statusColors = {
-        waiting: 'bg-amber-50 text-amber-600 border-amber-100',
-        completed: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-        cancelled: 'bg-rose-50 text-rose-500 border-rose-100',
-        consulting: 'bg-medical-50 text-medical-600 border-medical-100',
-        absent: 'bg-slate-50 text-slate-400 border-slate-100'
-    };
-
-    return (
-        <div className="bg-white rounded-ds-lg shadow-ds-card p-5 space-y-4 transition-all duration-300 hover:shadow-ds-soft group relative overflow-hidden">
-            {/* Header: Status and Metadata */}
-            <div className="flex justify-between items-start gap-3 relative z-10">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 text-medical-600 flex items-center justify-center shrink-0 border border-slate-100 shadow-inner group-hover:bg-medical-500 group-hover:text-white transition-all duration-500">
-                        <Stethoscope size={24} />
-                    </div>
-                    <div>
-                        <h4 className="font-display text-lg font-bold text-ink-800 tracking-tight leading-tight mb-0.5 break-words">{appointment.doctorName}</h4>
-                        <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight break-words">{appointment.doctorSpecialty || 'SPECIALIST CONSULTATION'}</p>
-                    </div>
-                </div>
-                <span className={`px-2 py-1 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest border shadow-sm shrink-0 ${statusColors[appointment.status]}`}>
-                    {appointment.status}
-                </span>
+}) => (
+    <div className="flex flex-col gap-5 rounded-ds-lg bg-white p-5 font-display shadow-ds-rise outline outline-1 -outline-offset-1 outline-ink-100">
+        <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+                <h4 className="break-words text-ds-title-20 text-content-primary">{appointment.doctorName}</h4>
+                <p className="text-ds-small text-content-tertiary">{appointment.doctorSpecialty || 'Specialist Consultation'}</p>
             </div>
-
-            {/* Body: Date, Time, Location */}
-            <div className="grid grid-cols-2 gap-2 md:gap-3 relative z-10">
-                <div className="space-y-1">
-                    <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Date & Time</span>
-                    <div className="flex items-center gap-2 bg-slate-50/80 px-2.5 py-2 md:px-3 md:py-2.5 border border-slate-100/50 backdrop-blur-sm group-hover:bg-white group-hover:border-medical-100 transition-all">
-                        <Calendar size={13} className="text-medical-500 shrink-0" />
-                        <span className="text-[11px] md:text-xs font-bold text-slate-800 tracking-tight leading-tight">{appointment.date} @ {appointment.time}</span>
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Serial Port</span>
-                    <div className="flex items-center gap-2 bg-slate-50/80 px-2.5 py-2 md:px-3 md:py-2.5 border border-slate-100/50 backdrop-blur-sm group-hover:bg-white group-hover:border-teal-100 transition-all">
-                        <Activity size={13} className="text-teal-500 shrink-0" />
-                        <span className="text-[11px] md:text-xs font-black text-slate-800 tracking-tight leading-none">#{appointment.serialNumber?.toString().padStart(2, '0') || 'N/A'}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-2 bg-slate-50/50 px-3 py-2 md:px-4 md:py-2.5 border border-slate-100/50 relative z-10">
-                <MapPin size={13} className="text-medical-500 shrink-0" />
-                <span className="text-[11px] md:text-xs font-medium text-slate-600 truncate">{appointment.hospitalName}</span>
-            </div>
-
-            {/* Footer: Actions */}
-            <div className="flex items-center gap-3 pt-1 relative z-10">
-                {onTrack && appointment.status === 'waiting' && (
-                    <>
-                        <Button
-                            onClick={onTrack}
-                            className="flex-1 h-11 bg-slate-900 hover:bg-black text-white font-black text-[9px] uppercase tracking-widest transition-all"
-                        >
-                            Track Queue
-                        </Button>
-                        <div className="flex gap-1.5 h-11">
-                            <Button 
-                                variant="outline" 
-                                onClick={() => downloadICS(appointment as unknown as Appointment)}
-                                className="h-full w-14 border-slate-200 text-slate-500 hover:bg-slate-50 p-0 flex items-center justify-center shadow-sm relative group"
-                                title="Download ICS"
-                            >
-                                <Calendar size={16} />
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                onClick={() => window.open(generateGoogleCalendarLink(appointment as unknown as Appointment), '_blank')}
-                                className="h-full w-14 border-slate-200 text-medical-500 hover:bg-medical-50 p-0 flex items-center justify-center shadow-sm group"
-                                title="Add to Google Calendar"
-                            >
-                                {/* Simple 'G' indicating Google since we don't have specifically branded icons */}
-                                <span className="font-black font-sans text-base">G</span> 
-                            </Button>
-                        </div>
-                    </>
-                )}
-
-                {onAction && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
-                    <Button
-                        onClick={onAction}
-                        variant="outline"
-                        className={`h-11 font-black text-[9px] uppercase tracking-widest transition-all border-slate-200 ${appointment.status === 'waiting' ? 'flex-1 border-rose-100 text-rose-500 hover:bg-rose-50' : 'flex-1'}`}
-                    >
-                        {appointment.status === 'waiting' ? 'Cancel' : 'Action'}
-                    </Button>
-                )}
-
-                {onReview && appointment.status === 'completed' && (
-                  <Button
-                    onClick={onReview}
-                    className="flex-1 h-11 bg-teal-600 hover:bg-teal-700 text-white font-black text-[9px] uppercase tracking-widest transition-all shadow-md shadow-teal-500/10"
-                  >
-                    Share Feedback
-                  </Button>
-                )}
-            </div>
+            <StatusChip status={appointment.status} className="shrink-0 bg-ink-50" />
         </div>
-    );
-};
+
+        <dl className="grid grid-cols-2 gap-3 font-inter">
+            <div className="flex flex-col gap-1">
+                <dt className="text-ds-small tracking-[-0.72px] text-content-secondary">Date &amp; Time</dt>
+                <dd className="text-[14px] tracking-[-0.28px] text-content-primary">{appointment.date} @ {appointment.time}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+                <dt className="text-ds-small tracking-[-0.72px] text-content-secondary">Serial</dt>
+                <dd className="text-[14px] tracking-[-0.28px] text-content-primary">#{appointment.serialNumber?.toString().padStart(2, '0') || 'N/A'}</dd>
+            </div>
+            <div className="col-span-2 flex flex-col gap-1">
+                <dt className="text-ds-small tracking-[-0.72px] text-content-secondary">Session</dt>
+                <dd className="truncate text-[14px] tracking-[-0.28px] text-content-primary">{appointment.hospitalName}</dd>
+            </div>
+        </dl>
+
+        <div className="mt-auto flex flex-wrap items-center gap-2">
+            {onTrack && appointment.status === 'waiting' && (
+                <>
+                    <button type="button" onClick={onTrack} className={`${PILL} btn-sheen relative flex-1 overflow-hidden bg-gradient-to-b from-primary-500 to-primary-600 text-white`}>
+                        Track Queue
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => downloadICS(appointment as unknown as Appointment)}
+                        className={`${PILL} w-10 bg-ink-50 px-0 text-content-secondary hover:bg-primary-50`}
+                        title="Download ICS"
+                        aria-label="Download ICS"
+                    >
+                        <MaskIcon src={DS_ICONS.calendar} size={16} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => window.open(generateGoogleCalendarLink(appointment as unknown as Appointment), '_blank')}
+                        className={`${PILL} w-10 bg-ink-50 px-0 text-primary-500 hover:bg-primary-50`}
+                        title="Add to Google Calendar"
+                        aria-label="Add to Google Calendar"
+                    >
+                        <span className="font-sans text-base font-bold">G</span>
+                    </button>
+                </>
+            )}
+
+            {onAction && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
+                <button
+                    type="button"
+                    onClick={onAction}
+                    className={`${PILL} flex-1 bg-ink-50 ${appointment.status === 'waiting' ? 'text-[#ed7272] hover:bg-[#fdecec]' : 'text-content-secondary'}`}
+                >
+                    {appointment.status === 'waiting' ? 'Cancel' : 'Action'}
+                </button>
+            )}
+
+            {onReview && appointment.status === 'completed' && (
+                <button type="button" onClick={onReview} className={`${PILL} flex-1 bg-primary-50 text-primary-600 hover:bg-primary-100`}>
+                    Share Feedback
+                </button>
+            )}
+        </div>
+    </div>
+);
