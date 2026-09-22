@@ -1,12 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Button } from '../../components/ui/Button';
-import {
-   Plus, Bell, BellOff, Clock, Trash2, Calendar,
-   ChevronRight, Pill, Droplets, FlaskConical, Search,
-   CheckCircle2, AlertCircle, Info, Heart, X, Activity,
-   Check, Coffee, Sun, Moon, ShieldCheck
-} from 'lucide-react';
+import { CheckCircle2, Pill, X } from 'lucide-react';
+import { DashboardButton, MaskIcon } from '../../components/dashboard';
+import { QueueClock } from '../../components/doctor/queue/QueueClock';
 
 import { PatientStorage, fetchDoctors, fetchMedicineAlerts, toggleMedicineAlert, saveUserMedicine, fetchMedicineCatalog } from '../../storage';
 import { MedicineAlert } from '../../types';
@@ -63,9 +58,9 @@ export const MedicineTracker: React.FC = () => {
 
    const currentTimeInfo = useMemo(() => {
       const hour = new Date().getHours();
-      if (hour >= 4 && hour < 12) return { slot: 'Morning', index: 0, label: 'After Breakfast', icon: Coffee };
-      if (hour >= 12 && hour < 17) return { slot: 'Noon', index: 1, label: 'After Lunch', icon: Sun };
-      return { slot: 'Night', index: 2, label: 'Before Bed', icon: Moon };
+      if (hour >= 4 && hour < 12) return { slot: 'Morning', index: 0, label: 'After Breakfast' };
+      if (hour >= 12 && hour < 17) return { slot: 'Noon', index: 1, label: 'After Lunch' };
+      return { slot: 'Night', index: 2, label: 'Before Bed' };
    }, []);
 
    const nextDose = useMemo(() => {
@@ -90,203 +85,220 @@ export const MedicineTracker: React.FC = () => {
       });
    }, [enrichedAlerts]);
 
-   return (
-      <div className="space-y-10 animate-fade-in pb-24 px-4 md:px-0 max-w-4xl mx-auto">
+   // "Your pills for today" slot toggle (Figma Toggle 339:16144); starts on the current slot.
+   const [viewSlot, setViewSlot] = useState<number>(currentTimeInfo.index);
+   const slotMeds = enrichedAlerts.filter(m => m.dosage.split('+')[viewSlot] !== '0');
+   const pillsNow = nextDose ? Number(nextDose.dosage.split('+')[currentTimeInfo.index]) || 0 : 0;
 
-         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="space-y-2">
-               <h1 className="font-display text-4xl font-black text-ink-800 tracking-tight">Medicine Schedule</h1>
-               <p className="text-ink-500 font-bold text-lg">Your daily routine, simplified.</p>
+   return (
+      // Figma "Medicines" 339:16108 (Patient Dashboard). Page background + gutters come from Layout.
+      <div className="flex animate-fade-in flex-col gap-6 font-display">
+         {/* Dashboard Header (339:16111) */}
+         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2">
+               <h1 className="text-[24px] font-normal leading-[normal] text-content-primary lg:text-ds-h36">Medicines</h1>
+               <p className="text-ds-subtitle text-content-tertiary max-lg:text-ds-small">Your daily routine, simplified.</p>
             </div>
-            <Button onClick={() => setShowAddModal(true)} className="bg-medical-600 hover:bg-medical-600 text-white shadow-xl shadow-medical-500/20 px-6 h-12 rounded-ds-md flex items-center gap-2">
-               <Plus size={20} className="stroke-[3]" /> Add Medicine
-            </Button>
+            <DashboardButton variant="gradient" onClick={() => setShowAddModal(true)} className="self-start pr-3 md:self-auto">
+               <span className="relative z-[1] px-3">Add Medicine</span>
+            </DashboardButton>
          </div>
 
          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-32 space-y-4">
-               <div className="w-12 h-12 border-4 border-medical-600/20 border-t-medical-600 rounded-full animate-spin"></div>
-               <p className="text-ink-500 font-black tracking-widest uppercase text-[10px] animate-pulse">Syncing Pharmacy Data</p>
+            <div className="flex flex-col items-center justify-center gap-4 py-32">
+               <div className="size-10 animate-spin rounded-full border-4 border-primary-100 border-t-primary-500" />
+               <p className="animate-pulse text-ds-body text-content-tertiary">Syncing Pharmacy Data</p>
             </div>
          ) : enrichedAlerts.length === 0 ? (
-            <div className="text-center py-32 bg-white rounded-ds-xl border-2 border-dashed border-ink-100">
-               <Pill className="mx-auto text-ink-200 mb-6" size={80} />
-               <h3 className="font-display text-2xl font-black text-ink-800 mb-2">No Active Medicines</h3>
-               <p className="text-ink-500 font-bold max-w-xs mx-auto">Your medicine alerts will appear here after your next prescription.</p>
+            <div className="flex flex-col items-center gap-3 rounded-ds-lg bg-white px-6 py-24 text-center">
+               <Pill className="text-ink-300" size={56} />
+               <h3 className="text-ds-title-24 text-content-primary">No Active Medicines</h3>
+               <p className="max-w-xs text-ds-body text-content-tertiary">Your medicine alerts will appear here after your next prescription.</p>
             </div>
          ) : (
-            <>
-               {/* 1. NEXT DOSE CARD (PRIMARY HIGHLIGHT) */}
-               <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
-                  <h3 className="text-[11px] font-black text-medical-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                     <Clock size={14} /> What to take now
-                  </h3>
-                  {nextDose ? (
-                     <div className="relative group">
-                        <GlassCard className="relative p-6 md:p-8 bg-white border-medical-100 rounded-ds-lg overflow-hidden flex flex-col md:flex-row items-center gap-6 md:gap-8 transition-all duration-500 hover:border-medical-200 shadow-xl shadow-medical-700/5">
-                           <div className="w-16 h-16 md:w-20 md:h-20 bg-medical-50 rounded-ds-md flex items-center justify-center text-medical-600 shrink-0 border border-medical-100">
-                              <Pill size={32} strokeWidth={2.5} />
-                           </div>
-                           <div className="flex-1 text-center md:text-left space-y-2">
-                              <div>
-                                 <div className="flex flex-wrap justify-center md:justify-start items-center gap-2 mb-1">
-                                    <span className="bg-medical-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">{currentTimeInfo.slot} Slot</span>
-                                    <span className="text-ink-500 font-bold text-xs">{currentTimeInfo.label}</span>
-                                 </div>
-                                 <h2 className="font-display text-2xl md:text-3xl font-black text-ink-800 tracking-tight leading-none">{nextDose.medicineName}</h2>
+            // Row 1: Left (483) clock + next-dose card | Patients Status timeline
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+               <div className="flex w-full flex-col gap-4 lg:w-[483px] lg:shrink-0">
+                  <QueueClock size="md" icon={ICON + 'pill-badge.svg'} />
+
+                  {/* Card 3: what to take now */}
+                  <section aria-label="What to take now" className="flex flex-col gap-6 rounded-ds-lg bg-white p-6">
+                     {nextDose ? (
+                        <>
+                           <div className="flex flex-col gap-[10px]">
+                              <div className="flex items-center justify-between gap-3">
+                                 <p className="truncate text-ds-title-24 text-content-primary">{nextDose.medicineName}</p>
+                                 <SlotIcons dosage={nextDose.dosage} active={currentTimeInfo.index} />
                               </div>
-                              <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-ink-500 font-bold">
-                                 <div className="flex items-center gap-1.5 text-base font-black text-ink-700">
-                                    <Clock size={16} className="text-medical-500" /> {currentTimeInfo.slot === 'Morning' ? '08:30 AM' : currentTimeInfo.slot === 'Noon' ? '02:00 PM' : '09:30 PM'}
-                                 </div>
-                                 <div className="flex items-center gap-1.5 text-sm">
-                                    <FlaskConical size={16} className="text-ink-500" /> Dose: <span className="text-medical-600 font-black">{nextDose.dosage}</span>
-                                 </div>
-                              </div>
+                              <p className="text-ds-paragraph text-content-secondary">
+                                 {pillsNow > 0 ? `${pillsNow} Pill${pillsNow > 1 ? 's' : ''} Now` : currentTimeInfo.label} | {currentTimeInfo.slot}
+                              </p>
                            </div>
                            <button
+                              type="button"
                               onClick={() => toggleAlert(nextDose.id)}
-                              className="w-full md:w-auto px-8 py-4 bg-medical-600 hover:bg-medical-600 text-white rounded-ds-md font-black text-lg shadow-lg shadow-medical-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                              className="btn-sheen relative inline-flex h-12 w-full items-center justify-center overflow-hidden rounded-full bg-primary-500 py-2 pl-1 pr-1 font-inter text-[16px] tracking-[-0.32px] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
                            >
-                              <Check size={24} strokeWidth={3} /> Mark as Taken
+                              <span className="-mr-[14px] grid size-8 place-items-center"><MaskIcon src={ICON + 'btn-tick.svg'} size={32} /></span>
+                              <span className="px-3">Mark As Taken</span>
                            </button>
-                        </GlassCard>
-                     </div>
-                  ) :
-                     (
-                        <GlassCard className="p-10 bg-teal-50/50 border-teal-100 rounded-ds-xl border-dashed text-center space-y-3">
-                           <CheckCircle2 size={48} className="text-teal-500 mx-auto mb-2" />
-                           <h3 className="font-display text-2xl font-black text-teal-900">All Set for Now!</h3>
-                           <p className="text-teal-600 font-bold">You've finished all your medicines for the current session.</p>
-                        </GlassCard>
+                        </>
+                     ) : (
+                        <div className="flex flex-col items-center gap-2 py-4 text-center">
+                           <CheckCircle2 size={40} className="text-primary-500" />
+                           <h3 className="text-ds-title-20 text-content-primary">All Set for Now!</h3>
+                           <p className="text-ds-body text-content-secondary">You've finished all your medicines for the current session.</p>
+                        </div>
                      )}
-               </section>
+                  </section>
+               </div>
 
-               {/* 2. TODAY'S PROGRESS TIMELINE */}
-               <section className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
-                  <h3 className="text-[11px] font-black text-medical-500 uppercase tracking-[0.2em] mb-6">Today's Progress</h3>
-                  <div className="bg-white p-6 md:p-8 rounded-ds-lg border border-ink-100 shadow-sm flex items-center justify-between gap-4">
-                     {['Morning', 'Noon', 'Night'].map((slot, i) => {
-                        const s = progress[i];
-                        const SlotIcon = i === 0 ? Coffee : i === 1 ? Sun : Moon;
-                        return (
-                           <div key={slot} className="flex-1 flex flex-col items-center gap-3 relative">
-                              {i < 2 && <div className="absolute top-5 left-[60%] w-[80%] h-0.5 bg-ink-100"></div>}
-                              <div className={`w-12 h-12 md:w-14 md:h-14 rounded-ds-md flex items-center justify-center transition-all duration-500 z-10 ${s.status === 'taken' ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20' : s.status === 'pending' ? 'bg-medical-50 text-medical-600 border border-medical-100' : 'bg-ink-50 text-ink-300'}`}>
-                                 {s.status === 'taken' ? <Check size={24} strokeWidth={3} /> : <SlotIcon size={24} />}
-                              </div>
-                              <span className={`text-[10px] md:text-xs font-black uppercase tracking-widest ${s.status === 'taken' ? 'text-teal-600' : s.status === 'pending' ? 'text-medical-600' : 'text-ink-500'}`}>
-                                 {slot}
-                              </span>
-                           </div>
-                        )
-                     })}
+               {/* Patients Status: "Your pills for today" */}
+               <section aria-label="Your pills for today" className="flex min-w-0 flex-1 flex-col gap-6 rounded-[20px] lg:p-5 lg:pt-3">
+                  <div className="flex items-center justify-between gap-3">
+                     <h2 className="text-ds-title-24 text-content-primary max-sm:text-ds-title-20">Your pills for today</h2>
+                     <div role="tablist" aria-label="Time of day" className="flex items-center gap-1 rounded-[64px] bg-surface">
+                        {SLOTS.map((slot, i) => (
+                           <button
+                              key={slot.name}
+                              type="button"
+                              role="tab"
+                              aria-selected={viewSlot === i}
+                              aria-label={`${slot.name}${progress[i].status === 'taken' ? ' (all taken)' : ''}`}
+                              onClick={() => setViewSlot(i)}
+                              className={`relative grid size-8 place-items-center rounded-full transition-colors duration-ds-fast ease-ds-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500 ${viewSlot === i ? 'bg-primary-500 text-white' : 'text-content-secondary'}`}
+                           >
+                              <MaskIcon src={ICON + slot.icon} size={32} />
+                              {progress[i].status === 'taken' && viewSlot !== i && <span aria-hidden="true" className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-primary-500" />}
+                           </button>
+                        ))}
+                     </div>
                   </div>
-               </section>
 
-               {/* 3. ACTIVE MEDICINES LIST */}
-               <section className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
-                  <div className="flex justify-between items-end mb-6">
-                     <h3 className="text-[11px] font-black text-medical-500 uppercase tracking-[0.2em]">Active Medicines</h3>
-                     <span className="text-[10px] font-black text-ink-500 uppercase tracking-widest">{enrichedAlerts.length} Medicines</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     {enrichedAlerts.map((med, i) => (
-                        <GlassCard key={med.id} className="p-6 md:p-8 bg-white border-ink-100 rounded-ds-lg hover:border-medical-100 transition-all flex flex-col justify-between gap-6 group">
-                           <div className="flex justify-between items-start">
-                              <div className="space-y-3">
-                                 <h4 className="font-display text-xl md:text-2xl font-black text-ink-800 leading-tight group-hover:text-medical-600 transition-colors">{med.medicineName}</h4>
-                                 <div className="flex flex-wrap items-center gap-3">
-                                    <div className="flex items-center gap-1.5 bg-medical-50 px-3 py-1 rounded-full border border-medical-100">
-                                       <Activity size={12} className="text-medical-500" />
-                                       <span className="text-[10px] font-black text-medical-600 uppercase tracking-widest">{med.dosage}</span>
-                                    </div>
-                                    <span className="text-[11px] font-bold text-ink-500 flex items-center gap-1.5 uppercase tracking-widest">
-                                       <Calendar size={12} /> {med.durationDays} Days Left
-                                    </span>
+                  {slotMeds.length === 0 ? (
+                     <p className="rounded-2xl bg-white px-6 py-10 text-center text-ds-body text-content-tertiary">No pills scheduled for the {SLOTS[viewSlot].name.toLowerCase()}.</p>
+                  ) : (
+                     <ol className="flex flex-col">
+                        {slotMeds.map((med, i) => {
+                           const isCurrent = !med.completed && nextDose?.id === med.id && viewSlot === currentTimeInfo.index;
+                           const pills = Number(med.dosage.split('+')[viewSlot]) || 0;
+                           return (
+                              <li key={med.id} className="flex h-[89px] gap-2">
+                                 {/* Status rail: dashed Ghost line + 24px state dot */}
+                                 <div aria-hidden="true" className="flex w-8 shrink-0 flex-col items-center gap-0.5">
+                                    <span className={`h-3 w-px border-l border-dashed ${i === 0 ? 'border-transparent' : 'border-ghost'}`} />
+                                    {med.completed ? (
+                                       <span className="grid size-6 place-items-center rounded-full bg-primary-400 text-white"><MaskIcon src={ICON + 'track-check.svg'} size={24} /></span>
+                                    ) : (
+                                       <span className={`size-6 rounded-full ${isCurrent ? 'border-2 border-primary-500' : 'border border-content-secondary'}`} />
+                                    )}
+                                    <span className={`w-px flex-1 border-l border-dashed ${i === slotMeds.length - 1 ? 'border-transparent' : 'border-ghost'}`} />
                                  </div>
-                              </div>
-                              <div className="w-12 h-12 bg-ink-50 rounded-ds-md flex items-center justify-center text-ink-300 group-hover:bg-medical-50 group-hover:text-medical-500 transition-all">
-                                 <Pill size={24} />
-                              </div>
-                           </div>
-
-                           <div className="pt-6 border-t border-ink-50 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                 <div className="w-6 h-6 rounded-full bg-ink-100 flex items-center justify-center text-ink-500 text-[10px] font-black">DR</div>
-                                 <p className="text-[11px] font-bold text-ink-500 uppercase tracking-widest">{med.doctorName}</p>
-                              </div>
-                              <div className="flex gap-1.5">
-                                 {[0, 1, 2].map(idx => (
-                                    <div
-                                       key={idx}
-                                       className={`w-2 h-2 rounded-full ${med.dosage.split('+')[idx] !== '0' ? 'bg-medical-500' : 'bg-ink-100'}`}
-                                    />
-                                 ))}
-                              </div>
-                           </div>
-                        </GlassCard>
-                     ))}
-                  </div>
+                                 {/* Medicine Track card */}
+                                 <div className={`mb-2 flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl p-4 ${isCurrent ? 'bg-primary-500 text-white' : med.completed ? 'bg-surface opacity-50' : 'bg-white shadow-ds-track'}`}>
+                                    <div className="flex min-w-0 flex-col gap-2">
+                                       <p className={`truncate text-ds-title-20 ${isCurrent ? 'text-white' : 'text-content-primary'}`}>{med.medicineName}</p>
+                                       <p className={`truncate text-ds-body ${isCurrent ? 'text-white' : 'text-content-secondary'}`}>
+                                          {pills} pill{pills === 1 ? '' : 's'} · {med.durationDays} days left · {med.doctorName}
+                                       </p>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-4">
+                                       <span className={`h-9 w-px ${isCurrent ? 'bg-white/60' : 'bg-ghost'}`} />
+                                       <span className="flex w-[40px] flex-col gap-1">
+                                          <span className={`text-ds-body ${isCurrent ? 'text-white' : 'text-content-primary'}`}>{SLOTS[viewSlot].time}</span>
+                                          <span className={`text-ds-small ${isCurrent ? 'text-white' : 'text-content-secondary'}`}>{SLOTS[viewSlot].meridiem}</span>
+                                       </span>
+                                    </div>
+                                 </div>
+                              </li>
+                           );
+                        })}
+                     </ol>
+                  )}
                </section>
-            </>
+            </div>
          )}
 
-         <div className="pt-10 flex flex-col items-center gap-6">
-            <p className="text-[10px] text-ink-500 font-bold uppercase tracking-[0.2em] italic">Managed by DocOclock Smart Pharmacy Sync</p>
-            <div className="flex items-center gap-2 px-6 py-3 bg-white border border-ink-100 rounded-ds-md shadow-sm text-[11px] font-black text-ink-500 uppercase tracking-widest">
-               <ShieldCheck className="text-teal-500" size={16} /> Data Encryption Active
-            </div>
-         </div>
-
-         {/* ADD MEDICINE MODAL */}
+         {/* ADD MEDICINE MODAL (Figma Modal 339:15402) */}
          {showAddModal && currentPatientId && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-800/60 backdrop-blur-sm animate-in fade-in duration-300">
-               <GlassCard className="max-w-md w-full p-8 shadow-2xl scale-in-center bg-white rounded-ds-lg">
-                  <div className="flex justify-between items-center mb-6">
-                     <h2 className="font-display text-2xl font-black text-ink-800">Add Medicine</h2>
-                     <button onClick={() => setShowAddModal(false)} className="text-ink-500 hover:text-red-500 hover:bg-red-50 p-2 rounded-ds-sm transition-all"><X size={20} /></button>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4 ds-fade-in" role="dialog" aria-modal="true" aria-labelledby="add-med-title">
+               <div className="relative w-full max-w-[565px] rounded-ds-xl bg-white p-6 shadow-ds-modal sm:p-9">
+                  <button type="button" onClick={() => setShowAddModal(false)} aria-label="Close" className="absolute right-5 top-5 grid size-9 place-items-center rounded-full text-content-tertiary transition-colors duration-ds-fast ease-ds-out hover:text-[#ed7272]"><X size={18} /></button>
+                  <div className="mb-6 flex flex-col gap-2 pr-8">
+                     <h2 id="add-med-title" className="text-ds-title-24 text-content-primary">Add Medicines</h2>
+                     <p className="text-ds-body text-content-secondary">Track a medicine and get reminded for every dose.</p>
                   </div>
-                  
+
                   <form onSubmit={async (e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
                      const medName = fd.get('medicineName') as string;
                      const dosage = `${fd.get('morning') || 0}+${fd.get('noon') || 0}+${fd.get('night') || 0}`;
                      const duration = parseInt(fd.get('duration') as string) || 7;
-                     
+
                      // Use the free text value if standard selection fails (or catalog is missing)
                      await saveUserMedicine(currentPatientId, medName, dosage, duration);
                      setShowAddModal(false);
                      setRefresh(p => p + 1);
-                  }} className="space-y-6">
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1">Medicine Name</label>
-                        <input name="medicineName" list="catalog-meds" required placeholder="Type or select medicine..." className="w-full px-5 py-3.5 bg-ink-50 border border-ink-100 rounded-ds-md focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 outline-none font-bold text-ink-800 transition-all" />
+                  }} className="flex flex-col gap-4">
+                     <label className="flex flex-col gap-3">
+                        <span className="text-ds-paragraph text-content-secondary">Search Medicine</span>
+                        <input name="medicineName" list="catalog-meds" required placeholder="Search a medicine to add ..." className={FIELD} />
                         <datalist id="catalog-meds">
                            {medicineCatalog.map(m => <option key={m.id} value={m.name} />)}
                         </datalist>
+                     </label>
+
+                     <div className="grid grid-cols-3 gap-2">
+                        {(['morning', 'noon', 'night'] as const).map((time) => (
+                           <label key={time} className="flex min-w-0 flex-col gap-3">
+                              <span className="truncate text-ds-paragraph capitalize text-content-secondary">{time}</span>
+                              <input name={time} type="number" min="0" max="5" defaultValue="0" aria-label={`${time} dosage`} className={FIELD} />
+                           </label>
+                        ))}
                      </div>
 
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1">Daily Dosage</label>
-                        <div className="grid grid-cols-3 gap-3">
-                           {['morning', 'noon', 'night'].map((time) => (
-                              <input key={time} name={time} type="number" min="0" max="5" defaultValue="0" placeholder={time} className="w-full px-4 py-3 text-center bg-ink-50 border border-ink-100 rounded-ds-sm focus:ring-2 focus:ring-medical-500/20 focus:border-medical-500 outline-none font-bold text-ink-800" />
-                           ))}
-                        </div>
-                     </div>
+                     <label className="flex flex-col gap-3">
+                        <span className="text-ds-paragraph text-content-secondary">Duration</span>
+                        <input name="duration" type="number" min="1" max="90" required defaultValue="7" placeholder="Type (ex: 7 days)" className={FIELD} />
+                     </label>
 
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1">Duration (Days)</label>
-                        <input name="duration" type="number" min="1" max="90" required defaultValue="7" className="w-full px-5 py-3.5 bg-ink-50 border border-ink-100 rounded-ds-md focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 outline-none font-bold text-ink-800 transition-all" />
+                     <div className="mt-4 flex items-center gap-2">
+                        <DashboardButton variant="secondary" icon={false} onClick={() => setShowAddModal(false)} className="flex-1 px-4">Cancel</DashboardButton>
+                        <DashboardButton type="submit" variant="primary" icon={false} className="flex-[2] px-4">Confirm</DashboardButton>
                      </div>
-
-                     <Button type="submit" fullWidth className="h-14 bg-medical-600 hover:bg-medical-600 text-white rounded-ds-md font-black text-lg shadow-xl shadow-medical-500/20 py-2 mt-4">Save Tracker</Button>
                   </form>
-               </GlassCard>
+               </div>
             </div>
          )}
       </div>
    );
 };
+
+const ICON = '/assets/figma/patient-live-appts/';
+const FIELD = 'h-[42px] w-full rounded-2xl bg-ink-50 px-3 text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500';
+
+// Morning / Noon / Night — the app's fixed reminder times for each slot.
+const SLOTS = [
+   { name: 'Morning', icon: 'slot-morning.svg', time: '08:30', meridiem: 'AM' },
+   { name: 'Noon', icon: 'slot-noon.svg', time: '02:00', meridiem: 'PM' },
+   { name: 'Night', icon: 'slot-night.svg', time: '09:30', meridiem: 'PM' },
+] as const;
+
+// The next-dose card's three slot glyphs: slots with a dose are dark, the current slot gets Figma's primary ring.
+const SlotIcons: React.FC<{ dosage: string; active: number }> = ({ dosage, active }) => (
+   <div className="flex shrink-0 items-start gap-1">
+      {SLOTS.map((slot, i) => {
+         const hasDose = dosage.split('+')[i] !== '0';
+         return (
+            <span
+               key={slot.name}
+               title={slot.name}
+               className={`grid size-8 place-items-center rounded-full ${i === active ? 'border border-primary-500 text-primary-500' : hasDose ? 'text-content-secondary' : 'text-content-disabled'}`}
+            >
+               <MaskIcon src={ICON + slot.icon} size={32} />
+            </span>
+         );
+      })}
+   </div>
+);

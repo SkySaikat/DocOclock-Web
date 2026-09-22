@@ -14,9 +14,11 @@ interface QueueClockProps {
   size?: 'lg' | 'md';
   note?: string;
   className?: string;
+  /** Badge glyph (default: stethoscope). Patient Medicines 339:16108 uses the pill glyph. */
+  icon?: string;
 }
 
-export const QueueClock: React.FC<QueueClockProps> = ({ size = 'lg', note, className = '' }) => {
+export const QueueClock: React.FC<QueueClockProps> = ({ size = 'lg', note, className = '', icon = STETHOSCOPE }) => {
   const [label, setLabel] = useState(() => formatClock(new Date()));
   useEffect(() => {
     const id = window.setInterval(() => setLabel(formatClock(new Date())), 1000);
@@ -31,7 +33,7 @@ export const QueueClock: React.FC<QueueClockProps> = ({ size = 'lg', note, class
           <p className={`font-display text-content-primary ${size === 'lg' ? 'text-ds-display' : 'text-ds-h36'} whitespace-nowrap`} aria-live="off">{label}</p>
         </div>
         <span aria-hidden="true" className="grid place-items-center size-10 shrink-0 rounded-full bg-white p-1 shadow-ds-pill text-primary-500">
-          <MaskIcon src={STETHOSCOPE} size={32} />
+          <MaskIcon src={icon} size={32} />
         </span>
       </div>
       {note && <p className="font-display text-[16px] leading-[normal] text-content-primary">{note}</p>}
