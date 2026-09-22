@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Button } from '../../components/ui/Button';
-import { Plus, Hospital, MapPin, CreditCard, Save, X, Edit2, Trash2, Clock, ChevronRight, Search, GitBranch, Tag, Send } from 'lucide-react';
-import { ChamberCard } from '../../components/ui/ChamberCard';
+import { Hospital, MapPin, CreditCard, Save, X, Pencil, Trash2, Clock, Search, GitBranch, Tag, Send } from 'lucide-react';
+import { DashboardButton, DS_ICONS, MaskIcon } from '../../components/dashboard';
+import { useToast } from '../../components/ToastProvider';
+import { PanelHeader } from '../../components/doctor/manage/PanelHeader';
 import { fetchDoctorChambers, saveChamberWithSchedules, deleteChamberFromSupabase, submitChamberRequest, fetchChamberRequests, PracticeChamber, DoctorPracticeSettings as SettingsType, WeeklyDaySchedule, DoctorStorage } from '../../storage';
 import { supabase } from '../../supabase';
 import { AssistantManager } from '../../components/doctor/AssistantManager';
@@ -23,6 +23,7 @@ const DAYS = [6, 0, 1, 2, 3, 4, 5]; // Starting with Saturday as per local conve
 export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => void }> = ({ onNavigate }) => {
     const session = DoctorStorage.get();
     const doctorId = session?.id || '';
+    const { showToast } = useToast();
 
     const [settings, setSettings] = useState<SettingsType>({ dailyBookingLimit: 40, reportFreeDays: 7, chambers: [] });
     const [chamberRequests, setChamberRequests] = useState<any[]>([]);
@@ -147,7 +148,7 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                 );
                 await loadSettings();
                 resetForm();
-                alert('Request submitted! The hospital admin will review your chamber request.');
+                showToast('Request submitted! The hospital admin will review your chamber request.', 'success');
                 return;
             }
 
@@ -177,7 +178,7 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
             resetForm();
         } catch (error) {
             console.error('Failed to save chamber:', error);
-            alert('Failed to save chamber. Please try again.');
+            showToast('Failed to save chamber. Please try again.', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -223,7 +224,7 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                 await loadSettings();
             } catch (error) {
                 console.error('Failed to delete chamber:', error);
-                alert('Failed to delete chamber.');
+                showToast('Failed to delete chamber.', 'error');
             } finally {
                 setIsLoading(false);
             }
@@ -259,127 +260,116 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
         return `${dayShorts.join(', ')} — ${first.startTime}–${first.endTime} (Limit: ${first.dailyLimit})`;
     };
 
+    const pendingRequests = chamberRequests.filter(r => r.status === 'pending');
+    const rejectedRequests = chamberRequests.filter(r => r.status === 'rejected');
+
     return (
-        <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-fade-in">
+        // Figma "Manage" 257:10013: welcome header + View Profile, Hospitals panel | Assistants panel (436). Layout owns bg + gutters.
+        <div className="flex animate-fade-in flex-col gap-6 font-display">
             {onNavigate && <DoctorTabBar currentPath="/doctor/practice-settings" onNavigate={onNavigate} />}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <h1 className="text-3xl md:text-4xl font-display font-black text-ink-800 tracking-tight">Practice Settings</h1>
-                    <p className="text-ink-500 font-bold">Manage your consultation chambers, fees, and weekly schedule.</p>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-[24px] font-normal leading-[normal] text-content-primary lg:text-ds-h36">Welcome{session?.name ? `, ${session.name}` : ''}</h1>
+                    <p className="text-ds-subtitle text-content-tertiary max-lg:text-ds-small">Manage your chambers, fees, weekly schedule and assistants</p>
                 </div>
-            </div>
-
-            {/* PENDING CHAMBER REQUESTS */}
-            {chamberRequests.filter(r => r.status === 'pending').length > 0 && (
-                <div className="space-y-3">
-                    <h2 className="text-xl font-display font-black text-ink-800 flex items-center gap-2">
-                        <Clock size={20} className="text-orange-500" /> Pending Requests
-                    </h2>
-                    {chamberRequests.filter(r => r.status === 'pending').map(req => (
-                        <div key={req.id} className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-between gap-4">
-                            <div>
-                                <p className="font-black text-ink-800">{req.hospital?.name}</p>
-                                {req.branch && <p className="text-xs text-ink-500 font-medium">{req.branch.name}</p>}
-                                {req.sector && <p className="text-xs text-ink-500 font-medium">{req.sector.name}</p>}
-                                <p className="text-xs text-ink-500 font-medium mt-1">{req.hospital?.address}</p>
-                            </div>
-                            <div className="shrink-0 text-right">
-                                <span className="px-3 py-1.5 bg-orange-100 text-orange-700 text-xs font-black rounded-full uppercase tracking-wider">Pending Approval</span>
-                                <p className="text-xs text-ink-500 font-medium mt-1">Fee: ৳{req.proposed_fee}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* REJECTED REQUESTS */}
-            {chamberRequests.filter(r => r.status === 'rejected').length > 0 && (
-                <div className="space-y-3">
-                    <h2 className="text-xl font-display font-black text-ink-800 flex items-center gap-2">
-                        <X size={20} className="text-red-500" /> Rejected Requests
-                    </h2>
-                    {chamberRequests.filter(r => r.status === 'rejected').map(req => (
-                        <div key={req.id} className="p-4 bg-red-50 border border-red-100 rounded-2xl">
-                            <p className="font-black text-ink-800">{req.hospital?.name}</p>
-                            {req.note && <p className="text-xs text-red-600 font-bold mt-1">Reason: {req.note}</p>}
-                            <span className="mt-1 inline-block px-3 py-1 bg-red-100 text-red-700 text-xs font-black rounded-full">Rejected</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* CHAMBERS LIST */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-display font-black text-ink-800">Your Chambers</h2>
-                    {!showAddForm && (
-                        <Button
-                            onClick={() => setShowAddForm(true)}
-                            className="bg-teal-600 hover:bg-teal-700 h-10 px-4 rounded-ds-sm text-xs font-black flex items-center gap-2"
-                        >
-                            <Plus size={16} /> Add Chamber
-                        </Button>
-                    )}
-                </div>
-
-                {settings.chambers.length === 0 ? (
-                    <div className="p-20 bg-white border-2 border-dashed border-slate-100 rounded-ds-xl text-center shadow-ds-soft">
-                        <Hospital size={48} className="text-slate-200 mx-auto mb-4" />
-                        <p className="text-ink-500 font-bold">No chambers added yet. Start by adding your first hospital or clinic.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {settings.chambers.map((chamber) => (
-                            <ChamberCard
-                                key={chamber.id}
-                                chamber={{
-                                    hospitalName: chamber.hospitalName,
-                                    location: chamber.address,
-                                    schedule: chamber.schedule || [],
-                                    fee: chamber.feeNormal,
-                                }}
-                                onEdit={() => handleEditChamber(chamber)}
-                                onDelete={() => handleDeleteChamber(chamber.id)}
-                            />
-                        ))}
-                    </div>
+                {onNavigate && (
+                    <DashboardButton variant="gradient" icon={<MaskIcon src={DS_ICONS.change} size={16} />} onClick={() => onNavigate('/doctor/profile')} className="self-start pr-3 md:self-auto">
+                        <span className="relative z-[1] px-3">View Profile</span>
+                    </DashboardButton>
                 )}
             </div>
 
-            {/* ASSISTANT MANAGER SECTION */}
-            <div className="mt-8 pt-8 border-t border-slate-100">
-                <AssistantManager />
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_436px]">
+                {/* HOSPITALS */}
+                <section aria-label="Hospitals" className="flex min-h-[536px] flex-col gap-6 rounded-ds-lg bg-white p-5">
+                    <PanelHeader title="Hospitals" action="Add Hospital" onAction={!showAddForm ? () => setShowAddForm(true) : undefined} />
+
+                    {(pendingRequests.length > 0 || rejectedRequests.length > 0) && (
+                        <div className="flex flex-col gap-2">
+                            {pendingRequests.map(req => (
+                                <div key={req.id} className="flex items-center justify-between gap-4 rounded-2xl border border-orange-100 bg-orange-50 p-4">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-ds-body text-content-primary">{req.hospital?.name}</p>
+                                        <p className="truncate text-ds-small text-content-tertiary">{[req.branch?.name, req.sector?.name, req.hospital?.address].filter(Boolean).join(' · ')}</p>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-ds-small text-orange-700"><Clock size={12} /> Pending Approval</span>
+                                        <p className="mt-1 text-ds-small text-content-tertiary">Fee: ৳{req.proposed_fee}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            {rejectedRequests.map(req => (
+                                <div key={req.id} className="flex items-center justify-between gap-4 rounded-2xl border border-red-100 bg-red-50 p-4">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-ds-body text-content-primary">{req.hospital?.name}</p>
+                                        {req.note && <p className="text-ds-small text-red-600">Reason: {req.note}</p>}
+                                    </div>
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-ds-small text-red-700"><X size={12} /> Rejected</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {isLoading ? (
+                        <p className="py-16 text-center text-ds-body text-content-tertiary">Loading chambers...</p>
+                    ) : settings.chambers.length === 0 ? (
+                        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+                            <Hospital size={40} className="text-ink-300" />
+                            <p className="max-w-xs text-ds-body text-content-tertiary">No chambers added yet. Start by adding your first hospital or clinic.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                            {settings.chambers.map((chamber) => (
+                                <HospitalCard
+                                    key={chamber.id}
+                                    name={chamber.hospitalName}
+                                    address={chamber.address}
+                                    days={(chamber.schedule || []).map(sc => Number(sc.day))}
+                                    fee={chamber.feeNormal}
+                                    summary={getScheduleSummary(chamber.schedule)}
+                                    onEdit={() => handleEditChamber(chamber)}
+                                    onDelete={() => handleDeleteChamber(chamber.id)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                {/* ASSISTANTS */}
+                <section aria-label="Assistants" className="flex min-h-[536px] flex-col gap-6 rounded-ds-lg bg-white p-5">
+                    <AssistantManager />
+                </section>
             </div>
 
             {/* ADD/EDIT CHAMBER FORM MODAL */}
             {showAddForm && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white rounded-ds-xl p-8 md:p-12 shadow-premium border border-slate-100 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300 relative">
-                        <div className="flex justify-between items-center mb-10">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 p-4 ds-fade-in" role="dialog" aria-modal="true" aria-labelledby="chamber-form-title">
+                    <div className="relative max-h-[90vh] w-full max-w-[696px] overflow-y-auto rounded-ds-xl bg-white p-6 font-display shadow-ds-modal md:p-9">
+                        <div className="mb-6 flex items-start justify-between gap-4">
                             <div className="space-y-1">
-                                <h2 className="text-2xl font-display font-black text-ink-800 tracking-tight">
-                                    {editingChamberId ? 'Edit Chamber Configuration' : 'Setup New Chamber'}
+                                <h2 id="chamber-form-title" className="text-ds-title-24 text-content-primary">
+                                    {editingChamberId ? 'Edit Hospital' : 'Add Hospital'}
                                 </h2>
-                                <p className="text-sm font-bold text-ink-500">Please provide accurate information for patient booking.</p>
+                                <p className="text-ds-body text-content-secondary">Please provide accurate information for patient booking.</p>
                             </div>
-                            <button onClick={resetForm} className="w-12 h-12 flex items-center justify-center bg-ink-50 text-ink-500 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
-                                <X size={24} />
+                            <button onClick={resetForm} aria-label="Close" className="grid size-10 shrink-0 place-items-center rounded-full bg-ink-50 text-content-tertiary transition-colors duration-ds-fast ease-ds-out hover:text-[#ed7272]">
+                                <X size={20} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveChamber} className="space-y-8">
+                        <form onSubmit={handleSaveChamber} className="space-y-6">
                             {/* BASIC INFO */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 {/* HOSPITAL SELECTOR */}
                                 <div className="md:col-span-2 space-y-3">
-                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="flex items-center gap-2 text-ds-paragraph text-content-secondary">
                                         <Hospital size={14} className="text-medical-500" /> Hospital / Clinic
                                         {selectedHospitalId && (
-                                            <span className="ml-2 px-2 py-0.5 bg-green-50 text-green-600 text-[9px] font-black rounded-full uppercase tracking-wider">Registered Hospital Linked</span>
+                                            <span className="ml-2 rounded-full bg-primary-50 px-2 py-0.5 text-ds-small text-primary-600">Registered Hospital Linked</span>
                                         )}
                                     </label>
                                     <div className="relative">
-                                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-content-tertiary">
                                             <Search size={16} />
                                         </div>
                                         <input
@@ -387,28 +377,28 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                             value={hospitalSearchQuery}
                                             onChange={e => searchHospitals(e.target.value)}
                                             placeholder="Search registered hospitals… or type custom name below"
-                                            className="w-full pl-12 pr-5 py-4 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                            className="w-full h-[46px] rounded-2xl bg-ink-50 px-4 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500 pl-11"
                                         />
                                         {selectedHospitalId && (
                                             <button type="button" onClick={() => { setSelectedHospitalId(undefined); setHospitalSearchQuery(''); setFormData(p => ({ ...p, hospitalName: '', address: '' })); }}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500">
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-content-tertiary hover:text-[#ed7272]">
                                                 <X size={16} />
                                             </button>
                                         )}
                                         {hospitalSearchResults.length > 0 && (
-                                            <div className="absolute z-50 top-full mt-2 left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden">
+                                            <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl bg-white shadow-ds-rise-lg outline outline-1 -outline-offset-1 outline-surface">
                                                 {hospitalSearchResults.map(h => (
                                                     <button key={h.id} type="button"
                                                         onClick={() => selectHospital(h)}
-                                                        className="w-full text-left px-5 py-3 hover:bg-medical-50 transition-colors border-b border-slate-50 last:border-0">
-                                                        <p className="font-bold text-ink-800 text-sm">{h.name}</p>
-                                                        <p className="text-xs text-ink-500 font-medium">{h.address}</p>
+                                                        className="w-full border-b border-ink-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-primary-50">
+                                                        <p className="text-ds-body text-content-primary">{h.name}</p>
+                                                        <p className="text-ds-small text-content-tertiary">{h.address}</p>
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-[10px] text-ink-500 font-bold ml-1">
+                                    <p className="text-ds-small text-content-tertiary">
                                         Select a registered hospital to send a join request. Or fill in manually below for a custom chamber.
                                     </p>
                                 </div>
@@ -418,13 +408,13 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                     <>
                                         {branches.length > 0 && (
                                             <div className="space-y-3">
-                                                <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                <label className="flex items-center gap-2 text-ds-paragraph text-content-secondary">
                                                     <GitBranch size={14} className="text-medical-500" /> Select Branch (optional)
                                                 </label>
                                                 <select
                                                     value={selectedBranchId}
                                                     onChange={e => { setSelectedBranchId(e.target.value); setSelectedSectorId(''); }}
-                                                    className="w-full p-4 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                                    className="w-full h-[46px] rounded-2xl bg-ink-50 px-4 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                                 >
                                                     <option value="">Hospital-wide (no specific branch)</option>
                                                     {branches.map(b => <option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
@@ -433,28 +423,28 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                         )}
                                         {sectors.filter(s => !selectedBranchId || s.branch_id === selectedBranchId || !s.branch_id).length > 0 && (
                                             <div className="space-y-3">
-                                                <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                <label className="flex items-center gap-2 text-ds-paragraph text-content-secondary">
                                                     <Tag size={14} className="text-purple-500" /> Select Sector (optional)
                                                 </label>
                                                 <select
                                                     value={selectedSectorId}
                                                     onChange={e => setSelectedSectorId(e.target.value)}
-                                                    className="w-full p-4 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 focus:bg-white transition-all"
+                                                    className="w-full h-[46px] rounded-2xl bg-ink-50 px-4 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                                 >
                                                     <option value="">No specific sector</option>
                                                     {sectors.filter(s => !selectedBranchId || s.branch_id === selectedBranchId || !s.branch_id).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                 </select>
                                             </div>
                                         )}
-                                        <div className="p-4 bg-medical-50 border border-medical-100 rounded-2xl">
-                                            <p className="text-xs font-black text-medical-700">Request Mode Active</p>
-                                            <p className="text-xs text-medical-600 font-medium mt-1">Clicking Save will submit a join request to the hospital admin. Your chamber will be created once approved.</p>
+                                        <div className="rounded-2xl bg-primary-50 p-4 md:col-span-2">
+                                            <p className="text-ds-body text-primary-700">Request Mode Active</p>
+                                            <p className="mt-1 text-ds-small text-primary-600">Clicking Save will submit a join request to the hospital admin. Your chamber will be created once approved.</p>
                                         </div>
                                     </>
                                 )}
 
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="flex items-center gap-2 text-ds-paragraph text-content-secondary">
                                         <Hospital size={14} className="text-medical-500" /> Hospital / Clinic Name
                                     </label>
                                     <input
@@ -463,11 +453,11 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                         value={formData.hospitalName}
                                         onChange={(e) => { setFormData({ ...formData, hospitalName: e.target.value }); if (selectedHospitalId) setSelectedHospitalId(undefined); }}
                                         placeholder="e.g., Evercare Hospital, Dhaka"
-                                        className="w-full p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                        className="w-full h-[46px] rounded-2xl bg-ink-50 px-4 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="flex items-center gap-2 text-ds-paragraph text-content-secondary">
                                         <MapPin size={14} className="text-medical-500" /> Full Address
                                     </label>
                                     <input
@@ -476,11 +466,11 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                         value={formData.address}
                                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                         placeholder="e.g., Plot 81, Block E, Bashundhara"
-                                        className="w-full p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all placeholder:text-slate-300"
+                                        className="w-full h-[46px] rounded-2xl bg-ink-50 px-4 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="flex items-center gap-2 text-ds-paragraph text-content-secondary">
                                         <CreditCard size={14} className="text-medical-500" /> Normal Consultation Fee (৳)
                                     </label>
                                     <input
@@ -488,11 +478,11 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                         type="number"
                                         value={formData.feeNormal}
                                         onChange={(e) => setFormData({ ...formData, feeNormal: parseInt(e.target.value) })}
-                                        className="w-full p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                        className="w-full h-[46px] rounded-2xl bg-ink-50 px-4 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                    <label className="flex items-center gap-2 text-ds-paragraph text-content-secondary">
                                         <CreditCard size={14} className="text-medical-500" /> Report / Follow-up Fee (৳)
                                     </label>
                                     <input
@@ -500,14 +490,14 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                         type="number"
                                         value={formData.feeReport}
                                         onChange={(e) => setFormData({ ...formData, feeReport: parseInt(e.target.value) })}
-                                        className="w-full p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                        className="w-full h-[46px] rounded-2xl bg-ink-50 px-4 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                     />
                                 </div>
                             </div>
 
                             {/* CONSULTATION DURATION */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-ink-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <label className="flex items-center gap-2 text-ds-paragraph text-content-secondary">
                                     <Clock size={14} className="text-medical-500" /> Time Per Patient (minutes)
                                 </label>
                                 <div className="flex items-center gap-3">
@@ -518,12 +508,12 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                         step={5}
                                         value={formData.consultationDurationMinutes}
                                         onChange={(e) => setFormData({ ...formData, consultationDurationMinutes: parseInt(e.target.value) || 0 })}
-                                        className="w-32 p-5 rounded-ds-lg border border-slate-100 bg-ink-50 font-bold text-ink-800 outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500 focus:bg-white transition-all"
+                                        className="w-32 h-[46px] rounded-2xl bg-ink-50 px-4 font-display text-ds-body text-content-primary outline-none placeholder:text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                     />
-                                    <div className="text-sm text-slate-500 font-medium">
+                                    <div className="text-ds-small">
                                         {formData.consultationDurationMinutes > 0
-                                            ? <span className="text-teal-600 font-bold">Patients will see time slots ({formData.consultationDurationMinutes} min each)</span>
-                                            : <span className="text-slate-400">Set to 0 to use serial numbers only (no time slots)</span>
+                                            ? <span className="text-primary-600">Patients will see time slots ({formData.consultationDurationMinutes} min each)</span>
+                                            : <span className="text-content-tertiary">Set to 0 to use serial numbers only (no time slots)</span>
                                         }
                                     </div>
                                 </div>
@@ -531,11 +521,11 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
 
                             {/* WEEKLY SCHEDULE */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-display font-black text-ink-800 uppercase tracking-widest border-b border-slate-100 pb-2 ml-1">Weekly Schedule</h3>
+                                <h3 className="text-ds-title-20 text-content-primary">Weekly Schedule</h3>
 
                                 <div className="space-y-3">
                                     {DAYS.map(day => (
-                                        <div key={day} className={`flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-2xl transition-all ${scheduleState[day].active ? 'bg-teal-50/50 border border-teal-100' : 'bg-slate-50 border border-transparent'}`}>
+                                        <div key={day} className={`flex flex-col gap-4 rounded-2xl p-4 transition-colors duration-ds-fast ease-ds-out md:flex-row md:items-center ${scheduleState[day].active ? 'bg-primary-50' : 'bg-ink-50'}`}>
                                             <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                                                 <input
                                                     type="checkbox"
@@ -544,15 +534,15 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                                         ...scheduleState,
                                                         [day]: { ...scheduleState[day], active: e.target.checked }
                                                     })}
-                                                    className="w-5 h-5 rounded-lg border-slate-200 text-teal-600 focus:ring-teal-500"
+                                                    className="size-5 rounded accent-[rgb(var(--color-primary-500))]"
                                                 />
-                                                <span className={`text-sm font-black ${scheduleState[day].active ? 'text-teal-700' : 'text-ink-500'}`}>{DAY_LABELS[day]}</span>
+                                                <span className={`text-ds-body ${scheduleState[day].active ? 'text-primary-700' : 'text-content-secondary'}`}>{DAY_LABELS[day]}</span>
                                             </label>
 
                                             {scheduleState[day].active && (
                                                 <div className="flex-1 grid grid-cols-3 gap-3 animate-fade-in">
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-tighter">Start</label>
+                                                        <label className="text-ds-small text-content-tertiary">Start</label>
                                                         <input
                                                             type="time"
                                                             value={scheduleState[day].startTime}
@@ -560,11 +550,11 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                                                 ...scheduleState,
                                                                 [day]: { ...scheduleState[day], startTime: e.target.value }
                                                             })}
-                                                            className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                            className="h-9 w-full rounded-xl bg-white px-2 text-ds-body text-content-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-tighter">End</label>
+                                                        <label className="text-ds-small text-content-tertiary">End</label>
                                                         <input
                                                             type="time"
                                                             value={scheduleState[day].endTime}
@@ -572,11 +562,11 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                                                 ...scheduleState,
                                                                 [day]: { ...scheduleState[day], endTime: e.target.value }
                                                             })}
-                                                            className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                            className="h-9 w-full rounded-xl bg-white px-2 text-ds-body text-content-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-ink-500 uppercase tracking-tighter">Limit</label>
+                                                        <label className="text-ds-small text-content-tertiary">Limit</label>
                                                         <input
                                                             type="number"
                                                             value={scheduleState[day].dailyLimit}
@@ -584,7 +574,7 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                                                 ...scheduleState,
                                                                 [day]: { ...scheduleState[day], dailyLimit: parseInt(e.target.value) || 0 }
                                                             })}
-                                                            className="w-full p-2 rounded-xl border border-teal-100 font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                            className="h-9 w-full rounded-xl bg-white px-2 text-ds-body text-content-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
                                                         />
                                                     </div>
                                                 </div>
@@ -594,16 +584,15 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
                                 </div>
                             </div>
 
-                            <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row gap-4">
-                                <Button type="submit" disabled={isSaving} className="bg-medical-600 hover:bg-medical-500 text-white flex-1 h-16 rounded-ds-lg font-black text-sm shadow-xl shadow-medical-100 uppercase tracking-widest gap-2">
-                                    {requestMode && selectedHospitalId && !editingChamberId
-                                        ? <><Send size={20} /> {isSaving ? 'Sending Request...' : 'Send Join Request'}</>
-                                        : <><Save size={20} /> {editingChamberId ? 'Update Configuration' : isSaving ? 'Saving...' : 'Save & Active Chamber'}</>
-                                    }
-                                </Button>
-                                <Button type="button" variant="outline" onClick={resetForm} className="h-16 px-10 rounded-ds-lg font-black text-sm border-slate-200 text-ink-500 hover:bg-ink-50">
-                                    Cancel
-                                </Button>
+                            <div className="flex flex-col-reverse gap-2 pt-2 md:flex-row">
+                                <DashboardButton type="button" variant="secondary" icon={false} onClick={resetForm} className="flex-1 px-4">Cancel</DashboardButton>
+                                <DashboardButton type="submit" variant="primary" disabled={isSaving} icon={requestMode && selectedHospitalId && !editingChamberId ? <Send size={16} /> : <Save size={16} />} className="flex-[2] pr-4">
+                                    <span className="px-3">
+                                        {requestMode && selectedHospitalId && !editingChamberId
+                                            ? (isSaving ? 'Sending Request...' : 'Send Join Request')
+                                            : (editingChamberId ? 'Update Configuration' : isSaving ? 'Saving...' : 'Save & Activate Chamber')}
+                                    </span>
+                                </DashboardButton>
                             </div>
                         </form>
                     </div>
@@ -612,3 +601,33 @@ export const DoctorPracticeSettings: React.FC<{ onNavigate?: (path: string) => v
         </div>
     );
 };
+
+const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Figma hospital card: r16, 1px ink-100 stroke, faint primary wash bottom-right; name, address, available-day chips, fee, pencil ring.
+const HospitalCard: React.FC<{ name: string; address: string; days: number[]; fee: number; summary: string; onEdit: () => void; onDelete: () => void }> = ({ name, address, days, fee, summary, onEdit, onDelete }) => (
+    <article className="relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-ink-100 bg-[linear-gradient(135deg,#fff_55%,rgb(var(--color-primary-50))_100%)] p-5" title={summary}>
+        <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col gap-2">
+                <h3 className="truncate text-ds-title-20 text-content-primary">{name}</h3>
+                <p className="flex items-start gap-1.5 text-ds-small text-content-secondary"><MapPin size={14} className="mt-px shrink-0 text-primary-500" /> <span className="line-clamp-2">{address}</span></p>
+            </div>
+            <div className="flex shrink-0 gap-1">
+                <button type="button" onClick={onEdit} aria-label={`Edit ${name}`} className="grid size-[42px] place-items-center rounded-full border border-ink-100 bg-white text-content-secondary transition-colors duration-ds-fast ease-ds-out hover:border-primary-300 hover:text-primary-600"><Pencil size={14} /></button>
+                <button type="button" onClick={onDelete} aria-label={`Delete ${name}`} className="grid size-[42px] place-items-center rounded-full border border-ink-100 bg-white text-content-tertiary transition-colors duration-ds-fast ease-ds-out hover:border-red-200 hover:text-[#ed7272]"><Trash2 size={14} /></button>
+            </div>
+        </div>
+        <div className="flex flex-col gap-2">
+            <span className="text-ds-small text-content-tertiary">Available</span>
+            <div className="flex flex-wrap gap-1">
+                {days.length === 0 ? <span className="text-ds-small text-content-tertiary">No schedule set</span> : Array.from(new Set<number>(days)).sort((a, b) => a - b).map(d => (
+                    <span key={d} className="rounded-full bg-primary-50 px-2 py-0.5 text-ds-small text-primary-600">{SHORT_DAYS[d]}</span>
+                ))}
+            </div>
+        </div>
+        <div className="flex flex-col gap-1">
+            <span className="text-ds-small text-content-tertiary">Consultation Fee</span>
+            <span className="text-ds-paragraph text-content-primary">{fee} BDT</span>
+        </div>
+    </article>
+);
