@@ -1,10 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Button } from '../../components/ui/Button';
-import {
-   Download, Search, Calendar, Stethoscope, Building2,
-   Eye, ShieldCheck, X, Printer, Share2, User, FileDigit, ChevronRight
-} from 'lucide-react';
+import { Calendar, Stethoscope, Building2, X, Printer, Share2, FileDigit } from 'lucide-react';
+import { useToast } from '../../components/ToastProvider';
+import { DashboardButton, DS_ICONS, MaskIcon, SearchField, SortMenu, ViewToggleButton } from '../../components/dashboard';
+import { useMenu, RowMenu, TableHead, TableCell, TableEnd, PersonCell, PaginationBar, FilterPill, formatLongDate } from '../../components/patient/DsTable';
 import { PatientStorage, fetchPrescriptions, downloadPrescriptionPDF } from '../../storage';
 import { supabase } from '../../supabase';
 
@@ -17,6 +15,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
    const [selectedRx, setSelectedRx] = useState<any | null>(null);
    const [searchQuery, setSearchQuery] = useState('');
    const [downloadingRxId, setDownloadingRxId] = useState<string | null>(null);
+   const { showToast } = useToast();
 
    const handleDownload = async (rxId: string) => {
       try {
@@ -24,7 +23,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
          await downloadPrescriptionPDF(rxId);
       } catch (error) {
          console.error('Download failed:', error);
-         alert('Failed to download prescription. Please try again.');
+         showToast('Failed to download prescription. Please try again.', 'error');
       } finally {
          setDownloadingRxId(null);
       }
@@ -144,7 +143,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
    const PrescriptionFlashCard = ({ rx }: { rx: any }) => (
       <div className="flex flex-col h-full bg-white relative font-sans">
          {/* Premium Custom Header Matching Doctor View EXACTLY */}
-         <div className="p-6 md:p-8 bg-medical-50 border-b-2 border-medical-500">
+         <div className="p-6 pr-16 md:p-8 md:pr-16 bg-medical-50 border-b-2 border-medical-500">
             <div className="flex justify-between items-start gap-4">
                <div className="flex gap-4">
                   <div className="w-14 h-14 md:w-16 md:h-16 bg-white p-2 rounded-ds-md border border-medical-100 flex items-center justify-center shrink-0 shadow-sm">
@@ -245,158 +244,168 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
       </div>
    );
 
+   // Figma list controls (297:12584): view toggle, date pill, pagination. Presentational state over the same records.
+   const [view, setView] = useState<'list' | 'grid'>('list');
+   const [timeFilter, setTimeFilter] = useState<TimeKey>('all');
+   const [page, setPage] = useState(1);
+   const [perPage, setPerPage] = useState(12);
+   const folderMenu = useMenu();
+
+   const datedRx = filteredRx.filter((rx: any) => inTimeWindow(rx.displayDate, timeFilter));
+   const pageCount = Math.max(1, Math.ceil(datedRx.length / perPage));
+   const safePage = Math.min(page, pageCount);
+   const pageRx = datedRx.slice((safePage - 1) * perPage, safePage * perPage);
+   const timeLabel = TIME_OPTIONS.find(o => o.id === timeFilter)?.label ?? 'All Time';
+   const openFolder = (name: string | null) => { setActiveFolder(name); setPage(1); };
+
    return (
-      <div className="space-y-10 pb-16 animate-fade-in max-w-4xl mx-auto px-2 min-h-screen">
-         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-               <h1 className="font-display text-4xl font-black text-ink-800 tracking-tight">Health Records</h1>
-               <p className="text-ink-500 font-bold text-lg mt-2">Manage your clinical history securely.</p>
+      // Figma "Prescriptions" 297:12584 (Patient Dashboard). Page background + gutters come from Layout.
+      <div className="flex animate-fade-in flex-col gap-6 font-display">
+         {/* Dashboard Header (326:15127) */}
+         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2">
+               <h1 className="text-[24px] font-normal leading-[normal] text-content-primary lg:text-ds-h36">Prescriptions</h1>
+               <p className="text-ds-subtitle text-content-tertiary max-lg:text-ds-small">Manage your clinical history securely.</p>
             </div>
-            <div className="relative w-full md:w-auto shrink-0">
-               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-500" size={18} />
-               <input
-                  placeholder="Search records..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full md:w-64 bg-white border border-ink-200 pl-11 pr-4 py-4 rounded-ds-md outline-none font-bold text-sm shadow-sm focus:ring-4 focus:ring-medical-500/5 focus:border-medical-500 transition-all"
-               />
-            </div>
+            <FilterPill label={timeLabel} icon={DS_ICONS.calendar} chevron={DS_ICONS.dropdown} options={TIME_OPTIONS} value={timeFilter} onSelect={id => { setTimeFilter(id as TimeKey); setPage(1); }} />
          </div>
 
-         {/* Navigation Breadcrumb */}
-         <div className="flex items-center gap-3">
-            <button 
-               onClick={() => setActiveFolder(null)}
-               className={`flex items-center gap-2 px-4 py-2 rounded-ds-sm font-bold text-sm transition-all ${!activeFolder ? 'bg-medical-600 text-white shadow-lg shadow-medical-100' : 'bg-white text-ink-500 hover:text-ink-800 border border-ink-100'}`}
-            >
-               <FileDigit size={16} /> All Folders
-            </button>
+         <div className="flex flex-col gap-2 rounded-2xl bg-white p-2">
+            <div className="flex items-center justify-between gap-3">
+               <SearchField
+                  value={searchQuery}
+                  onChange={v => { setSearchQuery(v); setPage(1); }}
+                  onFilterClick={() => folderMenu.setOpen(o => !o)}
+                  filterLabel="Filter by facility"
+                  filterExpanded={folderMenu.open}
+                  filterSlot={folderMenu.open && (
+                     <div ref={folderMenu.ref}>
+                        <SortMenu
+                           options={[{ id: '', label: 'All Facilities' }, ...prescriptionFolders.map(f => ({ id: f.name, label: f.name }))]}
+                           value={activeFolder ?? ''}
+                           onSelect={id => openFolder(id || null)}
+                           onClose={folderMenu.close}
+                           className="w-[200px]"
+                        />
+                     </div>
+                  )}
+               />
+               <div className="flex shrink-0 items-center gap-1 rounded-[64px] bg-ink-50 max-md:hidden" role="group" aria-label="View">
+                  <ViewToggleButton icon="grid" label="Folders" active={view === 'grid'} onClick={() => setView('grid')} />
+                  <ViewToggleButton icon="list" label="List view" active={view === 'list'} onClick={() => setView('list')} />
+               </div>
+            </div>
+
             {activeFolder && (
+               <div className="flex items-center gap-2 px-2 text-ds-small text-content-tertiary">
+                  <Building2 size={14} /> <span className="text-content-primary">{activeFolder}</span>
+                  <button type="button" onClick={() => openFolder(null)} className="text-primary-500 hover:underline">All Folders</button>
+               </div>
+            )}
+
+            {isLoading ? (
+               <div className="flex flex-col items-center justify-center gap-4 py-32">
+                  <div className="size-10 animate-spin rounded-full border-4 border-primary-100 border-t-primary-500" />
+                  <p className="animate-pulse text-ds-body text-content-tertiary">Retrieving medical records</p>
+               </div>
+            ) : prescriptionFolders.length === 0 ? (
+               <div className="flex flex-col items-center gap-4 px-6 py-24 text-center">
+                  <FileDigit className="text-ink-300" size={56} />
+                  <p className="max-w-xs text-ds-body text-content-tertiary">Your prescriptions will appear here once shared by your doctor.</p>
+               </div>
+            ) : view === 'grid' && !activeFolder ? (
+               /* Folder View (grid toggle): one card per facility */
+               <div className="grid grid-cols-1 gap-4 p-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {prescriptionFolders.map((folder) => (
+                     <button
+                        key={folder.name}
+                        onClick={() => openFolder(folder.name)}
+                        className="group flex flex-col gap-6 rounded-ds-lg bg-white p-5 text-left shadow-ds-rise outline outline-1 -outline-offset-1 outline-ink-100 transition-shadow duration-300 ease-ds-out hover:shadow-ds-doctor-hover focus-visible:outline-2 focus-visible:outline-primary-500"
+                     >
+                        <span className="grid size-12 place-items-center rounded-2xl bg-primary-50 text-primary-500 transition-colors duration-300 ease-ds-out group-hover:bg-primary-500 group-hover:text-white">
+                           <Building2 size={22} />
+                        </span>
+                        <span className="flex flex-col gap-2">
+                           <span className="line-clamp-1 text-ds-title-20 text-content-primary">{folder.name}</span>
+                           <span className="flex items-end justify-between text-ds-small">
+                              <span className="text-content-tertiary">{folder.count} Records</span>
+                              <span className="text-primary-500">{folder.lastDate}</span>
+                           </span>
+                        </span>
+                     </button>
+                  ))}
+               </div>
+            ) : datedRx.length === 0 ? (
+               <p className="px-6 py-20 text-center text-ds-body text-content-tertiary">No prescriptions match this search.</p>
+            ) : (
                <>
-                  <ChevronRight size={16} className="text-ink-300" />
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-ds-sm bg-medical-50 text-medical-700 font-bold text-sm border border-medical-100 animate-in slide-in-from-left-2 duration-300">
-                     <Building2 size={16} /> {activeFolder}
+                  {/* Phones: compact cards instead of the 5-column table */}
+                  <ul className="flex flex-col gap-3 p-2 md:hidden">
+                     {pageRx.map((rx: any) => (
+                        <li key={rx.id} className="flex flex-col gap-3 rounded-ds-lg bg-white p-4 shadow-ds-rise outline outline-1 -outline-offset-1 outline-ink-100">
+                           <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                 <p className="truncate text-ds-subtitle text-content-primary">{rx.doctorName}</p>
+                                 <p className="text-ds-small text-content-tertiary">{formatLongDate(rx.displayDate)} · {rx.hospitalName}</p>
+                              </div>
+                              <RxStatus />
+                           </div>
+                           <p className="line-clamp-2 text-ds-small text-content-secondary">{rx.diagnosis || 'General Checkup'}</p>
+                           <div className="flex gap-2">
+                              <DashboardButton variant="monochrome" icon={false} className="h-10 flex-1 px-4 text-[14px]" onClick={() => setSelectedRx(rx)}>View</DashboardButton>
+                              <DashboardButton variant="gradient" icon={false} className="h-10 flex-1 px-4 text-[14px]" disabled={downloadingRxId === rx.id} onClick={() => handleDownload(rx.id)}>
+                                 <span className="relative z-[1]">{downloadingRxId === rx.id ? 'Downloading…' : 'Download'}</span>
+                              </DashboardButton>
+                           </div>
+                        </li>
+                     ))}
+                  </ul>
+                  <div className="hidden md:block">
+                     <table className="w-full border-separate border-spacing-0 text-left">
+                        <TableHead columns={['Doctor', 'Date', 'Time', 'Status', 'Action']} />
+                        <tbody className="text-[14px] text-[#5e5e5e]">
+                           {pageRx.map((rx: any, i: number) => (
+                              <tr key={rx.id}>
+                                 <TableCell first={i === 0}><PersonCell name={rx.doctorName} /></TableCell>
+                                 <TableCell first={i === 0}>{formatLongDate(rx.displayDate)}</TableCell>
+                                 <TableCell first={i === 0}>{formatTime(rx.createdAt)}</TableCell>
+                                 <TableCell first={i === 0}><RxStatus /></TableCell>
+                                 <TableCell first={i === 0}>
+                                    <RowMenu
+                                       label={`Actions for prescription from ${rx.doctorName}`}
+                                       items={[
+                                          { label: 'View', onClick: () => setSelectedRx(rx) },
+                                          { label: downloadingRxId === rx.id ? 'Downloading…' : 'Download PDF', onClick: () => handleDownload(rx.id), disabled: downloadingRxId === rx.id },
+                                       ]}
+                                    />
+                                 </TableCell>
+                              </tr>
+                           ))}
+                           <TableEnd span={5} />
+                        </tbody>
+                     </table>
                   </div>
+                  <PaginationBar page={safePage} pageCount={pageCount} perPage={perPage} onPage={p => setPage(Math.min(pageCount, Math.max(1, p)))} onPerPage={n => { setPerPage(n); setPage(1); }} />
                </>
             )}
          </div>
 
-         {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-32 space-y-4">
-               <div className="w-12 h-12 border-4 border-medical-600/20 border-t-medical-600 rounded-full animate-spin"></div>
-               <p className="text-ink-500 font-bold animate-pulse uppercase tracking-[0.2em] text-[10px]">Retrieving medical records</p>
-            </div>
-         ) : !activeFolder ? (
-            /* Folder View */
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
-               {prescriptionFolders.map((folder) => (
-                  <button 
-                     key={folder.name}
-                     onClick={() => setActiveFolder(folder.name)}
-                     className="bg-white border border-ink-100 p-6 rounded-ds-lg text-left hover:border-medical-300 hover:shadow-xl hover:shadow-medical-500/5 transition-all group relative overflow-hidden"
-                  >
-                     <div className="absolute top-0 right-0 w-32 h-32 bg-medical-50 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-medical-100 transition-colors" />
-                     
-                     <div className="w-14 h-14 bg-medical-50 text-medical-600 rounded-ds-md flex items-center justify-center mb-6 group-hover:bg-medical-600 group-hover:text-white transition-all shadow-inner relative z-10">
-                        <Building2 size={24} />
-                     </div>
-                     
-                     <div className="relative z-10">
-                        <h3 className="font-display text-lg font-black text-ink-800 group-hover:text-medical-700 transition-colors leading-tight mb-2 line-clamp-1">
-                           {folder.name}
-                        </h3>
-                        <div className="flex justify-between items-end">
-                           <p className="text-xs font-bold text-ink-500">{folder.count} Records</p>
-                           <p className="text-[10px] font-black text-medical-600 uppercase tracking-widest">{folder.lastDate}</p>
-                        </div>
-                     </div>
-                  </button>
-               ))}
-               {prescriptionFolders.length === 0 && (
-                  <div className="col-span-full py-32 text-center bg-white rounded-ds-xl border-2 border-dashed border-ink-100">
-                     <FileDigit className="mx-auto text-ink-200 mb-6" size={80} />
-                     <p className="text-ink-500 font-bold max-w-xs mx-auto">Your prescriptions will appear here once shared by your doctor.</p>
-                  </div>
-               )}
-            </div>
-         ) : (
-            /* Records inside a folder */
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               {filteredRx.map((rx: any) => (
-                  <div key={rx.id} className="bg-white border border-ink-200/60 rounded-ds-sm overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group/card">
-                     <div className="px-6 py-3 border-b border-ink-100 flex justify-between items-center bg-ink-50/40">
-                        <div className="flex items-center gap-2">
-                           <Calendar size={12} className="text-ink-500" />
-                           <span className="text-[13px] font-semibold text-ink-800">{rx.displayDate}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-teal-100 bg-teal-50/50 text-teal-700">
-                           <ShieldCheck size={10} strokeWidth={3} />
-                           <span className="text-[9px] font-black uppercase tracking-tight">Verified</span>
-                        </div>
-                     </div>
-
-                     <div className="p-6 grid grid-cols-2 gap-x-10 gap-y-6">
-                        <div className="space-y-4">
-                           <div>
-                              <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest mb-1">Doctor</p>
-                              <div className="flex items-center gap-2">
-                                 <User size={13} className="text-ink-500 shrink-0" />
-                                 <p className="text-[14px] font-black text-ink-800 leading-tight truncate">{rx.doctorName}</p>
-                              </div>
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest mb-1">Specialty</p>
-                              <p className="text-[11px] font-black text-medical-600 uppercase tracking-[0.1em] truncate">{rx.specialty}</p>
-                           </div>
-                        </div>
-
-                        <div className="space-y-4">
-                           <div>
-                              <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest mb-1">Diagnosis</p>
-                              <p className="text-[13px] font-medium text-ink-700 line-clamp-2 leading-relaxed">{rx.diagnosis || 'General Checkup'}</p>
-                           </div>
-                           <div className="flex justify-end pt-2">
-                              <span className="text-[10px] text-ink-300 font-bold uppercase tracking-widest">#{rx.id.slice(-6).toUpperCase()}</span>
-                           </div>
-                        </div>
-                     </div>
-
-                     <div className="px-6 py-4 border-t border-ink-100 flex items-center justify-between gap-4 mt-auto">
-                        <button
-                           onClick={() => setSelectedRx(rx)}
-                           className="flex-1 px-4 py-2.5 rounded-ds-sm border border-ink-200 text-ink-600 text-[13px] font-bold hover:bg-ink-50 hover:border-ink-300 transition-all flex items-center justify-center gap-2"
-                        >
-                           <Eye size={16} /> View
-                        </button>
-                        <button
-                           onClick={() => handleDownload(rx.id)}
-                           disabled={downloadingRxId === rx.id}
-                           className="flex-1 px-4 py-2.5 rounded-ds-sm bg-ink-800 text-white text-[13px] font-bold shadow-sm hover:bg-black transition-all flex items-center justify-center gap-2"
-                        >
-                           {downloadingRxId === rx.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={16} />}
-                           Download
-                        </button>
-                     </div>
-                  </div>
-               ))}
-            </div>
-         )}
-
          {selectedRx && (
-            <div className="fixed inset-0 z-[200] bg-navy-900/90 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-fade-in transition-all">
-               <div className="bg-white w-full max-w-lg h-auto max-h-[95vh] rounded-ds-xl shadow-[0_50px_100px_rgba(0,0,0,0.6)] flex flex-col relative overflow-hidden animate-fade-in-up">
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4 ds-fade-in md:p-8" role="dialog" aria-modal="true" aria-label="Prescription">
+               <div className="relative flex h-auto max-h-[95vh] w-full max-w-lg flex-col overflow-hidden rounded-ds-xl bg-white shadow-ds-modal">
                   <button
                      onClick={() => setSelectedRx(null)}
-                     className="absolute top-6 right-6 z-[210] p-3 bg-ink-100 hover:bg-red-50 hover:text-red-500 rounded-ds-md text-ink-500 transition-all shadow-sm"
+                     aria-label="Close prescription"
+                     className="absolute right-5 top-5 z-[210] grid size-10 place-items-center rounded-full bg-white/80 text-content-secondary shadow-ds-pill transition-colors duration-ds-fast ease-ds-out hover:text-[#ed7272]"
                   >
-                     <X size={24} />
+                     <X size={20} />
                   </button>
-                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                  <div className="custom-scrollbar flex-1 overflow-y-auto">
                      <PrescriptionFlashCard rx={selectedRx} />
                   </div>
-                  <div className="p-8 bg-white border-t border-ink-100 flex gap-4">
-                     <Button fullWidth className="h-16 rounded-ds-lg text-lg font-display font-black bg-medical-500 shadow-2xl shadow-medical-200 gap-4"><Printer size={24} /> Print Rx</Button>
-                     <Button variant="outline" className="h-16 w-16 p-0 rounded-ds-lg bg-white border-ink-200 shrink-0 flex items-center justify-center shadow-sm hover:bg-ink-50"><Share2 size={24} className="text-ink-600" /></Button>
+                  <div className="flex gap-2 border-t border-ink-100 bg-white p-5">
+                     <DashboardButton variant="gradient" icon={<Printer size={18} />} className="flex-1 pr-4"><span className="relative z-[1] px-3">Print Rx</span></DashboardButton>
+                     <button type="button" aria-label="Share prescription" className="grid size-12 shrink-0 place-items-center rounded-full bg-ink-50 text-content-secondary"><Share2 size={20} /></button>
                   </div>
                </div>
             </div>
@@ -404,3 +413,37 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ onNavigate }) => {
       </div>
    );
 };
+
+type TimeKey = 'today' | 'week' | 'month' | 'year' | 'all';
+const TIME_OPTIONS: { id: TimeKey; label: string }[] = [
+   { id: 'today', label: 'Today' },
+   { id: 'week', label: 'This Week' },
+   { id: 'month', label: 'This Month' },
+   { id: 'year', label: 'This Year' },
+   { id: 'all', label: 'All Time' },
+];
+
+const inTimeWindow = (date: string, key: TimeKey) => {
+   if (key === 'all') return true;
+   const d = new Date(date);
+   if (isNaN(d.getTime())) return true;
+   const now = new Date();
+   if (key === 'today') return d.toDateString() === now.toDateString();
+   if (key === 'week') { const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7); return d >= weekAgo; }
+   if (key === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+   return d.getFullYear() === now.getFullYear();
+};
+
+const formatTime = (ts: number | string | undefined) => {
+   if (!ts) return '—';
+   const d = new Date(ts);
+   return isNaN(d.getTime()) ? '—' : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
+// Figma "Status / Completed" chip (191:5550): #f3fff3 fill, #4dc44d label, 9x7 tick. A shared prescription is always issued.
+const RxStatus: React.FC = () => (
+   <span className="inline-flex items-center gap-1 rounded-3xl bg-[#f3fff3] px-2 py-1 text-ds-small text-[#4dc44d]">
+      <MaskIcon src="/assets/figma/patient-live-appts/status-check.svg" size={9} style={{ height: 7 }} />
+      Completed
+   </span>
+);

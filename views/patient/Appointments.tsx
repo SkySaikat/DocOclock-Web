@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertCircle, Calendar, Filter } from 'lucide-react';
 import { AppointmentCard, StatusChip } from '../../components/ui/AppointmentCard';
 import { fetchAppointments, PatientStorage, cancelAppointment } from '../../storage';
 import { ReviewModal } from '../../components/ReviewModal';
 import { useToast } from '../../components/ToastProvider';
-import { DashboardButton, MaskIcon, DS_ICONS, SearchField, SortMenu, ViewToggleButton, useDismiss } from '../../components/dashboard';
+import { DashboardButton, DS_ICONS, SearchField, SortMenu, ViewToggleButton } from '../../components/dashboard';
+import { useMenu, RowMenu, RowMenuItem, TableHead, TableCell, TableEnd, PersonCell, PaginationBar, FilterPill, formatLongDate } from '../../components/patient/DsTable';
 import { downloadICS, generateGoogleCalendarLink } from '../../utils/calendar';
 import { Appointment } from '../../types';
 
@@ -148,22 +149,6 @@ const TIME_OPTIONS: { id: TimeKey; label: string }[] = [
    { id: 'all', label: 'All Time' },
 ];
 
-const formatLongDate = (date: string) => {
-   const d = new Date(date);
-   return isNaN(d.getTime()) ? date : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-};
-
-const initials = (name: string) => name.replace(/^dr\.?\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-
-// Small anchored popover (menu) that closes on outside click / Escape — the Figma OVERLAY + DISSOLVE 0.3s pattern.
-const useMenu = () => {
-   const [open, setOpen] = useState(false);
-   const ref = useRef<HTMLDivElement>(null);
-   const close = useCallback(() => setOpen(false), []);
-   useDismiss(ref, open, close);
-   return { open, setOpen, ref, close };
-};
-
 // Row "…" menu: the old card's actions (Track Queue, calendar exports, Cancel, Share Feedback) for this appointment's status.
 const RowActions: React.FC<{
    app: any;
@@ -171,8 +156,7 @@ const RowActions: React.FC<{
    onCancel: () => void;
    onReview: () => void;
 }> = ({ app, onTrack, onCancel, onReview }) => {
-   const menu = useMenu();
-   const items: { label: string; onClick: () => void; danger?: boolean }[] = [];
+   const items: RowMenuItem[] = [];
    if (app.status === 'waiting') {
       items.push({ label: 'Track Queue', onClick: onTrack });
       items.push({ label: 'Download ICS', onClick: () => downloadICS(app as Appointment) });
@@ -182,36 +166,7 @@ const RowActions: React.FC<{
       items.push({ label: app.status === 'waiting' ? 'Cancel' : 'Action', onClick: onCancel, danger: app.status === 'waiting' });
    }
    if (app.status === 'completed') items.push({ label: 'Share Feedback', onClick: onReview });
-   if (items.length === 0) return <span className="px-[3px] text-ds-small text-content-disabled">—</span>;
-   return (
-      <div ref={menu.ref} className="relative">
-         <button
-            type="button"
-            aria-label={`Actions for appointment with ${app.doctorName}`}
-            aria-haspopup="menu"
-            aria-expanded={menu.open}
-            onClick={() => menu.setOpen(o => !o)}
-            className="grid h-[23px] w-6 place-items-center rounded-md text-content-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
-         >
-            <MaskIcon src={ICON + 'more-line.svg'} size={18} style={{ height: 3 }} />
-         </button>
-         {menu.open && (
-            <div role="menu" className="ds-fade-in absolute right-0 top-[calc(100%+6px)] z-30 w-[176px] overflow-hidden rounded-2xl bg-white shadow-ds-rise-lg outline outline-1 -outline-offset-1 outline-surface sm:left-0 sm:right-auto">
-               {items.map((it, i) => (
-                  <button
-                     key={it.label}
-                     type="button"
-                     role="menuitem"
-                     onClick={() => { menu.close(); it.onClick(); }}
-                     className={`flex h-[39px] w-full items-center px-4 text-left font-display text-ds-small transition-colors duration-ds-fast ease-ds-out hover:bg-primary-50 ${i > 0 ? 'border-t border-ink-50' : ''} ${it.danger ? 'text-[#ed7272]' : 'text-content-primary'}`}
-                  >
-                     {it.label}
-                  </button>
-               ))}
-            </div>
-         )}
-      </div>
-   );
+   return <RowMenu label={`Actions for appointment with ${app.doctorName}`} items={items} />;
 };
 
 // --- Sub-Component: Cancellation Modal (Figma modal look: white, r32, shadow-ds-modal) ---
@@ -275,8 +230,6 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate, override
    const [activeReviewApp, setActiveReviewApp] = useState<any>(null);
    const [view, setView] = useState<'list' | 'grid'>('list');
    const statusMenu = useMenu();
-   const timeMenu = useMenu();
-   const rowsMenu = useMenu();
 
    const pageCount = Math.max(1, Math.ceil(totalCount / pagination.itemsPerPage));
    const goToPage = (page: number) => setPagination(p => ({ ...p, currentPage: Math.min(pageCount, Math.max(1, page)) }));
@@ -329,22 +282,7 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate, override
             </div>
             <div className="flex items-stretch gap-1">
                {/* Date "Action" pill → the old Day / Week / Month / Year / All time filter. */}
-               <div ref={timeMenu.ref} className="relative flex">
-                  <button
-                     type="button"
-                     aria-haspopup="menu"
-                     aria-expanded={timeMenu.open}
-                     onClick={() => timeMenu.setOpen(o => !o)}
-                     className="flex h-12 items-center gap-2 whitespace-nowrap rounded-3xl bg-white px-3 py-2 text-ds-subtitle text-content-tertiary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
-                  >
-                     <MaskIcon src={DS_ICONS.calendar} size={16} />
-                     {timeLabel}
-                     <MaskIcon src={DS_ICONS.dropdown} size={20} className={`transition-transform duration-ds-fast ease-ds-out ${timeMenu.open ? '' : '-scale-y-100'}`} />
-                  </button>
-                  {timeMenu.open && (
-                     <SortMenu options={TIME_OPTIONS} value={timeFilter} onSelect={id => { setTimeFilter(id as TimeKey); resetPage(); }} onClose={timeMenu.close} className="left-0 w-full min-w-[136px]" />
-                  )}
-               </div>
+               <FilterPill label={timeLabel} icon={DS_ICONS.calendar} chevron={DS_ICONS.dropdown} options={TIME_OPTIONS} value={timeFilter} onSelect={id => { setTimeFilter(id as TimeKey); resetPage(); }} />
                <DashboardButton variant="gradient" onClick={() => onNavigate('/patient/doctors')} className="pr-3">
                   <span className="relative z-[1] px-3">Add Appointment</span>
                </DashboardButton>
@@ -411,36 +349,25 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate, override
                {cardGrid('md:hidden')}
                <div className="hidden md:block">
                   <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left">
-                     <thead>
-                        <tr className="bg-ink-100 font-inter text-[14px] tracking-[-0.7px] text-[#808080]">
-                           {['Doctor', 'Date', 'Serial', 'Status', 'Action'].map((h, i) => (
-                              <th key={h} scope="col" className={`px-4 py-3 font-normal ${i === 0 ? 'rounded-tl-lg' : ''} ${i === 4 ? 'rounded-tr-lg w-[200px]' : ''}`}>{h}</th>
-                           ))}
-                        </tr>
-                     </thead>
+                     <TableHead columns={['Doctor', 'Date', 'Serial', 'Status', 'Action']} />
                      <tbody className="text-[14px] text-[#505050]">
                         {userAppointments.map((app, i) => (
                            <tr key={app.id}>
-                              <td className={`px-4 ${i === 0 ? 'pt-5' : 'pt-6'}`}>
-                                 <span className="flex items-center gap-3">
-                                    <span aria-hidden="true" className="grid size-[17px] shrink-0 place-items-center rounded-full bg-primary-100 text-[7px] text-primary-600">{initials(app.doctorName)}</span>
-                                    <span className="truncate">{app.doctorName}</span>
-                                 </span>
-                              </td>
-                              <td className={`px-4 ${i === 0 ? 'pt-5' : 'pt-6'}`}>{formatLongDate(app.date)}</td>
-                              <td className={`px-4 ${i === 0 ? 'pt-5' : 'pt-6'}`}>{app.serialNumber ?? '—'}</td>
-                              <td className={`px-4 ${i === 0 ? 'pt-5' : 'pt-6'}`}><StatusChip status={app.status} /></td>
-                              <td className={`px-4 ${i === 0 ? 'pt-5' : 'pt-6'}`}>
+                              <TableCell first={i === 0}><PersonCell name={app.doctorName} /></TableCell>
+                              <TableCell first={i === 0}>{formatLongDate(app.date)}</TableCell>
+                              <TableCell first={i === 0}>{app.serialNumber ?? '—'}</TableCell>
+                              <TableCell first={i === 0}><StatusChip status={app.status} /></TableCell>
+                              <TableCell first={i === 0}>
                                  <RowActions
                                     app={app}
                                     onTrack={() => onNavigate('/live-serial', app.id)}
                                     onCancel={() => setCancellingAppId(app.id)}
                                     onReview={() => openReview(app)}
                                  />
-                              </td>
+                              </TableCell>
                            </tr>
                         ))}
-                        <tr aria-hidden="true"><td colSpan={5} className="h-5" /></tr>
+                        <TableEnd span={5} />
                      </tbody>
                   </table>
                </div>
@@ -449,41 +376,13 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigate, override
 
             {/* Pagination bar (339:17166) */}
             {!isLoading && totalCount > 0 && (
-               <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-lg bg-ink-100 px-4 py-3 text-[14px] text-[#6c6c6c]">
-                  <div className="flex items-center gap-4">
-                     <span>Rows per page</span>
-                     <div ref={rowsMenu.ref} className="relative">
-                        <button
-                           type="button"
-                           aria-haspopup="menu"
-                           aria-expanded={rowsMenu.open}
-                           onClick={() => rowsMenu.setOpen(o => !o)}
-                           className="flex items-end gap-4 rounded border border-[#f5f8f7] px-2 py-1 text-[#333232] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
-                        >
-                           {pagination.itemsPerPage}
-                           <MaskIcon src={ICON + 'arrow-down-s-fill.svg'} size={16} className="text-[#6c6c6c]" />
-                        </button>
-                        {rowsMenu.open && (
-                           <SortMenu
-                              options={[6, 12, 24].map(n => ({ id: String(n), label: String(n) }))}
-                              value={String(pagination.itemsPerPage)}
-                              onSelect={id => setPagination({ currentPage: 1, itemsPerPage: Number(id) })}
-                              onClose={rowsMenu.close}
-                              className="bottom-[calc(100%+6px)] top-auto w-[72px]"
-                           />
-                        )}
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                     <button type="button" disabled={pagination.currentPage <= 1} onClick={() => goToPage(pagination.currentPage - 1)} className="flex items-center gap-[5px] rounded border border-[#fafcfc] bg-[#fdffff] px-2 py-1 disabled:opacity-50">
-                        <MaskIcon src={ICON + 'arrow-drop-left.svg'} size={16} />Prev
-                     </button>
-                     <span>{pagination.currentPage} of {pageCount}</span>
-                     <button type="button" disabled={pagination.currentPage >= pageCount} onClick={() => goToPage(pagination.currentPage + 1)} className="flex items-end gap-1 rounded border border-[#eef1f0] px-2 py-1 disabled:opacity-50">
-                        Next<MaskIcon src={ICON + 'arrow-drop-right.svg'} size={16} />
-                     </button>
-                  </div>
-               </div>
+               <PaginationBar
+                  page={pagination.currentPage}
+                  pageCount={pageCount}
+                  perPage={pagination.itemsPerPage}
+                  onPage={goToPage}
+                  onPerPage={n => setPagination({ currentPage: 1, itemsPerPage: n })}
+               />
             )}
          </div>
 
