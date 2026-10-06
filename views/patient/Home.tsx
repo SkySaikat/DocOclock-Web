@@ -6,6 +6,7 @@ import { SectionEyebrowHeader } from '../../components/ui/SectionEyebrowHeader';
 import { Button } from '../../components/ui/Button';
 import { DoctorCard } from '../../components/ui/DoctorCard';
 import '../../components/landing/landing.css';
+import { CalendarDays, Check, Radio } from 'lucide-react';
 
 interface HomeProps {
    onNavigate: (path: string) => void;
@@ -149,37 +150,69 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
    return (
       <div className="dc-landing min-h-screen bg-page font-display text-ink-800">
          {/* HERO — Figma 80:1755 (1460 x 915). The navbar floats over the photo (hero starts at y = 0). */}
-         <section className="relative h-[680px] w-full overflow-hidden bg-page md:h-[915px]">
-            {/* The exported photo has crop + colour grading baked in and a transparent bottom band (~5.6% of its height).
-                Figma (Group 80:1756) places it at (-21,-52) sized 1502 x 1018 inside the 1460 x 915 clip, i.e. left -1.4384% / top -5.6831%
-                / w 102.8767% / h 111.2568% of the hero, so the band is pushed past the clip edge and never shows. `cover` keeps the
-                aspect ratio at other widths (it equals Figma's vertical scale at 1460); object-position y 85% keeps the band out of
-                the clip on wider screens. Phones get a 108% tall box for the same reason. */}
-            <img
-               src="/assets/figma/landing-home/hero-field-bg.png"
-               alt=""
-               className="absolute left-0 top-0 h-[108%] w-full max-w-none object-cover object-[50%_85%] md:left-[-1.4384%] md:top-[-5.6831%] md:h-[111.2568%] md:w-[102.8767%]"
-            />
-            {/* phones crop the photo around the subject, so a soft scrim keeps the white copy legible (not in the desktop frame) */}
-            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent md:hidden" />
-            <div className="absolute inset-x-0 bottom-10 md:bottom-[86px]">
-               <div className={`mx-auto flex flex-col gap-8 ${SECTION} lg:flex-row lg:items-end lg:justify-between min-[1296px]:justify-start min-[1296px]:gap-[340px]`}>
-                  <div className="flex shrink-0 flex-col items-start gap-6 lg:w-[480px]">
-                     <span className="rounded-full bg-white/20 px-3 py-2 font-inter text-[14px] leading-[normal] tracking-[0.02em] text-white">
-                        Welcome to Dococlock
+         {/* HERO — split layout: headline + CTAs left, static "what you see after booking" preview right. Pure markup, no images
+             or fetches, so it paints immediately. Theme tokens only (primary-*), so Super Admin → Branding recolours it. */}
+         <section className="w-full bg-white pt-28 pb-16 md:pt-36 md:pb-24">
+            <div className={`mx-auto grid items-center gap-12 lg:grid-cols-2 lg:gap-16 ${SECTION}`}>
+               <div className="flex flex-col items-start">
+                  <div className="mb-6 flex flex-wrap gap-3">
+                     <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-[14px] font-medium text-primary-700">
+                        <span className="size-2 rounded-full bg-primary-500" /> Now live near you
                      </span>
-                     <h1 className="whitespace-nowrap font-inter text-[40px] font-medium leading-[normal] tracking-[0.02em] text-[#fffffd] md:text-[68px]">
-                        {isPatient ? <>Welcome back.<br />Your Health.<br />Fully Controlled.</> : <>Your Time.Your<br />Health.<br />Fully Controlled.</>}
-                     </h1>
+                     <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-4 py-1.5 text-[14px] font-medium text-ink-700">
+                        BMDC-verified doctors
+                     </span>
                   </div>
-                  <div className="flex shrink-0 flex-col gap-9 lg:w-[387px]">
-                     {/* placeholder copy in Figma is from a web-analytics template; rewritten for a doctor-appointment product */}
-                     <p className="max-w-[380px] text-[16px] leading-[normal] tracking-[0.02em] text-white">
-                        Book verified doctors, follow your live queue and keep every prescription in one place, so you spend less time waiting and more time on your health.
+                  <h1 className="font-display text-[44px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink-900 sm:text-[56px] md:text-[72px]">
+                     {isPatient ? 'Welcome back.' : 'End the queue.'}<br />
+                     <span className="text-primary-500">Book smart.</span><br />
+                     Walk right in.
+                  </h1>
+                  <p className="mt-6 max-w-[520px] text-[17px] leading-[1.7] text-ink-500 md:text-[19px]">
+                     Dococlock connects you to doctors — book online, get a serial, and track your queue in real time. No more standing outside chambers for hours.
+                  </p>
+                  <div className="mt-9 flex flex-wrap gap-3">
+                     <button
+                        onClick={() => onNavigate('/patient/doctors')}
+                        className="btn-sheen inline-flex h-14 items-center gap-2 rounded-xl bg-primary-500 px-7 text-[17px] font-semibold text-white shadow-lg shadow-primary-500/25 transition-colors hover:bg-primary-600"
+                     >
+                        <CalendarDays size={18} /> Book Appointment
+                     </button>
+                     <button
+                        onClick={() => (isPatient ? onNavigate('/patient/appointments') : onLoginClick?.())}
+                        className="inline-flex h-14 items-center gap-2 rounded-xl border border-ink-200 bg-white px-7 text-[17px] font-semibold text-ink-900 transition-colors hover:border-primary-300 hover:text-primary-600"
+                     >
+                        <Radio size={18} /> Track My Serial
+                     </button>
+                  </div>
+               </div>
+
+               <div aria-label="Preview of what you see after booking" className="flex w-full flex-col gap-5">
+                  <p className="text-center text-[13px] font-semibold uppercase tracking-[0.18em] text-ink-400">Preview · what you see after booking</p>
+                  <div className="flex items-center gap-4 rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
+                     <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary-50 text-primary-600"><Check size={22} /></span>
+                     <div>
+                        <p className="text-[18px] font-semibold text-ink-900">Booking Confirmed</p>
+                        <p className="text-[15px] text-ink-500">Dr. Sarah Rahman · Cardiology Chamber</p>
+                     </div>
+                  </div>
+                  <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
+                     <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-400">Serial number</p>
+                     <p className="mt-1 font-display text-[64px] font-extrabold leading-none text-primary-500">07</p>
+                     <p className="mt-4 inline-flex items-center gap-2 text-[15px] font-medium text-primary-600">
+                        <span className="size-2 animate-pulse rounded-full bg-primary-500" /> Serial 04 is in consultation now
                      </p>
-                     <div className="flex items-center gap-[10px]">
-                        <Button variant="figma-primary" onClick={handleHeroCta}>{isPatient ? 'Find a Doctor' : 'Register'}</Button>
-                        {!isPatient && <Button variant="figma-secondary" onClick={handleHeroCta}>Register</Button>}
+                  </div>
+                  <div className="grid grid-cols-2 divide-x divide-ink-100 rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
+                     <div className="pr-6">
+                        <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-400">Estimated wait</p>
+                        <p className="mt-1 font-display text-[34px] font-extrabold text-ink-900">~18</p>
+                        <p className="text-[15px] text-ink-500">minutes</p>
+                     </div>
+                     <div className="pl-6">
+                        <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-400">People ahead</p>
+                        <p className="mt-1 font-display text-[34px] font-extrabold text-ink-900">3</p>
+                        <p className="text-[15px] text-ink-500">patients</p>
                      </div>
                   </div>
                </div>
@@ -192,7 +225,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
          {/* AFTER HERO (80:1794): pad 96, gap 96 between sections */}
          <div className="flex flex-col items-center gap-16 py-16 md:gap-24 md:py-24">
             {/* HOW IT WORKS — 2nd Section 80:1795 */}
-            <section className={`${SECTION} flex flex-col gap-10 md:gap-16`}>
+            <section id="how-it-works" className={`${SECTION} scroll-mt-24 flex flex-col gap-10 md:gap-16`}>
                <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
                   <SectionEyebrowHeader variant="figma" eyebrow="How it works" title="Healthcare made simple with smarter appointment scheduling." titleClassName="max-w-[790px]" />
                   <div className="flex flex-col gap-9 lg:w-[387px] lg:shrink-0 lg:justify-end lg:self-stretch">

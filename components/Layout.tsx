@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
-import { Menu, X, Activity, Gift, User, Stethoscope, ShieldCheck, Globe, ArrowLeft, BarChart2, Settings, PlusCircle } from 'lucide-react';
+import { Menu, X, Activity, Gift, User, Stethoscope, ShieldCheck, Globe, ArrowLeft, BarChart2, Settings, PlusCircle, Radio, CalendarDays } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { Footer } from './Footer';
 import { NotificationBell } from './ui/NotificationBell';
@@ -27,6 +27,12 @@ interface LayoutProps {
 }
 
 // Exact Figma navbar tags (Doctor / Hospital / Lab&Diagnostic / Blogs / About us / Contact us)
+const PUBLIC_HEADER_LINKS: { label: string; path: string }[] = [
+  { label: 'How it works', path: '#how-it-works' },
+  { label: 'Find Doctors', path: '/patient/doctors' },
+  { label: 'For Doctors', path: '/for-doctors' },
+];
+
 const MARKETING_NAV_LINKS: { label: string; path: string }[] = [
   { label: 'Doctor', path: '/patient/doctors' },
   { label: 'Hospital', path: '/hospitals' },
@@ -184,53 +190,37 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
           />
         </DashboardNavbar>
       ) : (
-        /* Public navbar — pill 1224 x 68.73 (Figma 80:7430), white, no shadow at rest. Shrinks on scroll-down. */
-        <nav className={`fixed top-0 w-full z-50 px-4 pointer-events-none transition-[padding] duration-300 ease-ds-out motion-reduce:transition-none ${isNavCompact ? 'pt-[calc(12px+env(safe-area-inset-top))] pb-2' : 'pt-[calc(16px+env(safe-area-inset-top))] md:pt-[calc(26px+env(safe-area-inset-top))] pb-4'}`}>
-          <div className={`max-w-[1224px] mx-auto px-6 flex justify-between items-center rounded-full pointer-events-auto bg-white transition-all duration-300 ease-ds-out motion-reduce:transition-none ${isNavCompact ? 'h-[52px]' : 'h-[68.73px] py-3'} ${isScrolled ? 'shadow-ds-pill' : ''}`}>
-            {/* Brand Logo — Figma Favicon 40x40 + "Dococlock" Inter Regular 16 */}
+        /* Public navbar — full-width white bar: brand left, three links + Doctor Login / Track Serial / Book Now right. */
+        <nav className={`fixed top-0 w-full z-50 bg-white/95 backdrop-blur border-b border-ink-100 pt-[env(safe-area-inset-top)] transition-shadow duration-300 ${isScrolled ? 'shadow-sm' : ''}`}>
+          <div className="max-w-[1320px] mx-auto px-4 md:px-8 h-[72px] flex items-center justify-between gap-6">
             <button type="button" aria-label="Dococlock home" className="flex items-center gap-2 cursor-pointer shrink-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" onClick={() => onNavigate('/')}>
-              <img src={DS_ICONS.logoFavicon} alt="" width={40} height={40} className={`size-10 transition-transform duration-300 ease-ds-out motion-reduce:transition-none ${isNavCompact ? 'scale-90' : 'scale-100'}`} />
-              <span className="font-inter font-normal text-[16px] leading-[normal] text-ink-800">Dococlock</span>
+              <img src={DS_ICONS.logoFavicon} alt="" width={40} height={40} className="size-10" />
+              <span className="font-display font-bold text-[24px] leading-none text-ink-900">Doc<span className="text-primary-500">oclock</span></span>
             </button>
 
-            {/* Desktop Navigation — exact Figma navbar tags (Inter Regular 16, gap 44; tighter gap only at 1024-1099px where the fixed-width right group leaves no room) */}
-            <div className="hidden lg:flex items-center gap-8 min-[1100px]:gap-[44px]">
-              {MARKETING_NAV_LINKS.map(link => (
+            <div className="hidden lg:flex items-center gap-2">
+              {PUBLIC_HEADER_LINKS.map(link => (
                 <button
-                  key={link.path}
-                  onClick={() => onNavigate(link.path)}
-                  className="font-inter font-normal text-[16px] leading-none text-ink-800 hover:text-primary-600 focus-visible:text-primary-600 transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none whitespace-nowrap cursor-pointer"
+                  key={link.label}
+                  onClick={() => link.path === '#how-it-works'
+                    ? (currentPath === '/' ? document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }) : onNavigate('/'))
+                    : onNavigate(link.path)}
+                  className="hidden xl:inline-flex px-4 py-2 font-inter text-[16px] text-ink-700 hover:text-primary-600 transition-colors whitespace-nowrap cursor-pointer"
                 >
                   {link.label}
                 </button>
               ))}
-            </div>
-            {/* Right group — fixed 179.78px wide like Figma's Frame 1000012132 (Login at x=0, Buttons slot at x=66 / 113.78 wide) so the
-                Register expand/collapse never changes any sibling's position. */}
-            <div className="hidden md:flex items-center gap-5 w-[179.78px] shrink-0">
-              <button onClick={() => onLoginClick?.(UserRole.PATIENT)} className="w-[46px] shrink-0 text-left font-inter font-normal text-[16px] leading-none text-ink-800 hover:text-primary-600 focus-visible:text-primary-600 transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none cursor-pointer">
-                Login
+              <button onClick={() => onLoginClick?.(UserRole.DOCTOR)} className="ml-2 h-11 px-5 rounded-xl border border-ink-200 bg-white font-inter font-semibold text-[16px] text-ink-900 hover:border-primary-300 transition-colors cursor-pointer whitespace-nowrap">
+                Doctor Login
               </button>
-              {/* Reserved 113.78px slot: the circle stays right-aligned and the label expands leftwards inside it. */}
-              <div className="w-[113.78px] shrink-0 flex justify-end">
-                {/* Figma's "Button Featured Hover" (80:4763): collapses to a 43.78 x 44.73 icon-only circle by default and expands to 113.78 wide
-                    with the "Register" label on hover / keyboard focus — 300ms EASE_OUT, label fades in while the width grows. */}
-                <button
-                  onClick={() => onRegisterClick?.()}
-                  aria-label="Register"
-                  className="group inline-flex items-center h-[44.73px] rounded-full overflow-hidden text-white bg-gradient-to-b from-primary-400 to-primary-600 cursor-pointer btn-sheen focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                >
-                  <span className="grid grid-cols-[0fr] opacity-0 -mr-0 transition-[grid-template-columns,margin,opacity] duration-ds-fast ease-ds-out motion-reduce:transition-none group-hover:grid-cols-[1fr] group-hover:opacity-100 group-hover:-mr-2 group-focus-visible:grid-cols-[1fr] group-focus-visible:opacity-100 group-focus-visible:-mr-2">
-                    <span className="min-w-0 overflow-hidden">
-                      <span className="block whitespace-nowrap pl-4 font-display text-[16px] leading-[normal]">Register</span>
-                    </span>
-                  </span>
-                  <img src="/assets/figma/booking-arrow-right-btn.svg" alt="" width={43.78} height={44.73} className="relative z-[1] w-[43.78px] h-[44.73px] shrink-0" />
-                </button>
-              </div>
+              <button onClick={() => onLoginClick?.(UserRole.PATIENT)} className="h-11 px-5 rounded-xl bg-primary-50 font-inter font-semibold text-[16px] text-primary-700 hover:bg-primary-100 transition-colors cursor-pointer inline-flex items-center gap-2 whitespace-nowrap">
+                <Radio size={16} /> Track Serial
+              </button>
+              <button onClick={() => onNavigate('/patient/doctors')} className="btn-sheen h-11 px-5 rounded-xl bg-primary-500 font-inter font-semibold text-[16px] text-white hover:bg-primary-600 transition-colors cursor-pointer inline-flex items-center gap-2 whitespace-nowrap">
+                <CalendarDays size={16} /> Book Now
+              </button>
             </div>
 
-            {/* Mobile UI Controls */}
             <button
               className="lg:hidden text-content-secondary p-2 rounded-lg cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
