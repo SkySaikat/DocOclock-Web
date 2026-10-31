@@ -344,7 +344,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout, on
         </div>
       </main>
 
-      <Footer onNavigate={onNavigate} />
+      <Footer onNavigate={onNavigate} onRegister={isPublic ? onRegisterClick : undefined} onLogin={isPublic ? () => onLoginClick?.(UserRole.PATIENT) : undefined} />
 
       {/* BROWSE MODE BANNER — shown when admin/doctor views the public site */}
       {browseMode && onReturnToDashboard && (

@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import { Button } from './ui/Button';
 import { SectionEyebrowHeader } from './ui/SectionEyebrowHeader';
+import { useInView } from '../hooks/useInView';
+import { ArrowRight, LogIn } from 'lucide-react';
 
 // Figma "Footer" 80:1932 (1460 x 897.73, clip): dark CTA band + logo / newsletter row + legal line.
-export const Footer: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
+interface FooterProps {
+  onNavigate: (path: string) => void;
+  /** Visitors only: opens the register / login popups. Omitted for signed-in users, who get a single "Find a Doctor" button. */
+  onRegister?: () => void;
+  onLogin?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onRegister, onLogin }) => {
   const [email, setEmail] = useState('');
+  const { ref: ctaRef, inView } = useInView<HTMLDivElement>(0.3);
+  const rise = (i: number) => ({ className: inView ? 'dc-rise' : 'opacity-0', style: { '--i': i * 1.6 } as React.CSSProperties });
 
   return (
     <footer
@@ -21,23 +32,53 @@ export const Footer: React.FC<{ onNavigate: (path: string) => void }> = ({ onNav
         <img src="/assets/figma/footer-texture.svg" alt="" className="h-full w-full" />
       </div>
 
-      {/* CTA band 80:1939 (808 wide, gap 28) */}
-      <div className="relative z-10 flex w-full max-w-[808px] flex-col items-center gap-7 px-6 text-center">
-        <SectionEyebrowHeader
-          variant="figma"
-          tone="light"
-          center
-          eyebrow="Join to Dococlock"
-          title="Healthcare made simple with smarter appointment scheduling."
-          titleClassName="max-w-[759px]"
-        />
+      {/* CTA band 80:1939 (808 wide, gap 28) — eases in on scroll; the buttons are a glowing primary + a glass "Login" */}
+      <div ref={ctaRef} className="relative z-10 flex w-full max-w-[808px] flex-col items-center gap-7 px-6 text-center">
+        <div {...rise(0)}>
+          <SectionEyebrowHeader
+            variant="figma"
+            tone="light"
+            center
+            eyebrow="Join to Dococlock"
+            title="Healthcare made simple with smarter appointment scheduling."
+            titleClassName="max-w-[759px]"
+          />
+        </div>
         <div className="flex w-full flex-col items-center gap-9">
-          <p className="text-[16px] leading-[normal] tracking-[0.02em] text-content-tertiary md:max-w-[808px]">
+          <p {...rise(1)} className={`${rise(1).className} text-[16px] leading-[normal] tracking-[0.02em] text-content-tertiary md:max-w-[808px]`}>
             Book verified doctors, track your live queue, and manage prescriptions — all from one account.
           </p>
-          <div className="flex items-center justify-center gap-[10px]">
-            <Button variant="figma-primary" onClick={() => onNavigate('/patient/doctors')}>Register</Button>
-            <Button variant="figma-secondary" onClick={() => onNavigate('/patient/doctors')}>Register</Button>
+          <div {...rise(2)} className={`${rise(2).className} flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4`}>
+            {onRegister ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onRegister}
+                  className="btn-sheen group relative inline-flex h-14 items-center gap-3 rounded-full bg-primary-500 pl-7 pr-2 text-[17px] font-semibold text-white shadow-[0_10px_30px_-8px_rgb(var(--color-primary-500)/0.7)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary-400 hover:shadow-[0_14px_36px_-8px_rgb(var(--color-primary-500)/0.85)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                >
+                  <span aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 animate-ping rounded-full bg-primary-500/25 [animation-duration:2.8s] motion-reduce:hidden" />
+                  Register
+                  <span className="grid size-10 place-items-center rounded-full bg-white/20 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"><ArrowRight size={18} /></span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onLogin}
+                  className="group relative inline-flex h-14 items-center gap-3 overflow-hidden rounded-full border border-white/30 bg-white/10 px-7 text-[17px] font-semibold text-white backdrop-blur-md transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-ink-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                >
+                  <LogIn size={18} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                  Login
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onNavigate('/patient/doctors')}
+                className="btn-sheen group inline-flex h-14 items-center gap-3 rounded-full bg-primary-500 pl-7 pr-2 text-[17px] font-semibold text-white shadow-[0_10px_30px_-8px_rgb(var(--color-primary-500)/0.7)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-400 motion-reduce:transition-none"
+              >
+                Find a Doctor
+                <span className="grid size-10 place-items-center rounded-full bg-white/20 transition-transform duration-300 group-hover:translate-x-1"><ArrowRight size={18} /></span>
+              </button>
+            )}
           </div>
         </div>
       </div>
