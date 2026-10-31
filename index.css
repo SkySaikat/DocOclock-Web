@@ -302,3 +302,66 @@
     transform: translateY(0);
   }
 }
+/* ── Landing / picker motion helpers ───────────────────────────────────────
+   `.dc-rise` fades + lifts an element in; set `--i` (index) on it to stagger siblings.
+   `.dc-pop` scales in, `.dc-grow-x` / `.dc-grow-y` draw a bar from its origin edge. */
+@keyframes dcRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dcPop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes dcGrowX {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes dcFlow {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(400%); }
+}
+
+@keyframes dcFlowY {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(400%); }
+}
+
+.dc-rise {
+  animation: dcRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.dc-pop {
+  animation: dcPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.dc-grow-x {
+  transform-origin: left center;
+  animation: dcGrowX 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-rise, .dc-pop, .dc-grow-x { animation: none; }
+}
+
+@keyframes dcGrowY {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.dc-grow-y {
+  transform-origin: center top;
+  animation: dcGrowY 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-grow-y { animation: none; }
+}

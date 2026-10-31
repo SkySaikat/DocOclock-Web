@@ -6,10 +6,14 @@ import { SectionEyebrowHeader } from '../../components/ui/SectionEyebrowHeader';
 import { Button } from '../../components/ui/Button';
 import { DoctorCard } from '../../components/ui/DoctorCard';
 import '../../components/landing/landing.css';
-import { CalendarDays, Check, Radio } from 'lucide-react';
+import { ArcGauge } from '../../components/ui/ArcGauge';
+import { DepartmentPicker } from '../../components/patient/DepartmentPicker';
+import { encodeFilter } from '../../utils/departments';
+import { useCountUp, useInView } from '../../hooks/useInView';
+import { CalendarDays, Check, ChevronRight, FileText, Radio, ShieldCheck, Clock } from 'lucide-react';
 
 interface HomeProps {
-   onNavigate: (path: string) => void;
+   onNavigate: (path: string, appointmentId?: string, category?: string) => void;
    onSelectDoctor?: (doctor: Doctor) => void;
    userRole?: UserRole;
    focusSearchTrigger?: number;
@@ -59,12 +63,17 @@ const PROCESS_CARDS = [
    },
 ];
 
-const PANEL_LIST = ['Doctor Panel', 'Patient Panel', 'Appointment Management', 'Queue Tracker'];
+const PANELS = [
+   { label: 'Doctor Panel', desc: 'Run your queue, appointments and prescriptions from one dashboard.' },
+   { label: 'Patient Panel', desc: 'Book, track your serial and keep every prescription in one place.' },
+   { label: 'Appointment Management', desc: 'Schedules, slots and reminders, organised day by day.' },
+   { label: 'Queue Tracker', desc: 'Your live serial and estimated wait, updated as the doctor works.' },
+];
 
-const TRANSPARENCY_STATS = [
-   { target: 15, suffix: '+', format: (n: number) => `${n}`, label: 'Years of Combined Experience' },
-   { target: 5000, suffix: '+', format: (n: number) => n.toLocaleString(), label: 'Smiles Transformed' },
-   { target: 100, suffix: '%', format: (n: number) => `${n}`, label: 'Patient Satisfaction' },
+const WHY_POINTS = [
+   { icon: ShieldCheck, tone: 'bg-primary-500', text: 'Book a BMDC-verified specialist in minutes. Pick a doctor, a chamber and a time slot from their live schedule.' },
+   { icon: Radio, tone: 'bg-secondary-500', text: 'Track your serial live, so you arrive when it is your turn instead of waiting hours outside the chamber.' },
+   { icon: FileText, tone: 'bg-primary-700', text: 'Every prescription is saved to your account as a digital record you can view or download anytime.' },
 ];
 
 const FAQ_ITEMS = [
@@ -233,44 +242,21 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                         Delve high-quality consultations to patients<br className="hidden lg:block" /> wherever they are.
                      </p>
                      <div>
-                        <Button variant="figma-secondary" onClick={() => onNavigate('/patient/doctors')}>Register</Button>
+                        <Button variant="figma-primary" onClick={handleHeroCta}>{isPatient ? 'Book Now' : 'Register'}</Button>
                      </div>
                   </div>
                </div>
-               <div className="grid grid-cols-1 gap-6 md:grid-cols-[507fr_349fr_296fr]">
-                  {PROCESS_CARDS.map((card) => (
-                     <div key={card.title} className={`flex flex-col justify-between rounded-[24px] bg-white p-8 md:min-h-[307.78px] ${card.gap} ${card.gradient}`}>
-                        <div className="mb-6 flex flex-col gap-3 md:mb-0">
-                           <h3 className={`text-[24px] font-medium leading-[normal] text-ink-800 ${card.titleWidth}`}>{card.title}</h3>
-                           <p className={`text-[16px] leading-[22px] text-content-tertiary ${card.descWidth}`}>{card.desc}</p>
-                        </div>
-                        {card.image ? (
-                           <div className="relative aspect-[520/193] w-full overflow-hidden">
-                              {card.image.crop ? (
-                                 <img src={card.image.src} alt="" className="absolute left-[-0.01%] top-[-15.49%] h-[156.46%] w-[100.03%] max-w-none" />
-                              ) : (
-                                 <img src={card.image.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                              )}
-                           </div>
-                        ) : (
-                           <div className="flex items-center gap-5">
-                              {/* Group 52: three 38px circles at x = 0 / 11 / 28 */}
-                              <div className="relative h-[38px] w-[66px] shrink-0">
-                                 {['avatar-stack-1', 'avatar-stack-2', 'avatar-stack-3'].map((img, i) => (
-                                    <img
-                                       key={img}
-                                       src={`/assets/figma/${img}.png`}
-                                       alt=""
-                                       className="absolute top-0 h-[38px] w-[38px] rounded-full object-cover"
-                                       style={{ left: [0, 11, 28][i] }}
-                                    />
-                                 ))}
-                              </div>
-                              <span className="flex-1 font-inter text-[16px] leading-[normal] text-ink-800">&lt;15 Min Average Wait Time</span>
-                           </div>
-                        )}
-                     </div>
-                  ))}
+               <HowItWorksFlow />
+            </section>
+
+            {/* FIND BY DEPARTMENT / SYMPTOM — same picker as Find Doctors; a pick opens the list pre-filtered. */}
+            <section className={`${SECTION} flex flex-col gap-8`}>
+               <DepartmentPicker
+                  initialCount={10}
+                  onSelect={(f) => onNavigate('/patient/doctors', undefined, encodeFilter(f))}
+               />
+               <div className="flex justify-center">
+                  <Button variant="figma-primary" onClick={() => onNavigate('/patient/doctors')}>View all departments</Button>
                </div>
             </section>
 
@@ -347,60 +333,57 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDoctor, userRole
                </div>
             </section>
 
-            {/* TRANSPARENCY — Frame 1000012728 80:1818: title (pad 120), badge composition, 3 count-up stats */}
-            <section className={`${SECTION} flex flex-col items-center gap-16 md:gap-[120px]`}>
-               <p className="max-w-[1054px] pt-8 text-center text-[28px] font-normal leading-[1.3] tracking-[0.02em] text-content-primary md:pt-[120px] md:text-[48px] md:leading-[58px]">
-                  DocOclock brings transparency to clinical visits. Track your live queue status from anywhere and access verified healthcare instantly.
-               </p>
-               <div className="w-full md:mt-[120px]">
-                  <ParallaxBadgeField />
-               </div>
-               <div className="flex flex-wrap justify-center gap-x-[90px] gap-y-8">
-                  {TRANSPARENCY_STATS.map((stat) => (
-                     <CountUpStat key={stat.label} {...stat} />
-                  ))}
-               </div>
-            </section>
+            {/* WHY DOCOCLOCK */}
+            <WhyDococlock onFindDoctor={() => onNavigate('/patient/doctors')} />
 
             {/* SPECIALTY ROW — Figma Group 17 (80:1839). Its hidden "Trusted by patients..." caption is visible=false, not rendered. */}
             <SpecialtyRow />
 
-            {/* SIMPLIFYING HEALTHCARE — Frame 1000012147 80:1866. The source design only had one static image
-                behind this list; the list stays clickable so each panel shows its own preview. */}
+            {/* SIMPLIFYING HEALTHCARE — Frame 1000012147 80:1866. A clickable vertical tab list; each tab opens its own animated panel UI. */}
             <section className={`${SECTION} flex flex-col gap-10 md:gap-20`}>
                <SectionEyebrowHeader variant="figma" eyebrow="How it works" title="Simplifying healthcare appointments from booking to consultation." titleClassName="max-w-[792px]" />
                <div className="flex flex-col items-center gap-10 lg:flex-row lg:gap-14">
-                  {/* Featured Tabs 80:4670: active = 16px square bullet + text (pad 0/8, gap 16); inactive = bare text;
-                      a 1px #d9d9d9 rule under each (the last item has none in the file) */}
-                  <div className="flex w-full flex-col gap-7 py-8 lg:w-[570px] lg:shrink-0">
-                     {PANEL_LIST.map((label, i) => {
+                  <div className="flex w-full flex-col gap-6 py-4 lg:w-[570px] lg:shrink-0 lg:py-8" role="tablist" aria-label="Dococlock panels" aria-orientation="vertical">
+                     {PANELS.map(({ label, desc }, i) => {
                         const active = activePanel === i;
                         return (
                            <button
                               key={label}
                               type="button"
-                              aria-pressed={active}
+                              role="tab"
+                              aria-selected={active}
                               onClick={() => setActivePanel(i)}
-                              className="group flex flex-col gap-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-4"
+                              className="group flex flex-col gap-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-4"
                            >
-                              <div className={`flex items-center gap-4 ${active ? 'px-2' : ''}`}>
-                                 {active && <span className="h-4 w-4 shrink-0 bg-primary-500" />}
+                              <div className="flex items-center px-2">
+                                 {/* bullet grows in from nothing; the label slides to make room for it */}
+                                 <span className={`h-4 shrink-0 bg-primary-500 transition-all duration-500 ease-out motion-reduce:transition-none ${active ? 'mr-4 w-4 rotate-0 opacity-100' : 'mr-0 w-0 -rotate-90 opacity-0'}`} />
                                  <span
-                                    className={`text-[24px] leading-[normal] transition-colors duration-ds-fast ease-ds-out motion-reduce:transition-none ${
-                                       active ? 'text-ink-800' : 'text-content-tertiary group-hover:text-content-primary'
+                                    className={`text-[24px] leading-[normal] transition-all duration-300 ease-out motion-reduce:transition-none ${
+                                       active ? 'translate-x-0 text-ink-800' : 'text-content-tertiary group-hover:translate-x-1.5 group-hover:text-content-primary'
                                     }`}
                                  >
                                     {label}
                                  </span>
+                                 <ChevronRight size={20} className={`ml-auto text-primary-500 transition-all duration-300 motion-reduce:transition-none ${active ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-60'}`} />
                               </div>
-                              {i < PANEL_LIST.length - 1 && <div className="h-px w-full bg-ink-300" />}
+                              {/* description unfolds under the active tab */}
+                              <div className={`grid px-2 transition-[grid-template-rows,opacity] duration-500 ease-out motion-reduce:transition-none ${active ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                                 <p className="overflow-hidden text-[16px] leading-[22px] text-content-tertiary">{desc}</p>
+                              </div>
+                              {/* rule under each tab; the active one fills with the brand colour each time it opens */}
+                              {i < PANELS.length - 1 && (
+                                 <div className="relative h-px w-full bg-ink-300">
+                                    <span className={`absolute inset-y-0 left-0 h-[2px] -translate-y-px bg-primary-500 transition-[width] ease-out motion-reduce:transition-none ${active ? 'w-full duration-[900ms]' : 'w-0 duration-300'}`} />
+                                 </div>
+                              )}
                            </button>
                         );
                      })}
                   </div>
-                  {/* Frame 80:1877: 577 x 552, r24, fill #efefef (Figma literal photo backdrop) */}
-                  <div className="relative aspect-[577/552] w-full overflow-hidden rounded-[24px] bg-[#efefef] lg:w-[577px] lg:shrink-0">
-                     <PanelMockup panel={activePanel} />
+                  {/* Frame 80:1877: 577 x 552, r24, fill #efefef (Figma literal photo backdrop). Keyed so every panel replays its entrance. */}
+                  <div className="relative min-h-[520px] w-full overflow-hidden rounded-[24px] bg-[#efefef] lg:h-[552px] lg:min-h-0 lg:w-[577px] lg:shrink-0">
+                     <PanelMockup key={activePanel} panel={activePanel} />
                   </div>
                </div>
             </section>
@@ -497,203 +480,323 @@ const SpecialtyRow: React.FC = () => (
    </div>
 );
 
-// Design 80:1820 (803 x 642): centre photo + 3 floating "Years Experience" badges. Each badge combines a CSS float
-// animation (outer wrapper) with a JS mouse-parallax offset (inner wrapper) so the two transforms compose instead
-// of fighting over the same property. Positions are Figma's px coordinates as % of the 803 x 642 frame.
-const BADGES = [
-   { icon: '/assets/figma/landing-home/icon-people-queue-36.svg', iconSize: 'h-6 w-6 md:h-9 md:w-9', label: 'Live Queue Tracking', pos: 'left-[0.06%] top-[12.54%] w-[29.64%]', textW: 'md:max-w-[161px]', float: 'animate-float-1' },
-   { icon: '/assets/figma/landing-home/icon-prescriptions-36.svg', iconSize: 'h-6 w-6 md:h-9 md:w-9', label: 'Digital Prescription', pos: 'left-[65.44%] top-[-3.35%] w-[32.5%]', textW: 'md:max-w-[165px]', float: 'animate-float-2' },
-   { icon: '/assets/figma/landing-home/icon-bmdc-verified-badge-28.svg', iconSize: 'h-5 w-5 md:h-7 md:w-7', label: 'BMDC Verified', pos: 'left-[50%] top-[67.99%] w-[27.9%]', textW: 'md:max-w-[136px]', float: 'animate-float-3' },
-];
 
-const ParallaxBadgeField: React.FC = () => {
-   const fieldRef = useRef<HTMLDivElement>(null);
-   const badgeRefs = useRef<(HTMLDivElement | null)[]>([]);
+// "How it works" as a flow: three numbered steps joined by a light line that draws itself left -> right on desktop
+// and top -> bottom on phones once the section scrolls into view (reduced-motion users get the finished line).
+const STEP_MS = 650;
 
-   useEffect(() => {
-      const field = fieldRef.current;
-      if (!field) return;
-      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-      const strengths = [14, 20, 10];
-      const handleMove = (e: MouseEvent) => {
-         if (reduceMotion?.matches) return;
-         const rect = field.getBoundingClientRect();
-         const px = (e.clientX - rect.left) / rect.width - 0.5;
-         const py = (e.clientY - rect.top) / rect.height - 0.5;
-         badgeRefs.current.forEach((el, i) => {
-            if (!el) return;
-            const s = strengths[i] ?? 12;
-            el.style.transform = `translate(${px * s}px, ${py * s}px)`;
-         });
-      };
-      const handleLeave = () => {
-         badgeRefs.current.forEach((el) => { if (el) el.style.transform = 'translate(0,0)'; });
-      };
-      field.addEventListener('mousemove', handleMove);
-      field.addEventListener('mouseleave', handleLeave);
-      return () => {
-         field.removeEventListener('mousemove', handleMove);
-         field.removeEventListener('mouseleave', handleLeave);
-      };
-   }, []);
+const HowItWorksFlow: React.FC = () => {
+   const { ref, inView } = useInView<HTMLOListElement>(0.2);
+   const delay = (i: number, extra = 0) => ({ animationDelay: `${i * STEP_MS + extra}ms` });
 
    return (
-      <div ref={fieldRef} className="relative mx-auto aspect-[803/642] w-full max-w-[803px]">
-         {/* Rectangle 10: 341 x 446 at (219.75, 40), r34 */}
-         <div className="absolute left-[27.37%] top-[6.23%] h-[69.47%] w-[42.47%] overflow-hidden rounded-[34px]">
-            <img src="/assets/figma/badge-photo-2.png" alt="" className="h-full w-full object-cover" />
-         </div>
-         {BADGES.map((b, i) => (
-            <div key={b.label} className={`absolute ${b.pos} ${b.float} motion-reduce:animate-none`}>
-               <div
-                  ref={(el) => { badgeRefs.current[i] = el; }}
-                  // "Years Experiece" frame: pad 44/16, gap 16, r20, fill top-to-bottom #fefffa -> Accent-50, no shadow
-                  className="flex flex-col items-center gap-2 rounded-[20px] bg-gradient-to-b from-[#fefffa] to-primary-50 px-2 py-5 transition-transform duration-150 ease-out motion-reduce:transition-none md:gap-4 md:px-4 md:py-11"
-               >
-                  <img src={b.icon} alt="" className={`${b.iconSize} shrink-0`} />
-                  <p className={`text-center text-[13px] font-medium leading-tight text-content-primary md:text-[24px] md:leading-[normal] ${b.textW}`}>{b.label}</p>
-               </div>
-            </div>
-         ))}
-      </div>
-   );
-};
-
-// Animates 0 -> target once the stat scrolls into view. Values 80:2143: number 70 Medium, label 16/22 tertiary, gap 12.
-const CountUpStat: React.FC<{ target: number; suffix: string; format: (n: number) => string; label: string }> = ({ target, suffix, format, label }) => {
-   const ref = useRef<HTMLDivElement>(null);
-   const [value, setValue] = useState(0);
-   const hasRun = useRef(false);
-
-   useEffect(() => {
-      const el = ref.current;
-      if (!el) return;
-      const observer = new IntersectionObserver(
-         ([entry]) => {
-            if (entry.isIntersecting && !hasRun.current) {
-               hasRun.current = true;
-               if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-                  setValue(target);
-                  return;
-               }
-               const duration = 1400;
-               const start = performance.now();
-               const tick = (now: number) => {
-                  const progress = Math.min((now - start) / duration, 1);
-                  const eased = 1 - Math.pow(1 - progress, 3);
-                  setValue(Math.round(target * eased));
-                  if (progress < 1) requestAnimationFrame(tick);
-               };
-               requestAnimationFrame(tick);
-            }
-         },
-         { threshold: 0.4 }
-      );
-      observer.observe(el);
-      return () => observer.disconnect();
-   }, [target]);
-
-   return (
-      <div ref={ref} className="flex flex-col items-center gap-3">
-         <span className="text-[48px] font-medium leading-[normal] tabular-nums text-ink-800 md:text-[70px]">{format(value)}{suffix}</span>
-         <span className="text-[16px] leading-[22px] text-content-tertiary">{label}</span>
-      </div>
-   );
-};
-
-// Panel 0 is the real Figma visual (80:1877: hills photo + ghost card + Queue card, positions as % of the
-// 577 x 552 frame). The other three panels are lightweight mockups built from the app's own tokens
-// (Figma only ever defined one static image for this whole section).
-const PanelMockup: React.FC<{ panel: number }> = ({ panel }) => {
-   if (panel === 0) {
-      return (
-         <div className="absolute inset-0 animate-fade-in motion-reduce:animate-none">
-            {/* fill = dashboard-mockup.png, CROP window x 50.5-94.3%, y 7.1-95.6% of the 1091 x 722 source */}
-            <img
-               src="/assets/figma/dashboard-mockup.png"
-               alt="Doctor dashboard preview"
-               className="absolute left-[-115.3%] top-[-8.02%] h-[113%] w-[228.3%] max-w-none"
-            />
-            {/* Rectangle 3864 (ghost card, #f4f4f4 @ 40%) and Rectangle 3865 (Queue card, #f9f9f9 + dashboard-mockup-2.png) */}
-            <div className="absolute left-[16.98%] top-[18.2%] h-[63.22%] w-[70.19%] rounded-[24px] bg-[#f4f4f4] opacity-40 md:rounded-[36px]" />
-            <div className="absolute left-[14.38%] top-[20.02%] h-[67.93%] w-[75.39%] overflow-hidden rounded-[24px] bg-[#f9f9f9] md:rounded-[36px]">
-               <img src="/assets/figma/dashboard-mockup-2.png" alt="" className="absolute left-[-3.13%] top-[-3.19%] h-[106.3%] w-[107.9%] max-w-none" />
-            </div>
-         </div>
-      );
-   }
-
-   if (panel === 1) {
-      return (
-         <div className="absolute inset-0 p-8 flex flex-col gap-4 animate-fade-in motion-reduce:animate-none">
-            <div className="bg-white rounded-2xl p-5 shadow-ds-card flex items-center gap-4">
-               <div className="w-14 h-14 rounded-full bg-medical-100 flex items-center justify-center text-medical-500 font-display font-bold">DR</div>
-               <div className="flex-1">
-                  <p className="font-display font-bold text-ink-800">Dr. Sarah Rahman</p>
-                  <p className="text-[12px] text-ink-500">Cardiology &middot; Today, 4:30 PM</p>
-               </div>
-               <span className="bg-emerald-50 text-emerald-600 text-[11px] font-bold px-2.5 py-1 rounded-full">Confirmed</span>
-            </div>
-            <div className="bg-white rounded-2xl p-5 shadow-ds-card flex items-center justify-between">
-               <div>
-                  <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide">Your Serial</p>
-                  <p className="font-display font-bold text-3xl text-ink-800">24</p>
-               </div>
-               <button className="h-10 px-5 rounded-full bg-medical-500 text-white text-[13px] font-semibold hover:bg-medical-600 transition-colors">Track Live</button>
-            </div>
-            <div className="bg-white rounded-2xl p-5 shadow-ds-card flex-1">
-               <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide mb-3">Recent Prescriptions</p>
-               {['Amoxicillin 500mg', 'Paracetamol 500mg'].map((rx) => (
-                  <div key={rx} className="flex items-center gap-3 py-2 border-b border-ink-50 last:border-0">
-                     <span className="w-2 h-2 rounded-full bg-medical-500 shrink-0" />
-                     <span className="text-[13px] text-ink-700">{rx}</span>
-                  </div>
-               ))}
-            </div>
-         </div>
-      );
-   }
-
-   if (panel === 2) {
-      return (
-         <div className="absolute inset-0 p-8 flex flex-col gap-4 animate-fade-in motion-reduce:animate-none">
-            <div className="bg-white rounded-2xl p-5 shadow-ds-card">
-               <p className="font-display font-bold text-ink-800 mb-4">February 2026</p>
-               <div className="grid grid-cols-7 gap-2">
-                  {Array.from({ length: 14 }).map((_, i) => (
-                     <div key={i} className={`aspect-square rounded-lg flex items-center justify-center text-[12px] ${i === 9 ? 'bg-medical-500 text-white font-bold' : 'bg-ink-50 text-ink-500'}`}>
+      <ol ref={ref} className="relative grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6">
+         {PROCESS_CARDS.map((card, i) => {
+            const last = i === PROCESS_CARDS.length - 1;
+            return (
+               <li key={card.title} className="relative flex pl-[76px] md:flex-col md:pl-0 md:pt-[84px]">
+                  {/* step badge: left rail on phones, centred above the card on desktop */}
+                  <div className="absolute left-0 top-0 md:left-1/2 md:-translate-x-1/2">
+                     <span
+                        style={delay(i)}
+                        className={`grid size-14 place-items-center rounded-full bg-primary-500 font-display text-[22px] font-bold text-white shadow-lg shadow-primary-500/30 ring-[6px] ring-page ${inView ? 'dc-pop' : 'opacity-0'}`}
+                     >
                         {i + 1}
+                     </span>
+                  </div>
+
+                  {/* connector to the next step */}
+                  {!last && (
+                     <>
+                        {/* desktop: horizontal, runs from this badge to the next one */}
+                        <span aria-hidden="true" className="absolute left-[calc(50%+34px)] top-[26px] hidden h-[3px] w-[calc(100%-44px)] overflow-hidden rounded-full bg-primary-100 md:block">
+                           <span style={delay(i, 350)} className={`relative block h-full w-full rounded-full bg-gradient-to-r from-primary-300 to-primary-500 ${inView ? 'dc-grow-x' : 'scale-x-0'}`}>
+                              {inView && <span className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-transparent via-white/90 to-transparent animate-[dcFlow_2.6s_linear_infinite] motion-reduce:hidden" style={{ animationDelay: `${(i + 1) * STEP_MS + 600}ms` }} />}
+                           </span>
+                        </span>
+                        <span aria-hidden="true" style={delay(i, 900)} className={`absolute left-[calc(100%+12px-22px)] top-[17px] hidden size-[22px] -translate-x-1/2 place-items-center rounded-full border border-primary-200 bg-white text-primary-600 md:grid ${inView ? 'dc-pop' : 'opacity-0'}`}>
+                           <ChevronRight size={13} />
+                        </span>
+                        {/* phones: vertical, down the left rail */}
+                        <span aria-hidden="true" className="absolute bottom-[-26px] left-[26px] top-[62px] w-[3px] overflow-hidden rounded-full bg-primary-100 md:hidden">
+                           <span style={delay(i, 350)} className={`relative block h-full w-full rounded-full bg-gradient-to-b from-primary-300 to-primary-500 ${inView ? 'dc-grow-y' : 'scale-y-0'}`}>
+                              {inView && <span className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-transparent via-white/90 to-transparent animate-[dcFlowY_2.6s_linear_infinite] motion-reduce:hidden" style={{ animationDelay: `${(i + 1) * STEP_MS + 600}ms` }} />}
+                           </span>
+                        </span>
+                     </>
+                  )}
+
+                  <div
+                     style={delay(i, 250)}
+                     className={`group relative flex w-full flex-col justify-between md:flex-1 rounded-[24px] bg-white p-6 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-xl hover:shadow-primary-500/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 md:min-h-[307.78px] md:p-8 ${card.gap} ${card.gradient} ${inView ? 'dc-rise' : 'opacity-0'}`}
+                  >
+                     <div className="mb-6 flex flex-col gap-3 md:mb-0">
+                        <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-primary-600">Step {i + 1}</span>
+                        <h3 className={`text-[24px] font-medium leading-[normal] text-ink-800 ${card.titleWidth}`}>{card.title}</h3>
+                        <p className={`text-[16px] leading-[22px] text-content-tertiary ${card.descWidth}`}>{card.desc}</p>
                      </div>
-                  ))}
+                     {card.image ? (
+                        <div className="relative aspect-[520/193] w-full overflow-hidden">
+                           {card.image.crop ? (
+                              <img src={card.image.src} alt="" className="absolute left-[-0.01%] top-[-15.49%] h-[156.46%] w-[100.03%] max-w-none transition-transform duration-500 group-hover:scale-[1.03]" />
+                           ) : (
+                              <img src={card.image.src} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                           )}
+                        </div>
+                     ) : (
+                        <div className="flex items-center gap-5">
+                           {/* Group 52: three 38px circles at x = 0 / 11 / 28 */}
+                           <div className="relative h-[38px] w-[66px] shrink-0">
+                              {['avatar-stack-1', 'avatar-stack-2', 'avatar-stack-3'].map((img, k) => (
+                                 <img
+                                    key={img}
+                                    src={`/assets/figma/${img}.png`}
+                                    alt=""
+                                    className="absolute top-0 h-[38px] w-[38px] rounded-full object-cover ring-2 ring-white transition-transform duration-300 group-hover:-translate-y-1"
+                                    style={{ left: [0, 11, 28][k], transitionDelay: `${k * 60}ms` }}
+                                 />
+                              ))}
+                           </div>
+                           <span className="flex-1 font-inter text-[16px] leading-[normal] text-ink-800">&lt;15 Min Average Wait Time</span>
+                        </div>
+                     )}
+                  </div>
+               </li>
+            );
+         })}
+      </ol>
+   );
+};
+
+// "Why Dococlock" — photo collage on the left, three reasons on the right. Everything eases in on scroll.
+const WhyDococlock: React.FC<{ onFindDoctor: () => void }> = ({ onFindDoctor }) => {
+   const { ref, inView } = useInView<HTMLDivElement>(0.2);
+   const show = (i: number, kind = 'dc-rise') => ({ className: inView ? kind : 'opacity-0', style: { '--i': i } as React.CSSProperties });
+
+   return (
+      <section ref={ref} className={`${SECTION} grid items-center gap-12 lg:grid-cols-[1fr_1fr] lg:gap-16`} aria-labelledby="why-dococlock-title">
+         <div className="relative mx-auto aspect-[6/5] w-full max-w-[560px]">
+            <div aria-hidden="true" className="absolute inset-x-[6%] inset-y-[4%] rounded-[36px] bg-gradient-to-br from-primary-50 to-white shadow-sm shadow-primary-500/10" />
+            <div aria-hidden="true" className="absolute -left-2 top-[2%] size-24 rounded-full border-[10px] border-primary-100" />
+            <img
+               src="/assets/figma/badge-photo-1.png"
+               alt="Dococlock doctor"
+               {...show(0)}
+               className={`${show(0).className} absolute left-[8%] top-[10%] h-[62%] w-[42%] rounded-[22px] object-cover object-top shadow-xl shadow-ink-900/10`}
+               style={show(0).style}
+            />
+            <img
+               src="/assets/figma/doctor-card-2.png"
+               alt="Dococlock specialist"
+               className={`${show(2).className} absolute right-[6%] top-[4%] h-[58%] w-[40%] rounded-[22px] object-cover object-top shadow-xl shadow-ink-900/10`}
+               style={show(2).style}
+            />
+            <div className={`absolute bottom-[6%] left-[22%] w-[62%] ${show(4).className}`} style={show(4).style}>
+               <div className="animate-float-2 motion-reduce:animate-none flex items-center gap-4 rounded-2xl border border-ink-100 bg-white p-4 shadow-xl shadow-ink-900/10">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary-50 text-primary-600"><Clock size={22} /></span>
+                  <div className="min-w-0 flex-1">
+                     <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-400">Your serial</p>
+                     <p className="font-display text-[26px] font-extrabold leading-none text-ink-900">24</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-500 px-3 py-1.5 text-[12px] font-semibold text-white"><span className="size-1.5 animate-pulse rounded-full bg-white" />Live</span>
                </div>
             </div>
-            <div className="bg-white rounded-2xl p-5 shadow-ds-card flex-1 flex flex-col gap-2">
-               <p className="text-[11px] font-bold text-ink-400 uppercase tracking-wide mb-1">Today's Appointments</p>
-               {[{ t: '10:00 AM', n: 'John Doe' }, { t: '11:30 AM', n: 'Fatima Akter' }, { t: '2:00 PM', n: 'Rahim Uddin' }].map((appt) => (
-                  <div key={appt.t} className="flex items-center gap-3 bg-ink-50/60 rounded-xl px-3 py-2.5">
-                     <span className="text-[12px] font-bold text-medical-600 w-16 shrink-0">{appt.t}</span>
-                     <span className="text-[13px] text-ink-700">{appt.n}</span>
+         </div>
+
+         <div className="flex flex-col gap-6">
+            <p {...show(0)} className={`${show(0).className} text-[16px] font-medium text-primary-600`}>Why Dococlock?</p>
+            <h2 id="why-dococlock-title" className={`${show(1).className} font-display text-[32px] font-extrabold leading-[1.15] tracking-[-0.02em] text-ink-900 md:text-[44px]`} style={show(1).style}>
+               A smarter way to see your doctor, without the waiting room.
+            </h2>
+            <ul className="flex flex-col gap-5">
+               {WHY_POINTS.map(({ icon: Icon, tone, text }, i) => (
+                  <li key={text} className={`${show(i + 2).className} flex items-start gap-4`} style={show(i + 2).style}>
+                     <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full text-white shadow-md ${tone}`}><Icon size={18} /></span>
+                     <p className="text-[17px] leading-[1.6] text-ink-700 md:text-[18px]">{text}</p>
+                  </li>
+               ))}
+            </ul>
+            <div className={show(5).className} style={show(5).style}>
+               <Button variant="figma-primary" onClick={onFindDoctor}>Find a Doctor</Button>
+            </div>
+         </div>
+      </section>
+   );
+};
+
+// Staggered entrance helper for the panel mock-ups: each block rises in `--i` steps.
+const rise = (i: number) => ({ className: 'dc-rise', style: { '--i': i } as React.CSSProperties });
+const PANEL_SHELL = 'absolute inset-0 flex flex-col gap-3 overflow-hidden p-4 sm:p-6 lg:p-8';
+
+// Four animated panel UIs (the first used to be a screenshot). Keyed by the parent so each replays when its tab opens.
+const PanelMockup: React.FC<{ panel: number }> = ({ panel }) => {
+   if (panel === 0) return <DoctorPanelMock />;
+   if (panel === 1) return <PatientPanelMock />;
+   if (panel === 2) return <AppointmentPanelMock />;
+   return <QueuePanelMock />;
+};
+
+const DoctorPanelMock: React.FC = () => {
+   const today = useCountUp(24, 'doctor', 1100);
+   const month = useCountUp(412, 'doctor', 1500);
+   const done = useCountUp(14 / 24, 'doctor', 1500);
+   const consulting = useCountUp(1 / 24, 'doctor', 1500);
+
+   return (
+      <div className={PANEL_SHELL}>
+         <div {...rise(0)} className="flex w-fit gap-1 rounded-full bg-white p-1 shadow-sm">
+            {['Overview', 'Queue', 'Appointments'].map((t, i) => (
+               <span key={t} className={`rounded-full px-3 py-1.5 text-[11px] font-semibold sm:px-4 sm:text-[12px] ${i === 0 ? 'bg-primary-500 text-white' : 'text-ink-400'}`}>{t}</span>
+            ))}
+         </div>
+         <div {...rise(1)}>
+            <p className="font-display text-[20px] font-bold leading-tight text-ink-900 sm:text-[24px]">Welcome, Dr. Rahman</p>
+            <p className="text-[12px] text-ink-500 sm:text-[13px]">Track your queue and arrive on time</p>
+         </div>
+
+         <div {...rise(2)} className="rounded-2xl bg-white p-4 shadow-sm">
+            <p className="mb-2 text-[13px] font-semibold text-ink-700">Appointments</p>
+            <div className="grid grid-cols-3 divide-x divide-ink-100">
+               <div className="pr-2"><p className="font-stat text-[28px] font-medium leading-none tabular-nums text-primary-600 sm:text-[34px]">{Math.round(today)}</p><p className="mt-1 text-[11px] text-ink-500">Today</p></div>
+               <div className="px-3"><p className="font-stat text-[28px] font-medium leading-none tabular-nums text-primary-600 sm:text-[34px]">{Math.round(month)}</p><p className="mt-1 text-[11px] text-ink-500">This month</p></div>
+               <div className="pl-3"><p className="font-stat text-[28px] font-medium leading-none text-primary-600 sm:text-[34px]">+12%</p><p className="mt-1 text-[11px] text-ink-500">Progression</p></div>
+            </div>
+         </div>
+
+         <div {...rise(3)} className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
+            <div className="shrink-0 pr-1">
+               <ArcGauge progress={done} inConsultation={consulting} size={112} label="14 completed, 1 in consultation, 9 waiting" />
+            </div>
+            <div className="min-w-0 flex-1">
+               <p className="mb-2 text-[13px] font-semibold text-ink-700">Queue status</p>
+               {[
+                  { label: 'Completed', n: 14, dot: 'bg-primary-700' },
+                  { label: 'In consultation', n: 1, dot: 'bg-primary-400' },
+                  { label: 'Waiting', n: 9, dot: 'bg-primary-100 ring-1 ring-primary-200' },
+               ].map((row) => (
+                  <div key={row.label} className="flex items-center justify-between gap-2 py-0.5 text-[12px] text-ink-600 sm:text-[13px]">
+                     <span className="flex items-center gap-2"><span className={`size-2.5 rounded-full ${row.dot}`} />{row.label}</span>
+                     <span className="font-semibold text-ink-800">{row.n}</span>
                   </div>
                ))}
             </div>
          </div>
-      );
-   }
+
+         <div {...rise(4)} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm sm:p-4">
+            <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-primary-100 text-[13px] font-bold text-primary-700">
+               AK
+               <span className="absolute -right-0.5 -top-0.5 size-3 animate-pulse rounded-full border-2 border-white bg-primary-500" />
+            </span>
+            <div className="min-w-0 flex-1">
+               <p className="truncate text-[14px] font-semibold text-ink-900">Ayesha K.</p>
+               <p className="text-[12px] text-ink-500">Serial #15 · Now consulting</p>
+            </div>
+            <span className="btn-sheen inline-flex h-9 items-center rounded-full bg-primary-500 px-4 text-[12px] font-semibold text-white">Consult Next</span>
+         </div>
+      </div>
+   );
+};
+
+const PatientPanelMock: React.FC = () => {
+   const serial = useCountUp(24, 'patient', 900);
+   return (
+      <div className={PANEL_SHELL}>
+         <div {...rise(0)} className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+            <div className="grid size-12 shrink-0 place-items-center rounded-full bg-primary-100 font-display font-bold text-primary-600 sm:size-14">DR</div>
+            <div className="min-w-0 flex-1">
+               <p className="truncate font-display font-bold text-ink-800">Dr. Sarah Rahman</p>
+               <p className="text-[12px] text-ink-500">Cardiology &middot; Today, 4:30 PM</p>
+            </div>
+            <span className="rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-bold text-primary-700">Confirmed</span>
+         </div>
+         <div {...rise(1)} className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+            <div>
+               <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400">Your Serial</p>
+               <p className="font-display text-3xl font-bold tabular-nums text-ink-800">{Math.round(serial)}</p>
+            </div>
+            <span className="btn-sheen relative inline-flex h-10 items-center rounded-full bg-primary-500 px-5 text-[13px] font-semibold text-white">
+               <span aria-hidden="true" className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary-500/40 motion-reduce:hidden" />
+               Track Live
+            </span>
+         </div>
+         <div {...rise(2)} className="flex-1 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-ink-400">Recent Prescriptions</p>
+            {['Amoxicillin 500mg', 'Paracetamol 500mg'].map((rx, i) => (
+               <div key={rx} {...rise(3 + i)} className="flex items-center gap-3 border-b border-ink-50 py-2.5 last:border-0">
+                  <span className="dc-pop size-2 shrink-0 rounded-full bg-primary-500" style={{ '--i': 4 + i } as React.CSSProperties} />
+                  <span className="text-[13px] text-ink-700">{rx}</span>
+               </div>
+            ))}
+         </div>
+      </div>
+   );
+};
+
+const AppointmentPanelMock: React.FC = () => {
+   const appts = [{ t: '10:00 AM', n: 'John Doe' }, { t: '11:30 AM', n: 'Fatima Akter' }, { t: '2:00 PM', n: 'Rahim Uddin' }];
+   return (
+      <div className={PANEL_SHELL}>
+         <div {...rise(0)} className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+            <p className="mb-3 font-display font-bold text-ink-800">Pick a day</p>
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i} className="text-center text-[10px] font-semibold text-ink-400">{d}</span>)}
+               {Array.from({ length: 14 }).map((_, i) => (
+                  <div
+                     key={i}
+                     style={{ '--i': 2 + i * 0.4 } as React.CSSProperties}
+                     className={`dc-pop relative flex aspect-square items-center justify-center rounded-lg text-[12px] ${i === 9 ? 'bg-primary-500 font-bold text-white shadow-md shadow-primary-500/30' : 'bg-ink-50 text-ink-500'}`}
+                  >
+                     {i === 9 && <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-lg bg-primary-500/30 motion-reduce:hidden" />}
+                     <span className="relative">{i + 1}</span>
+                  </div>
+               ))}
+            </div>
+         </div>
+         <div {...rise(2)} className="flex flex-1 flex-col gap-2 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-ink-400">Today&apos;s Appointments</p>
+            {appts.map((a, i) => (
+               <div key={a.t} {...rise(4 + i)} className="flex items-center gap-3 rounded-xl bg-ink-50/70 px-3 py-2.5">
+                  <span className="w-[68px] shrink-0 text-[12px] font-bold text-primary-600">{a.t}</span>
+                  <span className="flex-1 text-[13px] text-ink-700">{a.n}</span>
+                  <Check size={14} className="text-primary-500" />
+               </div>
+            ))}
+         </div>
+      </div>
+   );
+};
+
+const QueuePanelMock: React.FC = () => {
+   const [serving, setServing] = useState(24);
+   // The queue ticks forward every few seconds so the panel feels live.
+   useEffect(() => {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+      const id = setInterval(() => setServing((n) => (n >= 26 ? 24 : n + 1)), 2600);
+      return () => clearInterval(id);
+   }, []);
+   const minutes = useCountUp(18, 'queue', 1100);
+   const angle = useCountUp(300, 'queue', 1400);
+   const upcoming = [serving + 1, serving + 2, serving + 3];
 
    return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 animate-fade-in motion-reduce:animate-none">
-         <div className="relative w-40 h-40 rounded-full flex items-center justify-center" style={{ background: 'conic-gradient(rgb(var(--color-primary-500)) 0deg 300deg, rgb(var(--color-primary-100)) 300deg 360deg)' }}>
-            <div className="w-32 h-32 rounded-full bg-white flex flex-col items-center justify-center">
-               <span className="font-display font-bold text-3xl text-ink-800">18</span>
+      <div className={`${PANEL_SHELL} items-center justify-center gap-6`}>
+         <div {...rise(0)} className="relative grid size-40 place-items-center rounded-full" style={{ ...rise(0).style, background: `conic-gradient(rgb(var(--color-primary-500)) 0deg ${angle}deg, rgb(var(--color-primary-100)) ${angle}deg 360deg)` }}>
+            <div className="flex size-32 flex-col items-center justify-center rounded-full bg-white">
+               <span className="font-display text-3xl font-bold tabular-nums text-ink-800">{Math.round(minutes)}</span>
                <span className="text-[11px] text-ink-400">Minutes Left</span>
             </div>
          </div>
-         <div className="flex items-center gap-3 bg-white rounded-2xl shadow-ds-card px-5 py-3">
-            <span className="w-9 h-9 rounded-full bg-medical-500 text-white flex items-center justify-center font-bold text-sm">24</span>
+         <div {...rise(1)} className="flex items-center gap-3 rounded-2xl bg-white px-5 py-3 shadow-sm">
+            <span key={serving} className="dc-pop grid size-10 place-items-center rounded-full bg-primary-500 text-sm font-bold tabular-nums text-white">{serving}</span>
             <div>
                <p className="text-[13px] font-bold text-ink-800">John Doe</p>
-               <p className="text-[11px] text-ink-400">Now Serving</p>
+               <p className="flex items-center gap-1.5 text-[11px] text-ink-400"><span className="size-1.5 animate-pulse rounded-full bg-primary-500" />Now Serving</p>
             </div>
+         </div>
+         <div {...rise(2)} className="flex gap-2">
+            {upcoming.map((n, i) => (
+               <span key={n} className={`rounded-full bg-white px-3.5 py-1.5 text-[12px] font-semibold tabular-nums shadow-sm ${i === 2 ? 'text-primary-600 ring-1 ring-primary-200' : 'text-ink-500'}`}>#{n}</span>
+            ))}
          </div>
       </div>
    );

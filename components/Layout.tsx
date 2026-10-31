@@ -30,7 +30,6 @@ interface LayoutProps {
 const PUBLIC_HEADER_LINKS: { label: string; path: string }[] = [
   { label: 'How it works', path: '#how-it-works' },
   { label: 'Find Doctors', path: '/patient/doctors' },
-  { label: 'For Doctors', path: '/for-doctors' },
 ];
 
 const MARKETING_NAV_LINKS: { label: string; path: string }[] = [

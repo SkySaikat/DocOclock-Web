@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X, ChevronDown, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { SortMenu } from '../../components/dashboard';
 import { useMenu } from '../../components/patient/DsTable';
 import { Doctor } from '../../types';
 import { fetchDoctors } from '../../storage';
 import { DoctorCard } from '../../components/ui/DoctorCard';
+import { DepartmentPicker } from '../../components/patient/DepartmentPicker';
+import { DoctorFilter, decodeFilter, getFilterLabel, specialtyMatchesFilter } from '../../utils/departments';
 
 interface DoctorSearchViewProps {
     onNavigate: (path: string) => void;
@@ -27,7 +29,11 @@ export const DoctorSearchView: React.FC<DoctorSearchViewProps> = ({
     initialCategory = 'All'
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedType, setSelectedType] = useState(initialCategory === 'All' ? 'All' : initialCategory);
+    // A department / symptom pick (from the picker, or arriving from the home page as "dept:7" / "symptom:1") filters by
+    // department; a plain category string (older entry points) keeps using the Type dropdown.
+    const [filter, setFilter] = useState<DoctorFilter | null>(() => decodeFilter(initialCategory));
+    const [selectedType, setSelectedType] = useState(initialCategory === 'All' || decodeFilter(initialCategory) ? 'All' : initialCategory);
+    const resultsRef = useRef<HTMLDivElement>(null);
     const [selectedExperience, setSelectedExperience] = useState(0);
     const [isTypeOpen, setIsTypeOpen] = useState(false);
     const [isExpOpen, setIsExpOpen] = useState(false);
@@ -39,6 +45,11 @@ export const DoctorSearchView: React.FC<DoctorSearchViewProps> = ({
     const sortMenu = useMenu();
     const typeMenu = useMenu();
     const expMenu = useMenu();
+
+    useEffect(() => {
+        const next = decodeFilter(initialCategory);
+        if (next) { setFilter(next); setSelectedType('All'); setPage(1); }
+    }, [initialCategory]);
 
     useEffect(() => {
         fetchDoctors().then(setDoctors).catch((err) => console.error('Error fetching doctors:', err)).finally(() => setIsLoading(false));
@@ -56,9 +67,10 @@ export const DoctorSearchView: React.FC<DoctorSearchViewProps> = ({
                 doc.specialty.toLowerCase().includes(selectedType.toLowerCase()) ||
                 specialtyStem(doc.specialty) === specialtyStem(selectedType);
             const matchesExperience = expBand.test(doc.experienceYears || 0);
-            return matchesSearch && matchesType && matchesExperience;
+            const matchesFilter = !filter || specialtyMatchesFilter(doc.specialty, filter);
+            return matchesSearch && matchesType && matchesExperience && matchesFilter;
         });
-    }, [doctors, searchTerm, selectedType, selectedExperience]);
+    }, [doctors, searchTerm, selectedType, selectedExperience, filter]);
 
     const sorted = useMemo(() => {
         const list = [...filteredDoctors];
@@ -72,12 +84,35 @@ export const DoctorSearchView: React.FC<DoctorSearchViewProps> = ({
     const pageDoctors = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
     const from = sorted.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
     const to = Math.min(sorted.length, safePage * PAGE_SIZE);
-    const resetAll = () => { setSearchTerm(''); setSelectedType('All'); setSelectedExperience(0); setSortBy('recommended'); setPage(1); };
+    const resetAll = () => { setSearchTerm(''); setFilter(null); setSelectedType('All'); setSelectedExperience(0); setSortBy('recommended'); setPage(1); };
 
     return (
         // Figma "List Page" 396:12430 (booking flow step 1): filters row, results line + sort, reveal cards, numbered pagination.
         <div className="mx-auto flex w-full max-w-[1312px] flex-col gap-6 px-4 py-8 font-display md:px-6 md:py-12">
             <h1 className="text-[28px] font-normal leading-[normal] text-content-primary md:text-ds-h36">Find a Doctor</h1>
+
+            <DepartmentPicker
+                expandable
+                selected={filter}
+                onSelect={(f) => {
+                    const same = filter?.kind === f.kind && filter.id === f.id;
+                    setFilter(same ? null : f);
+                    setSelectedType('All');
+                    setPage(1);
+                    if (!same) requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                }}
+            />
+
+            <div ref={resultsRef} className="scroll-mt-28" />
+            {filter && (
+                <div className="dc-rise flex flex-wrap items-center gap-3 rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3">
+                    <span className="text-[14px] text-ink-600">Showing doctors for {filter.kind === 'symptom' ? 'symptom' : 'department'}</span>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-primary-500 px-3.5 py-1 text-[14px] font-semibold text-white">
+                        {getFilterLabel(filter)}
+                        <button type="button" onClick={() => setFilter(null)} aria-label="Clear department filter" className="grid size-4 place-items-center rounded-full bg-white/25 hover:bg-white/40"><X size={11} /></button>
+                    </span>
+                </div>
+            )}
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
@@ -89,7 +124,7 @@ export const DoctorSearchView: React.FC<DoctorSearchViewProps> = ({
                         <button type="button" aria-haspopup="menu" aria-expanded={typeMenu.open} onClick={() => { typeMenu.setOpen(o => !o); expMenu.close(); }} className={PILL}>
                             {selectedType === 'All' ? 'Type' : selectedType} <ChevronDown size={16} className={`transition-transform duration-ds-fast ${typeMenu.open ? 'rotate-180' : ''}`} />
                         </button>
-                        {typeMenu.open && <SortMenu options={SPECIALTIES.map(sp => ({ id: sp, label: sp }))} value={selectedType} onSelect={id => { setSelectedType(id); setPage(1); }} onClose={typeMenu.close} className="w-[180px]" />}
+                        {typeMenu.open && <SortMenu options={SPECIALTIES.map(sp => ({ id: sp, label: sp }))} value={selectedType} onSelect={id => { setSelectedType(id); setFilter(null); setPage(1); }} onClose={typeMenu.close} className="w-[180px]" />}
                     </div>
                     <div ref={expMenu.ref} className="relative">
                         <button type="button" aria-haspopup="menu" aria-expanded={expMenu.open} onClick={() => { expMenu.setOpen(o => !o); typeMenu.close(); }} className={PILL}>
