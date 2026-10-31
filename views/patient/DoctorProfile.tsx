@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Doctor, Chamber, UserRole, Relationship, Appointment } from '../../types';
 import { Button } from '../../components/ui/Button';
-import { MapPin, Clock, Calendar, ArrowLeft, Star, GraduationCap, AlertCircle, CheckCircle, X, ChevronRight, Briefcase, Award, Users, Send, Loader2 } from 'lucide-react';
+import { MapPin, Clock, Calendar, CalendarDays, ArrowLeft, ArrowRight, Star, GraduationCap, AlertCircle, CheckCircle, X, ChevronRight, Briefcase, Award, Users, Send, Loader2, ShieldCheck, Zap } from 'lucide-react';
 import { getCurrentSession, bookAppointment, fetchDoctorReviews, submitDoctorReview, createNotification } from '../../storage';
 import { ChamberCard } from '../../components/ui/ChamberCard';
 import { validateBooking } from '../../utils/bookingUtils';
@@ -288,49 +288,101 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
     ['Patients Treated', `${doctor.totalPatients || (doctor as any).total_patients || 0}+`],
   ];
 
+  const minFee = chambers.length ? Math.min(...chambers.map((c: any) => Number(c.feeNormal) || 0)) : null;
+  const feesDiffer = chambers.length > 1 && new Set(chambers.map((c: any) => c.feeNormal)).size > 1;
+  const expYears = doctor.experienceYears || (doctor as any).experience_years || 0;
+  const patientsCount = doctor.totalPatients || (doctor as any).total_patients || 0;
+  const bmdc = doctor.bmdcNumber || (doctor as any).bmdc_number || '—';
+  const initials = (doctor.name || 'Dr').replace(/^Dr\.?\s*/i, '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+  const stats: { label: string; value: React.ReactNode }[] = [
+    { label: 'Experience', value: `${expYears}+ Years` },
+    { label: 'BMDC Number', value: bmdc },
+    { label: 'Rating', value: <span className="flex items-center gap-1"><Star size={15} className="fill-amber-400 text-amber-400" />{doctor.rating || 4.8}</span> },
+    { label: 'Patients', value: `${patientsCount}+` },
+  ];
+
+  // The big, focused call to action — used in the hero card (desktop) and the sticky bar (phone).
+  const renderBook = (className = '') => (
+    <button
+      type="button"
+      onClick={handleBookClick}
+      className={`btn-sheen group relative inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-b from-primary-400 to-primary-600 font-semibold text-white shadow-[0_12px_28px_-8px_rgb(var(--color-primary-600)/0.7)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-8px_rgb(var(--color-primary-600)/0.85)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${className}`}
+    >
+      <span aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 animate-ping rounded-2xl bg-primary-500/20 [animation-duration:2.8s] motion-reduce:hidden" />
+      <CalendarDays size={20} />
+      Book Appointment
+      <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none" />
+    </button>
+  );
+
   return (
-    // Figma doctor detail (601:13524): back title, hero (cover + round portrait + name/verified/rating + stats), tabs, info box | "Get an Appointment" card.
-    <div className="mx-auto w-full max-w-[1312px] px-4 pb-32 pt-6 font-display md:px-6 md:pb-12">
-      <button onClick={onBack} className="mb-6 flex items-center gap-3 text-[28px] leading-[normal] text-content-primary md:text-ds-h36">
-        <ArrowLeft size={30} strokeWidth={1.5} /> Doctor Profile
-      </button>
+    // Hero card (portrait + identity + stats | fee + Book Appointment), then tabs/content with an "At a Glance" side card.
+    <div className="mx-auto w-full max-w-[1312px] px-4 pb-40 pt-6 font-display md:px-6 md:pb-12">
+      {/* Breadcrumb (desktop) / back (phone) */}
+      <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-2 text-[14px] text-content-secondary">
+        <button onClick={onBack} aria-label="Back" className="grid size-9 place-items-center rounded-full bg-white shadow-sm transition-colors hover:text-primary-600 md:hidden"><ArrowLeft size={18} /></button>
+        <button onClick={() => onNavigate?.('/')} className="hidden hover:text-primary-600 md:inline">Home</button>
+        <span className="hidden text-ink-300 md:inline">/</span>
+        <button onClick={() => onNavigate?.('/patient/doctors')} className="hover:text-primary-600">Find Doctors</button>
+        <span className="text-ink-300">/</span>
+        <span className="truncate font-medium text-content-primary">{doctor.name}</span>
+      </nav>
 
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-4 lg:max-w-[811px]">
-          {/* Hero */}
-          <section className="overflow-hidden rounded-ds-lg bg-white">
-            <div className="relative h-[220px] md:h-[353px]">
-              <img src="/assets/figma/patient-doctors/profile-cover.png" alt="" aria-hidden="true" className="h-[180px] w-full rounded-t-ds-lg object-cover md:h-[297px]" />
-              <img
-                src={doctor.imageUrl || `https://picsum.photos/400/600?random=${doctor.id}`}
-                alt={doctor.name}
-                className="absolute bottom-0 left-1/2 size-[140px] -translate-x-1/2 rounded-full border-4 border-white object-cover shadow-ds-pill md:size-[256px]"
-              />
+      {/* Hero */}
+      <section className="dc-rise overflow-hidden rounded-[28px] border border-ink-100 bg-white shadow-sm">
+        <div className="grid lg:grid-cols-[1fr_360px]">
+          <div className="flex flex-col gap-6 p-5 sm:flex-row sm:p-8">
+            <div className="relative mx-auto shrink-0 sm:mx-0">
+              {doctor.imageUrl ? (
+                <img src={doctor.imageUrl} alt={doctor.name} className="size-[132px] rounded-[26px] object-cover object-top shadow-md ring-4 ring-primary-50 sm:h-[200px] sm:w-[170px]" />
+              ) : (
+                <span className="grid size-[132px] place-items-center rounded-[26px] bg-primary-100 font-display text-[40px] font-bold text-primary-700 ring-4 ring-primary-50 sm:h-[200px] sm:w-[170px]">{initials}</span>
+              )}
+              <span className="absolute -bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary-500 px-3 py-1 text-[12px] font-semibold text-white shadow-md">
+                <ShieldCheck size={13} /> BMDC Verified
+              </span>
             </div>
-            <div className="flex flex-col gap-4 p-6 pt-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h1 className="flex items-center gap-2 text-ds-title-24 text-content-primary">
-                    <span className="truncate">{doctor.name}</span>
-                    <img src="/assets/figma/icon-verified.svg" alt="Verified" className="size-7 shrink-0" />
-                  </h1>
-                  <p className="text-ds-paragraph text-content-secondary">{doctor.degrees || doctor.specialty}</p>
-                </div>
-                <span className="flex shrink-0 items-center gap-1 text-ds-paragraph text-content-secondary"><Star size={16} className="fill-ink-400 text-ink-400" /> {doctor.rating || 4.8}</span>
-              </div>
-              <div className="flex gap-4">
-                <div className="flex flex-col gap-2">
-                  <span className="text-ds-paragraph text-content-secondary">Experience</span>
-                  <span className="text-ds-paragraph text-content-primary">{doctor.experienceYears || (doctor as any).experience_years || 0}+</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-ds-paragraph text-content-secondary">Patients</span>
-                  <span className="text-ds-paragraph text-content-primary">{doctor.totalPatients || (doctor as any).total_patients || 0}</span>
-                </div>
-              </div>
-            </div>
-          </section>
 
+            <div className="flex min-w-0 flex-1 flex-col gap-4 text-center sm:text-left">
+              <div className="flex flex-col gap-1.5">
+                <h1 className="font-display text-[28px] font-bold leading-tight text-ink-900 md:text-[34px]">{doctor.name}</h1>
+                {doctor.degrees && <p className="text-[16px] text-content-secondary">{doctor.degrees}</p>}
+                {doctor.specialty && (
+                  <p className="mx-auto w-fit rounded-full bg-primary-50 px-3 py-1 text-[14px] font-medium text-primary-700 sm:mx-0">{doctor.specialty}</p>
+                )}
+              </div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-ink-100">
+                {stats.map((st) => (
+                  <div key={st.label} className="flex flex-col gap-1 sm:px-4 sm:first:pl-0">
+                    <dt className="text-[13px] text-content-secondary">{st.label}</dt>
+                    <dd className="flex justify-center text-[16px] font-semibold text-ink-900 sm:justify-start">{st.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+
+          {/* Fee + booking panel (desktop; phones get the sticky bar below) */}
+          <div className="hidden flex-col justify-center gap-5 border-l border-ink-100 bg-gradient-to-b from-primary-50/70 to-white p-8 lg:flex">
+            <div>
+              <p className="text-[15px] font-semibold text-ink-700">Consultation Fee</p>
+              <p className="mt-1 flex items-baseline gap-2">
+                <span className="font-display text-[44px] font-extrabold leading-none text-primary-600">{minFee != null ? `৳${minFee}` : '—'}</span>
+                <span className="text-[14px] text-content-secondary">{feesDiffer ? 'starting · inc. VAT' : '(inc. VAT)'}</span>
+              </p>
+            </div>
+            {renderBook('h-14 w-full text-[17px]')}
+            <ul className="flex flex-col gap-2 text-[14px] text-content-secondary">
+              <li className="flex items-center gap-2"><Zap size={15} className="text-primary-500" /> Serial confirmed instantly</li>
+              <li className="flex items-center gap-2"><Clock size={15} className="text-primary-500" /> About 12-15 minutes per visit</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-4">
           {/* Tabs */}
           <div role="tablist" className="no-scrollbar flex gap-2 overflow-x-auto px-2">
             {(['About', 'Availability', 'Experience', 'Education', 'Reviews'] as const).map((tab) => (
@@ -479,32 +531,49 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({ doctor: initialDoc
           </section>
         </div>
 
-        {/* "Get an Appointment" card (349) */}
-        <aside className="hidden w-[349px] shrink-0 flex-col gap-6 rounded-ds-lg bg-white p-6 lg:mt-7 lg:flex">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-ds-title-24 text-content-primary">Get an Appointment</h2>
-            <button onClick={handleBookClick} aria-label="Book an appointment" className="btn-sheen relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-primary-500 text-white">
-              <ChevronRight size={20} />
-            </button>
-          </div>
-          <div className="mt-20 flex flex-col gap-6">
-            <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1 text-ds-body text-content-secondary"><Calendar size={14} /> Consultation Fee</span>
-              <span className="text-ds-title-24 text-content-primary">{consultFee != null ? `BDT ${consultFee}` : '—'}</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1 text-ds-body text-content-secondary"><Clock size={14} /> Average Duration</span>
-              <span className="text-ds-title-24 text-content-primary">12-15 minutes</span>
-            </div>
+        {/* At a Glance — where and when the doctor sits, and what it costs */}
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
+          <div className="rounded-[24px] border border-ink-100 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 font-display text-[20px] font-bold text-primary-700">At a Glance</h2>
+            {isLoadingChambers ? (
+              <div className="h-24 animate-pulse rounded-2xl bg-ink-50" />
+            ) : chambers.length === 0 ? (
+              <p className="text-[15px] text-content-tertiary">No chamber schedule has been set yet.</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {chambers.map((c: any) => (
+                  <div key={c.id} className="flex flex-col gap-3 rounded-2xl bg-page p-4">
+                    <div>
+                      <p className="flex items-center gap-2 font-semibold text-ink-900"><MapPin size={15} className="shrink-0 text-primary-500" />{c.hospitalName}</p>
+                      {c.address && <p className="ml-[23px] text-[13px] text-content-secondary">{c.address}</p>}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label, idx) => {
+                        const on = c.schedule?.some((sc: any) => Number(sc.day) === idx);
+                        return <span key={label} className={`rounded-lg px-2 py-0.5 text-[12px] font-medium ${on ? 'bg-primary-100 text-primary-700' : 'bg-white text-ink-300'}`}>{label}</span>;
+                      })}
+                    </div>
+                    <div className="flex items-center justify-between text-[14px]">
+                      <span className="flex items-center gap-1.5 text-content-secondary"><Clock size={14} />{c.schedule?.[0] ? `${c.schedule[0].startTime} - ${c.schedule[0].endTime}` : 'By appointment'}</span>
+                      <span className="font-semibold text-ink-900">৳{c.feeNormal}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
       </div>
 
-      {/* Phone: sticky booking CTA (the side card is desktop-only) */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(90px+env(safe-area-inset-bottom))] z-50 px-4 lg:hidden">
-        <button onClick={handleBookClick} className="btn-sheen pointer-events-auto relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-primary-500 text-ds-paragraph text-white shadow-ds-rise-lg">
-          Get an Appointment <ChevronRight size={20} />
-        </button>
+      {/* Phone: sticky fee + booking bar (desktop has the hero panel) */}
+      <div className={`pointer-events-none fixed inset-x-0 z-50 px-3 lg:hidden ${userRole === UserRole.PATIENT ? 'bottom-[calc(84px+env(safe-area-inset-bottom))]' : 'bottom-[calc(12px+env(safe-area-inset-bottom))]'}`}>
+        <div className="pointer-events-auto flex items-center gap-3 rounded-[22px] border border-ink-100 bg-white/95 p-2.5 pl-5 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)] backdrop-blur">
+          <div className="min-w-0 flex-1">
+            <p className="whitespace-nowrap text-[12px] text-content-secondary">Consultation Fee</p>
+            <p className="font-display text-[22px] font-extrabold leading-none text-primary-600">{minFee != null ? `৳${minFee}` : '—'}</p>
+          </div>
+          {renderBook('h-12 shrink-0 gap-2 px-4 text-[14px] sm:px-5 sm:text-[15px]')}
+        </div>
       </div>
 
       {/* BOOKING MODAL — 4-step wizard matching Figma "Get an Appointment" stepper */}
